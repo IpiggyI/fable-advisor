@@ -13,7 +13,7 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 Tokens route by volume: the expensive model emits the fewest tokens (judgment and specs), cheap models emit the most (code). Implementation mechanics are ~90% of a session's tokens and Sonnet handles them at near-parity — so this runs roughly 60% cheaper than Fable-for-everything, at higher quality than Sonnet-for-everything.
 
-The plugin ships the **orchestration skill** — the routing doctrine that teaches the session when to use each lane, the five-part spec contract that makes context-free delegation safe, and the verification rules that keep cheap lanes honest.
+The plugin ships the **orchestration skill** — the routing doctrine that teaches the session when to use each lane, the cost discipline that keeps the expensive model's own token volume minimal (emit judgment not volume, keep context lean, reason once then hand off), the five-part spec contract that makes context-free delegation safe, and the verification rules that keep cheap lanes honest.
 
 ## Install
 
@@ -53,8 +53,10 @@ The architect writes the spec, picks the lane (rate limiting touches concurrency
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```
-You are the architect: delegate all implementation through the
-orchestration skill's routing table and verify evidence before
+You are the architect running the most expensive model — minimize your
+own token volume. Delegate all implementation through the orchestration
+skill's routing table (never type code yourself), delegate broad codebase
+exploration to cheap read-only agents, and verify evidence before
 accepting any lane's report.
 ```
 
