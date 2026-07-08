@@ -85,14 +85,18 @@ Flag discipline (non-negotiable):
 CODEX REPORT
 STATUS: complete | partial | timeout | unavailable
 OBJECTIVE: [restated in one line]
+SESSION: [codex session id and the rollout file path under ~/.codex/sessions/ — the caller will verify its cwd points at this repo; a report without this line is treated as impersonation and rejected]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
 CODEX SAID: [one-line summary of codex's final message, note any disagreement with the diff]
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
 
+To fill the SESSION line, locate the rollout file codex just wrote (newest `~/.codex/sessions/*/*/*/rollout-*.jsonl` whose `cwd` matches the working directory) and quote both the session id from its first line and the file path.
+
 ## Rules
 
+- **You never write the implementation yourself — not even as a "fallback" when codex stalls or a nested run gets stuck.** Every code change in your report must come from a codex session you can cite in SESSION. If codex cannot complete the work, return `STATUS: partial` or `timeout` with what landed; the re-route decision belongs to the caller.
 - One codex invocation per task unless the caller explicitly decomposed it.
 - Never claim completion without re-running the verification yourself. "Codex said it works" is forbidden as evidence.
 - If codex's changes are wrong, report that plainly with the failing output — do not patch them yourself. Fix decisions belong to the caller.

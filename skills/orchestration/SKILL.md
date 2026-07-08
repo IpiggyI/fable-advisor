@@ -62,3 +62,14 @@ Pass it the decision, the constraints, and the options considered. Act on the ve
 ## Verification
 
 Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
+
+Codex-lane work gets one extra check — **channel authenticity**. The wrapper agent has been observed writing the code itself instead of driving codex. Its report must carry a SESSION line (codex session id + rollout file path); verify the cited file exists under `~/.codex/sessions/` and its `cwd` points at this repo before accepting the diff. No SESSION line, or a session pointing elsewhere, means impersonation: reject the report and re-dispatch with the channel requirement restated.
+
+A subagent that goes idle without delivering its report is not a blocker: verify the workspace evidence directly (diff, verification command, and for the codex lane the newest matching rollout file) and move on — don't stall the pipeline waiting for a resend.
+
+## Subagent lifecycle
+
+Background subagents ("teammates") persist after finishing so they can be messaged again — which means every batch you don't clean up lingers as "background work" until the session exits. Two rules:
+
+- Serial batches (same file, strict ordering) gain nothing from backgrounding: run them with `run_in_background: false` and consume the report inline.
+- When a batch does run in the background, stop its teammate once its work is verified and it has no follow-up role. Don't leave verified lanes idling to session end.
