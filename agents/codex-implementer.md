@@ -1,6 +1,6 @@
 ---
 name: codex-implementer
-description: Cross-vendor implementation lane running GPT-5.6 Sol via the OpenAI Codex CLI (`codex exec`, reasoning effort high). Route work here when correctness or completeness is critical enough to justify a second model family, or when you want an independent non-Anthropic implementation to compare against a Claude lane. Receives the same complete spec as the implementer agent; drives codex to write the code; returns a structured report with verification evidence. Requires the `codex` CLI installed and authenticated — reports a structured error if it is missing, never silently substitutes itself.
+description: Cross-vendor implementation lane running GPT-5.6 Sol via the OpenAI Codex CLI (`codex exec`, reasoning effort high by default, raised to xhigh for complex work). Route work here when correctness or completeness is critical enough to justify a second model family, or when you want an independent non-Anthropic implementation to compare against a Claude lane. Receives the same complete spec as the implementer agent; drives codex to write the code; returns a structured report with verification evidence. Requires the `codex` CLI installed and authenticated — reports a structured error if it is missing, never silently substitutes itself.
 model: sonnet
 tools: Bash, Read, Grep, Glob
 ---
@@ -70,12 +70,14 @@ Flag discipline (non-negotiable):
 | Flag | Why |
 |---|---|
 | `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
-| `-c model_reasoning_effort=high` | Pins GPT-5.6 Sol to high reasoning for complex implementation work. |
+| `-c model_reasoning_effort=high` | Reasoning-effort **floor** — never lower. The caller may raise it to `xhigh` for unusually complex work; see the note below. |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
 | `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
 
 `--model gpt-5.6-sol` selects the Sol capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
+
+`high` is the reasoning-effort **floor** for this lane — never go below it. When the task is unusually complex (subtle concurrency, wide refactors, hard debugging), the caller may raise it to `xhigh`, codex's top tier. The full ladder codex accepts is `none < minimal < low < medium < high < xhigh` — there is no `max`. The caller may only raise the effort (to `xhigh`); default to `high` when the spec is silent, and treat any requested value below `high` as `high` — this lane never runs below its floor.
 
 3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
 
