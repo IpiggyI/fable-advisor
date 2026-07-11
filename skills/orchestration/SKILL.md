@@ -25,13 +25,14 @@ What stays with the architect regardless of cost: decomposition, interface desig
 |---|---|---|---|
 | Routine | Grok 4.5 | `grok-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
 | Cross-vendor | GPT-5.6 Sol (high reasoning) | `codex-implementer` agent | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI. |
+| Fallback | Sonnet / Opus (in-house Claude) | `implementer` agent | Both CLI lanes are unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same family as the architect, so no cross-vendor review; use `model="opus"` for high-stakes work reached this way. |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
 
 Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default grok lane; you will verify anyway. A lot, and mistakes are costly → race both lanes on the same spec and pick the stronger diff, or keep that piece with the architect.
 
 Grok vs codex is not a capability ranking — it's a failure-distribution question. Both are non-Anthropic families, so either lane's output gets genuine cross-vendor review from the Claude architect; racing them buys a *third* independent perspective for one extra lane's cost.
 
-If a lane returns `unavailable` or `timeout`, re-route the same spec to the other lane and say so explicitly in your report — never quietly absorb the substitution. If both CLI lanes are unavailable, implement with a Claude subagent and state the downgrade plainly.
+If a lane returns `unavailable` or `timeout`, re-route the same spec to the other lane and say so explicitly in your report — never quietly absorb the substitution. If both CLI lanes are unavailable, route to the `implementer` agent (the in-house Claude fallback) and state the downgrade plainly — it shares the architect's family, so you lose cross-vendor review; that's the cost of the CLIs being down.
 
 ## The spec contract
 
