@@ -46,6 +46,17 @@ Implementers share none of your conversation context. Every delegation prompt ca
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to a cheaper model.
 
+## Spawning the CLI lanes — keep the guardrail structural
+
+`codex-implementer` and `grok-implementer` restrict themselves to `Bash, Read, Grep, Glob` — no `Write`/`Edit` — on purpose: it makes silent self-implementation *physically impossible*, since the only way they can change code is by driving their CLI. That whitelist only holds on the plain subagent path. **Spawn these two lanes without a `name`.**
+
+Passing a `name` routes the spawn to an in-process teammate, which ignores the agent's tool whitelist and hands it the full default toolset — `Write`/`Edit` included — so a named codex/grok lane can quietly write the code itself and report success. Verified on the harness: named → teammate (Write/Edit present); no `name` → `local_agent` (Write/Edit don't exist).
+
+- **CLI lanes: never pass `name`.** For parallel fan-out use `run_in_background: true` — unnamed background subagents still run concurrently and still keep the whitelist; you just can't message them mid-run, so send a fresh self-contained spec instead of a follow-up.
+- **`implementer` (in-house Claude) is exempt** — it has no whitelist and is *meant* to write code directly. Name it freely if you want it addressable.
+
+This is the primary defense; the SESSION-evidence check under Verification is the backstop.
+
 ## Parallelism
 
 Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, a pick-the-stronger-diff race — `grok-implementer` and `codex-implementer` on the same spec, architect judges — buys three-vendor confidence for one extra lane's cost.
@@ -64,13 +75,13 @@ Pass it the decision, the constraints, and the options considered. Act on the ve
 
 Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
 
-Codex-lane work gets one extra check — **channel authenticity**. The wrapper agent has been observed writing the code itself instead of driving codex. Its report must carry a SESSION line (codex session id + rollout file path); verify the cited file exists under `~/.codex/sessions/` and its `cwd` points at this repo before accepting the diff. No SESSION line, or a session pointing elsewhere, means impersonation: reject the report and re-dispatch with the channel requirement restated.
+Codex-lane work gets one backstop check — **channel authenticity** — for a lane that slipped through spawned wrong. The wrapper agent has been observed writing the code itself instead of driving codex (spawned as a named teammate, which strips its tool whitelist — see the spawning rule above). Its report must carry a SESSION line (codex session id + rollout file path); verify the cited file exists under `~/.codex/sessions/` and its `cwd` points at this repo before accepting the diff. No SESSION line, or a session pointing elsewhere, means impersonation: reject the report and re-dispatch with the channel requirement restated.
 
 A subagent that goes idle without delivering its report is not a blocker: verify the workspace evidence directly (diff, verification command, and for the codex lane the newest matching rollout file) and move on — don't stall the pipeline waiting for a resend.
 
 ## Subagent lifecycle
 
-Background subagents ("teammates") persist after finishing so they can be messaged again — which means every batch you don't clean up lingers as "background work" until the session exits. Two rules:
+A subagent spawned with a `name` ("teammate") persists after finishing so it can be messaged again — which means every named batch you don't clean up lingers as "background work" until the session exits. (The CLI lanes, spawned unnamed per the rule above, aren't addressable this way — they finish and return.) Two rules:
 
 - Serial batches (same file, strict ordering) gain nothing from backgrounding: run them with `run_in_background: false` and consume the report inline.
 - When a batch does run in the background, stop its teammate once its work is verified and it has no follow-up role. Don't leave verified lanes idling to session end.
