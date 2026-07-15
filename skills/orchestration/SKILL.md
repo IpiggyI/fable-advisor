@@ -48,7 +48,7 @@ A spec you can't finish writing is a signal the decision isn't made yet — that
 
 ## Spawning the CLI lanes — keep the guardrail structural
 
-`codex-implementer` and `grok-implementer` restrict themselves to `Bash, Read, Grep, Glob` — no `Write`/`Edit` — on purpose: it makes silent self-implementation *physically impossible*, since the only way they can change code is by driving their CLI. That whitelist only holds on the plain subagent path. **Spawn these two lanes without a `name`.**
+`codex-implementer` and `grok-implementer` restrict themselves to `Bash, Read, Grep, Glob` — no `Write`/`Edit` — on purpose: it structurally removes the direct-edit path to silent self-implementation (arbitrary Bash can still write files, which is why the SESSION-evidence backstop below stays mandatory). That whitelist only holds on the plain subagent path. **Spawn these two lanes without a `name`.** The plugin also carries this rule as a PreToolUse hook (`hooks/hooks.json`) that denies named CLI-lane spawns at the harness layer, fail-closed when no python runtime exists.
 
 Passing a `name` routes the spawn to an in-process teammate, which ignores the agent's tool whitelist and hands it the full default toolset — `Write`/`Edit` included — so a named codex/grok lane can quietly write the code itself and report success. Verified on the harness: named → teammate (Write/Edit present); no `name` → `local_agent` (Write/Edit don't exist).
 
