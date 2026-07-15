@@ -1,5 +1,5 @@
 {
-  "description": "Structural guardrail: CLI implementer lanes (codex/grok) must be spawned without a `name` — a named spawn becomes an in-process teammate, which strips the agent's tool whitelist. Fail closed: if no python runtime exists, CLI-lane spawns are denied by the shell layer until it does.",
+  "description": "Structural guardrail: CLI implementer lanes (codex/grok) must be spawned without a `name` — a named spawn becomes an in-process teammate, which strips the agent's tool whitelist. Fail closed: if no python runtime exists, CLI-lane spawns are denied by the shell layer until it does. Also carries the receipt gate: a Stop hook that blocks claiming completion while a pending codex spec has no complete receipt (fail open without python — it is a ratchet, not the primary guardrail).",
   "hooks": {
     "PreToolUse": [
       {
@@ -10,6 +10,18 @@
             "command": "payload=$(cat); if command -v python3 >/dev/null 2>&1; then printf '%s' \"$payload\" | python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/block-named-cli-lane.py\"; elif command -v python >/dev/null 2>&1; then printf '%s' \"$payload\" | python \"${CLAUDE_PLUGIN_ROOT}/hooks/block-named-cli-lane.py\"; else case \"$payload\" in *codex-implementer*|*grok-implementer*) echo 'fable-advisor guardrail: python runtime missing, CLI lane spawns disabled (fail closed) — install python3, or route to the in-house implementer lane' >&2; exit 2 ;; *) echo '{}' ;; esac; fi",
             "timeout": 10,
             "statusMessage": "Checking CLI lane spawn posture"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "payload=$(cat); if command -v python3 >/dev/null 2>&1; then printf '%s' \"$payload\" | python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/receipt-gate.py\"; elif command -v python >/dev/null 2>&1; then printf '%s' \"$payload\" | python \"${CLAUDE_PLUGIN_ROOT}/hooks/receipt-gate.py\"; else echo 'fable-advisor receipt gate skipped: python runtime missing (fail open — the PreToolUse spawn guardrail is the fail-closed line)' >&2; fi",
+            "timeout": 10,
+            "statusMessage": "Checking codex receipt gate"
           }
         ]
       }

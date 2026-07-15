@@ -529,7 +529,25 @@ async function main() {
     }
   }
 
-  return emitReceipt(state);
+  const exitCode = await emitReceipt(state);
+  if (state.errorClass === "complete") {
+    const resolvedSpecPath = path.resolve(parsedArguments.specPath);
+    const pendingDirectory = path.resolve(state.cwd, ".fable-advisor", "pending");
+    const relativeSpecPath = path.relative(pendingDirectory, resolvedSpecPath);
+    const isPendingSpec = relativeSpecPath !== ""
+      && relativeSpecPath !== ".."
+      && !relativeSpecPath.startsWith(`..${path.sep}`)
+      && !path.isAbsolute(relativeSpecPath);
+    if (isPendingSpec) {
+      try {
+        await unlink(resolvedSpecPath);
+        diagnostic(`cleared pending spec ${resolvedSpecPath}`);
+      } catch (error) {
+        diagnostic(`could not clear pending spec ${resolvedSpecPath}: ${errorMessage(error)}`);
+      }
+    }
+  }
+  return exitCode;
 }
 
 const exitCode = await main();
