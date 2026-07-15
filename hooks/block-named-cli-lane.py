@@ -7,7 +7,7 @@ self-implementation. See fable-advisor .memory/tasks/2026-07/07-12-cli-lane-spaw
 import json
 import sys
 
-GUARDED = ("codex-implementer", "grok-implementer")
+GUARDED = ("grok-implementer",)
 
 
 def main():

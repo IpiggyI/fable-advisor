@@ -24,7 +24,7 @@ What stays with the architect regardless of cost: decomposition, interface desig
 | Lane | Producer | Invoke | Route here when |
 |---|---|---|---|
 | Routine | Grok 4.5 | `grok-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
-| Cross-vendor | GPT-5.6 Sol (high reasoning) | `scripts/run-codex.mjs` runner, driven by the architect | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI and Node. |
+| Cross-vendor | GPT-5.6 (Sol/Terra/Luna, selectable effort) | `scripts/run-codex.mjs` runner, driven by the architect | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI and Node. |
 | Fallback | Sonnet / Opus (in-house Claude) | `implementer` agent | The grok agent and the codex runner are both unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same family as the architect, so no cross-vendor review; use `model="opus"` for high-stakes work reached this way. |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
 
@@ -65,11 +65,22 @@ The codex lane has no wrapper agent: the architect drives GPT-5.6 Sol directly t
 {
   "objective": "…", "files": ["…"], "interfaces": "…", "constraints": "…",
   "verification": ["…shell command…"],
-  "effort": "high", "timeout_sec": 600
+  "model": "gpt-5.6-sol", "effort": "high", "service_tier": "fast", "timeout_sec": 600
 }
 ```
 
-(`model` defaults to `gpt-5.6-sol`; `effort` floor is `high`, raise to `xhigh` for unusually complex work; unknown keys are rejected.)
+(All three tuning fields are optional and fail-loud — an out-of-range value is rejected as `spec_invalid`, never silently coerced:
+- `model` — `gpt-5.6-sol` (default, ≈ Opus / flagship), `gpt-5.6-terra` (≈ Sonnet), or `gpt-5.6-luna` (≈ Haiku).
+- `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`, default `high`.
+- `service_tier` — omit for Codex's own default; set `"fast"` only when you want speed over quality.
+Unknown top-level keys are rejected. The receipt records the `model`, `effort`, and `service_tier` actually used.)
+
+**Dialing the codex lane — quality-first within the lane.** Choosing *which* lane is still cost-first (grok is the default); the cost win comes from delegating off the architect at all, so a quality bump inside the cheap lanes is affordable. Once a task is worth the codex lane (correctness/completeness critical), bias toward quality within it:
+
+- **Default to `gpt-5.6-sol` at `high`** — the quality baseline.
+- **Escalate `effort` to `xhigh` or `max` only for unusually hard tasks** (subtle correctness, tricky concurrency, wide refactors). Both noticeably slow completion — escalate deliberately, not by default.
+- **Drop to `terra`/`luna` or a lower effort only when the codex-family task is genuinely simple.** This does not replace grok as the routine default; it's for when you specifically want the OpenAI family on light work.
+- **Add `service_tier: "fast"` only when trading quality for speed.**
 
 2. Run the runner. This skill's base directory is `<plugin-root>/skills/orchestration`, so the runner lives two levels up:
 

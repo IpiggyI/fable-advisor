@@ -13,6 +13,9 @@ const DEFAULT_TIMEOUT_SEC = 600;
 const SESSION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const VALID_MODELS = new Set(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
+const VALID_EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
+const VALID_SERVICE_TIERS = new Set(["fast"]);
 const SPEC_KEYS = new Set([
   "objective",
   "files",
@@ -21,6 +24,7 @@ const SPEC_KEYS = new Set([
   "verification",
   "model",
   "effort",
+  "service_tier",
   "timeout_sec",
 ]);
 
@@ -102,9 +106,21 @@ function normalizeSpec(value) {
 
   if (value.model !== undefined) {
     requireString(value.model, "model");
+    if (!VALID_MODELS.has(value.model)) {
+      throw new Error(`model must be one of: ${[...VALID_MODELS].join(", ")}`);
+    }
   }
-  if (value.effort !== undefined && typeof value.effort !== "string") {
-    throw new Error("effort must be a string");
+  if (value.effort !== undefined) {
+    requireString(value.effort, "effort");
+    if (!VALID_EFFORTS.has(value.effort)) {
+      throw new Error(`effort must be one of: ${[...VALID_EFFORTS].join(", ")}`);
+    }
+  }
+  if (value.service_tier !== undefined) {
+    requireString(value.service_tier, "service_tier");
+    if (!VALID_SERVICE_TIERS.has(value.service_tier)) {
+      throw new Error(`service_tier must be one of: ${[...VALID_SERVICE_TIERS].join(", ")}`);
+    }
   }
   if (
     value.timeout_sec !== undefined
@@ -122,7 +138,8 @@ function normalizeSpec(value) {
     constraints: value.constraints,
     verification: value.verification,
     model: value.model ?? DEFAULT_MODEL,
-    effort: value.effort === "xhigh" ? "xhigh" : DEFAULT_EFFORT,
+    effort: value.effort ?? DEFAULT_EFFORT,
+    service_tier: value.service_tier ?? null,
     timeout_sec: value.timeout_sec ?? DEFAULT_TIMEOUT_SEC,
   };
 }
@@ -285,6 +302,9 @@ async function executeCodex(spec, cwd, promptContents) {
     "--skip-git-repo-check",
     "--cd", cwd,
   ];
+  if (spec.service_tier !== null) {
+    args.push("-c", `service_tier=${spec.service_tier}`);
+  }
   const child = spawn("codex", args, {
     detached: process.platform !== "win32",
     stdio: ["pipe", "pipe", "pipe"],
@@ -401,6 +421,7 @@ function initialState(startedAt) {
     cwd: process.cwd(),
     model: DEFAULT_MODEL,
     effort: DEFAULT_EFFORT,
+    service_tier: null,
     codexSessionId: null,
     childExitCode: null,
     startedAt,
@@ -420,6 +441,7 @@ function buildReceipt(state) {
     producer: "codex",
     model: state.model,
     effort: state.effort,
+    service_tier: state.service_tier,
     codex_session_id: state.codexSessionId,
     started_at: state.startedAt,
     finished_at: new Date().toISOString(),
@@ -488,6 +510,7 @@ async function main() {
     spec = await loadSpec(parsedArguments.specPath, state);
     state.model = spec.model;
     state.effort = spec.effort;
+    state.service_tier = spec.service_tier;
   } catch (error) {
     diagnostic(`invalid spec: ${errorMessage(error)}`);
     state.errorClass = "spec_invalid";
