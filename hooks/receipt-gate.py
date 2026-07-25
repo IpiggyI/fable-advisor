@@ -20,6 +20,10 @@ def main():
     except Exception:
         print("{}")
         return
+    # Harness requires Stop hooks to succeed when already active (avoid re-entry loops).
+    if data.get("stop_hook_active"):
+        print("{}")
+        return
     cwd = data.get("cwd") or os.getcwd()
     pending_dir = os.path.join(cwd, ".fable-advisor", "pending")
     if not os.path.isdir(pending_dir):

@@ -9,7 +9,7 @@ The session is the architect: it owns requirements, architecture, decomposition,
 
 ## Cost discipline — the prime directive
 
-The session model is the most expensive lane in the system, on both input and output tokens. The whole economic case for this pattern is keeping its token volume low: spend Fable on judgment, spend Sonnet on volume. Three rules follow.
+The session model is the most expensive lane in the system, on both input and output tokens. The whole economic case for this pattern is keeping its token volume low: spend the flagship on judgment, spend the cheap lanes on volume. Three rules follow.
 
 **Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the cheap lane instead.
 
@@ -25,7 +25,7 @@ What stays with the architect regardless of cost: decomposition, interface desig
 |---|---|---|---|
 | Routine | Grok 4.5 | `grok-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
 | Cross-vendor | GPT-5.6 (Sol/Terra/Luna, selectable effort) | `scripts/run-codex.mjs` runner, driven by the architect | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI and Node. |
-| Fallback | Sonnet / Opus (in-house Claude) | `implementer` agent | The grok agent and the codex runner are both unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same family as the architect, so no cross-vendor review; use `model="opus"` for high-stakes work reached this way. |
+| Fallback | Opus (in-house Claude) | `implementer` agent | The grok agent and the codex runner are both unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same flagship tier as the architect (value is context isolation, not a cheaper unit price); same family, so no cross-vendor review. |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
 
 Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default grok lane; you will verify anyway. A lot, and mistakes are costly → race both lanes on the same spec and pick the stronger diff, or keep that piece with the architect.
@@ -106,7 +106,7 @@ Consult `fable-advisor` (read-only, verdict in under 300 words) at the moments t
 - Whenever the same problem has resisted two distinct attempts
 - Once before declaring a multi-step deliverable done
 
-Pass it the decision, the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it. (If the session itself already runs on Fable, the advisor still earns its keep as a context-clean skeptic reading the actual code.)
+Pass it the decision, the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it. (If the session and the advisor already share a flagship-tier model, the advisor still earns its keep as a context-clean skeptic reading the actual code.)
 
 ## Verification
 
