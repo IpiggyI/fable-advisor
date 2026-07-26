@@ -5,7 +5,7 @@ description: Routing doctrine for the architect-as-orchestrator pattern — how 
 
 # Orchestration — the architect's routing doctrine
 
-The session is the architect: it owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Every implementation task gets routed to the cheapest lane that is adequate for it — escalation is deliberate, per task, never a fixed binding.
+The session is the architect: it owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. Routing an implementation task is two-stage: first narrow to the lanes whose capability is adequate for how much the task depends on judgment the spec can't capture, then choose among that adequate set by Pareto trade-off — speed, price, capability, specialty — against the routing profile the user has declared. Escalation is deliberate, per task, never a fixed binding.
 
 ## Cost discipline — the prime directive
 
@@ -17,7 +17,7 @@ The session model is the most expensive lane in the system, on both input and ou
 
 **Reason once, then hand off.** Do the hard thinking — the architecture, the interface design, the debugging hypothesis — in one pass, capture it in the spec, and let the cheap lane carry it from there. Re-deriving decisions across turns burns the premium twice.
 
-What stays with the architect regardless of cost: decomposition, interface design, hypothesis selection when debugging, spec writing, lane routing, and judging verification evidence. Those tokens are what the premium is for — everything else is a candidate for delegation.
+What stays with the architect regardless of cost: decomposition, interface design, hypothesis selection when debugging, spec writing, lane routing, and judging verification evidence. Those tokens are what the premium is for — everything else is a candidate for delegation. Pareto selection operates *between* lanes; it never trades away delegation itself, and no declared speed or specialty preference licenses the architect to type the implementation instead.
 
 ## The lanes
 
@@ -25,14 +25,31 @@ What stays with the architect regardless of cost: decomposition, interface desig
 |---|---|---|---|
 | Routine | Grok 4.5 | `grok-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
 | Cross-vendor | GPT-5.6 (Sol/Terra/Luna, selectable effort) | `scripts/run-codex.mjs` runner, driven by the architect | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI and Node. |
-| Fallback | Opus (in-house Claude) | `implementer` agent | The grok agent and the codex runner are both unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same flagship tier as the architect (value is context isolation, not a cheaper unit price); same family, so no cross-vendor review. |
+| In-house | Opus (in-house Claude; currently Opus as of 2026-07, chosen while Sonnet's price/capability positioning is poor — re-evaluate if the lane is swapped back to a future Sonnet) | `implementer` agent | Routed here on purpose when the user's profile marks the task as this lane's specialty (e.g. frontend), when a task that carries real complexity but stays small is worth isolating from the architect's context, or when a declared quota or deadline constraint points here; and as the fallback when the grok agent and the codex runner are both unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same flagship tier as the architect (value is context isolation, not a cheaper unit price). Disclose three costs on every route here: same family as the architect, so no cross-vendor review; it shares the main session's Anthropic quota; it is the highest unit price under the user's current ranking. |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
 
-Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default grok lane; you will verify anyway. A lot, and mistakes are costly → race both lanes on the same spec and pick the stronger diff, or keep that piece with the architect.
+**Deciding rule, stage 1 — adequacy.** How much does the outcome depend on judgment the spec can't capture? Little → every lane is adequate and the grok lane is the routine default; you will verify anyway. A lot, and mistakes are costly → the adequate set narrows to the codex lane, a race of both lanes on the same spec with you picking the stronger diff, or keeping that piece with the architect.
 
-Grok vs codex is not a capability ranking — it's a failure-distribution question. Both are non-Anthropic families, so either lane's output gets genuine cross-vendor review from the Claude architect; racing them buys a *third* independent perspective for one extra lane's cost.
+**Stage 2 — Pareto choice inside the adequate set.** Among the lanes stage 1 left standing, trade speed, price, capability, and specialty against the user's declared routing profile (next section). A specialty hit is a tie-breaker between lanes of the same adequacy class — it never promotes a lane that stage 1 ruled out, because a preference must not override a correctness judgment. With no declarations, this degrades to the cheapest adequate lane — the pre-profile default behavior, unchanged.
 
-If a lane returns `unavailable` or `timeout`, re-route the same spec to the other lane and say so explicitly in your report — never quietly absorb the substitution. If both CLI lanes are unavailable, route to the `implementer` agent (the in-house Claude fallback) and state the downgrade plainly — it shares the architect's family, so you lose cross-vendor review; that's the cost of the CLIs being down.
+Grok vs codex is not a capability ranking — it's a failure-distribution question. Both are non-Anthropic families, so either lane's output gets genuine cross-vendor review from the Claude architect; racing them buys a *third* independent perspective for one extra lane's cost. Any ranking of the two belongs to the user's profile, not to this doctrine.
+
+If a lane returns `unavailable` or `timeout`, re-route the same spec to the other lane and say so explicitly in your report — never quietly absorb the substitution. If both CLI lanes are unavailable, route to the `implementer` agent (the in-house lane) and state the downgrade plainly — it shares the architect's family, so you lose cross-vendor review; that's the cost of the CLIs being down.
+
+## User routing profile
+
+Stage 2 runs on inputs the architect cannot probe: remaining quota on a CLI, delivery pressure, and the user's own sense of which family is better at what are user-owned facts. They enter routing only as declarations, in two layers.
+
+**Persistent judgments** — specialty tables, lane rankings — live in the user's own rules file, not in this repo: they are one user's experience, not project doctrine. Each entry carries the precondition that justifies it and the condition that voids it, anchored to a model generation and date-stamped, so a generation swap retires the entry instead of quietly steering routing with a stale belief.
+
+**Volatile state** — quota balance, deadline pressure — is declared verbally when the work starts ("grok's quota is nearly out", "this one's a rush"). It holds for that session only and is never written to disk; a persisted quota file is stale the moment it is written. A declaration made this way is an input to stage 2 for the rest of the session.
+
+**The low-confidence escape hatch.** Ask the user before routing in exactly two cases, offering at least two options with the reason for each:
+
+1. Declared constraints conflict on the dimension that decides the route — a declared deadline pointing at the fastest lane while the task is correctness-critical and points at codex.
+2. The task is high-risk (correctness-critical or hard to reverse) and the profile is silent on the dimension that would decide it.
+
+It does not fire for: a mechanical task the spec fully determines; the mere absence of declarations (that is the documented default, not an ambiguity); or a lane being unavailable (re-route and disclose, per the rule above — the hatch does not duplicate that mechanism). For a parallel fan-out, ask at most once, covering the whole batch's routing plan.
 
 ## The spec contract
 
