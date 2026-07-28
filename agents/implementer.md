@@ -39,6 +39,8 @@ VERIFIED: [command run — actual output evidence]
 GAPS: [spec ambiguities you resolved and how, or "none"]
 ```
 
+The whole report stays under ~30 lines. `VERIFIED` gives the command, its exit status, and at most the last 10 lines of output. `CHANGES` is exactly one line per file. Never include diff bodies or full command output — the diff lives in the working tree and the architect takes it through tiered acceptance. `GAPS` may run longer only to list genuine spec ambiguities.
+
 ## Rules
 
 - Never claim completion without running the verification. "Should work" is forbidden.

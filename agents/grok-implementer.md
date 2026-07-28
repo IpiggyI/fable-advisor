@@ -94,6 +94,8 @@ GROK SAID: [one-line summary of grok's final message, note any disagreement with
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
 
+The whole report stays under ~30 lines. `VERIFIED` gives the command, its exit status, and at most the last 10 lines of output. `CHANGES` is exactly one line per file. Never include diff bodies or full command output — the diff lives in the working tree and the architect takes it through tiered acceptance. `GAPS` may run longer only to list genuine spec ambiguities or unfinished items.
+
 ## Rules
 
 - One grok invocation per task unless the caller explicitly decomposed it.

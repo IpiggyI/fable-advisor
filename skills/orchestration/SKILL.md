@@ -13,7 +13,7 @@ The session model is the most expensive lane in the system, on both input and ou
 
 **Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the cheap lane instead.
 
-**Keep the context lean.** Everything in the architect's context is re-read at architect prices on every turn. Delegate broad exploration, codebase searches, and log-grepping to a cheap read-only agent and keep only the conclusions; read files yourself only when the decision genuinely depends on the exact code. Don't paste long files, full diffs, or verbose command output into the conversation when a path reference or an excerpt will do.
+**Keep the context lean.** Everything in the architect's context is re-read at architect prices on every turn. Delegate broad exploration, codebase searches, and log-grepping to a cheap read-only agent and keep only the conclusions; read files yourself only when the decision genuinely depends on the exact code. Don't paste long files, full diffs, or verbose command output into the conversation when a path reference or an excerpt will do. Reading a whole file just to write a spec is a smell: get the map — exports, signatures, and line numbers — from a cheap read-only scout, then personally read only the lines the spec will quote in its Interfaces or Constraints. The receiving lane re-reads the named files in its own context as its first step, so a full-file read in the architect's context bills the same content twice at the premium price.
 
 **Reason once, then hand off.** Do the hard thinking — the architecture, the interface design, the debugging hypothesis — in one pass, capture it in the spec, and let the cheap lane carry it from there. Re-deriving decisions across turns burns the premium twice.
 
@@ -108,7 +108,7 @@ Unknown top-level keys are rejected. The receipt records the `model`, `effort`, 
 node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
 ```
 
-3. Judge the receipt. The runner prints it to stdout and writes it to `.fable-advisor/receipts/<spec_hash>.json`: `error_class` (`complete | spec_invalid | codex_unavailable | preparation_stalled | timeout | codex_failed | verification_failed`), `codex_session_id` (bound to the spawned process's event stream — immune to concurrent-session mix-ups), `changed_files`, and the verification commands' actual exit codes and output tails. Acceptance = `error_class: complete` **and** you read the diff. A missing or non-complete receipt is not done.
+3. Judge the receipt. The runner prints it to stdout and writes it to `.fable-advisor/receipts/<spec_hash>.json`: `error_class` (`complete | spec_invalid | codex_unavailable | preparation_stalled | timeout | codex_failed | verification_failed`), `codex_session_id` (bound to the spawned process's event stream — immune to concurrent-session mix-ups), `changed_files`, and the verification commands' actual exit codes and output tails. Acceptance = `error_class: complete` **and** the diff passes tiered acceptance (see Verification). A missing or non-complete receipt is not done.
 
 The receipt is mechanically enforced: a plugin Stop hook (the **receipt gate**) blocks finishing while any spec under `.fable-advisor/pending/` lacks a `complete` receipt. On `complete` the runner deletes the pending spec itself. If you abandon or re-route a pending task, delete its pending file and say so explicitly — never let the gate be the only one who knows.
 
@@ -120,7 +120,7 @@ Every other lane requires this session to be able to invoke the producer. The ha
 
 1. Write `.fable-advisor/handoff/<slug>.md` — the same five-part spec, plus an **operating guide**: which model and mode to run it in, and anything the receiving executor needs to get it right in one pass. The executor has zero context and cannot ask you back, so the file must stand alone.
 2. The user runs it, by hand, in their harness. There is no receipt, no report contract, and no timeout you can observe.
-3. **Acceptance is the diff.** Read the changed files yourself and re-run the verification commands yourself — do not accept the other harness's summary as evidence. The producing model family is unknown, so treat the output as an untrusted source: the fact that it comes back "done" carries no weight the diff doesn't independently support. A returned report is a convenience, not a requirement.
+3. **Acceptance is the diff.** Handoff acceptance is explicitly exempt from tiering and stays a personal read of the diff because the producing model family is unknown and there is no receipt. Read the changed files yourself and re-run the verification commands yourself — do not accept the other harness's summary as evidence. Treat the output as an untrusted source: the fact that it comes back "done" carries no weight the diff doesn't independently support. A returned report is a convenience, not a requirement.
 
 **The handoff directory is outside the receipt gate's field of view** — the gate only reads `.fable-advisor/pending/`. This is deliberate: a handoff spec lives across the user's absence, so filing it under `pending/` would block session close on work that is by design not finished in this session. The backstop is a soft rule instead of a hook, and it is fail-open: before ending a session, sweep `.fable-advisor/handoff/` and report every open item — never leave a spec under `.fable-advisor/handoff/` unresolved: land it, abandon it (delete the file and say so), or state plainly that it carries over to the next session.
 
@@ -142,9 +142,15 @@ Pass it the decision, the constraints, and the options considered. Act on the ve
 
 ## Verification
 
-Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
+Reports are claims, not evidence. Accept lane work through a three-tier protocol:
 
-Codex-lane work is accepted through its receipt: `error_class: complete`, a non-null `codex_session_id`, and verification output you can spot-check against the working tree. The receipt gate (Stop hook) enforces the receipt's existence; you still judge its content — read the diff before accepting.
+1. **Tier 1 — every lane by default.** Accept on the lane's verification evidence — command, exit code, and output tail, spot-checked against the working tree — plus `git diff --stat`. A full unscoped `git diff` never enters the architect's context.
+2. **Tier 2 — specific doubt.** When the report, the stat, or the verification output raises a specific doubt, read a path-scoped `git diff <file>` for the suspect files only.
+3. **Tier 3 — correctness-critical and in-house work.** For correctness-critical tasks and for every in-house-lane diff, delegate whole-diff review to a context-clean reviewer subagent that returns a verdict plus flagged hunks, then personally read only the flagged hunks. For in-house diffs, prefer a cross-vendor lane as the reviewer; this restores the cross-vendor review the in-house lane otherwise lacks. A reviewer verdict is still a claim, so the architect keeps final judgment and may spot-check beyond the flags.
+
+"Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
+
+Codex-lane acceptance = `error_class: complete`, a non-null `codex_session_id`, verification output you can spot-check against the working tree, **and** the diff passes tiered acceptance. The receipt gate (Stop hook) enforces the receipt's existence; you still judge its content.
 
 A subagent that goes idle without delivering its report is not a blocker: verify the workspace evidence directly (diff, verification command, and for the codex lane the newest matching rollout file) and move on — don't stall the pipeline waiting for a resend.
 
