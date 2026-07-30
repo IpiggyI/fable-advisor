@@ -1,6 +1,6 @@
-"""Stop hook: block claiming completion while pending codex specs lack receipts.
+"""Stop hook: block claiming completion while pending specs lack receipts.
 
-Specs the architect queues for the codex runner live in <cwd>/.fable-advisor/
+Specs the architect queues for a lane runner live in <cwd>/.fable-advisor/
 pending/. The runner writes a receipt keyed by the spec file's sha256 and
 deletes the pending spec on success. A pending spec without a `complete`
 receipt means the work was neither finished nor consciously abandoned, so the
@@ -49,10 +49,11 @@ def main():
             unmatched.append("%s (receipt: %s)" % (name, receipt.get("error_class")))
     if unmatched:
         sys.stderr.write(
-            "RECEIPT GATE: pending codex spec(s) without a complete receipt: "
+            "RECEIPT GATE: pending spec(s) without a complete receipt: "
             + ", ".join(unmatched)
-            + ". Run `node <plugin-root>/scripts/run-codex.mjs --spec .fable-advisor/pending/<file> --cwd <repo>` "
-            "to produce one, or — if the task was re-routed or abandoned — delete the pending spec file "
+            + ". Run the matching runner (`node <plugin-root>/scripts/run-codex.mjs` or "
+            "`node <plugin-root>/scripts/run-grok.mjs`) --spec .fable-advisor/pending/<file> --cwd <repo>. "
+            "If the task was re-routed or abandoned, delete the pending spec file "
             "and disclose that to the user before finishing."
         )
         sys.exit(2)

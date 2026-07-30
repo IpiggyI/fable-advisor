@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: Routing doctrine for the architect-as-orchestrator pattern — how a session running the smartest model delegates implementation to cheaper cross-vendor lanes to minimize cost. USE WHEN delegating implementation work, choosing between the grok-implementer agent and codex runner lanes, writing a spec for a subagent, deciding whether to consult fable-advisor, managing session cost or token spend, or running any multi-task build where the session is the architect.
+description: Routing doctrine for the architect-as-orchestrator pattern — how a session running the smartest model delegates implementation to cheaper cross-vendor lanes to minimize cost. USE WHEN delegating implementation work, choosing between the grok and codex runners, writing a spec for a subagent, deciding whether to consult fable-advisor, managing session cost or token spend, or running any multi-task build where the session is the architect.
 ---
 
 # Orchestration — the architect's routing doctrine
@@ -23,9 +23,9 @@ What stays with the architect regardless of cost: decomposition, interface desig
 
 | Lane | Producer | Invoke | Route here when |
 |---|---|---|---|
-| Routine | Grok 4.5 | `grok-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
+| Routine | Grok (catalog-selected, currently grok-4.5) | `scripts/run-grok.mjs` runner, driven by the architect | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
 | Cross-vendor | GPT-5.6 (Sol/Terra/Luna, selectable effort) | `scripts/run-codex.mjs` runner, driven by the architect | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI and Node. |
-| In-house | Opus (in-house Claude; currently Opus as of 2026-07, chosen while Sonnet's price/capability positioning is poor — re-evaluate if the lane is swapped back to a future Sonnet) | `implementer` agent | Routed here on purpose when the user's profile marks the task as this lane's specialty (e.g. frontend), when a task that carries real complexity but stays small is worth isolating from the architect's context, or when a declared quota or deadline constraint points here; and as the fallback when the grok agent and the codex runner are both unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same flagship tier as the architect (value is context isolation, not a cheaper unit price). Disclose three costs on every route here: same family as the architect, so no cross-vendor review; it shares the main session's Anthropic quota; it is the highest unit price under the user's current ranking. |
+| In-house | Opus (in-house Claude; currently Opus as of 2026-07, chosen while Sonnet's price/capability positioning is poor — re-evaluate if the lane is swapped back to a future Sonnet) | `implementer` agent | Routed here on purpose when the user's profile marks the task as this lane's specialty (e.g. frontend), when a task that carries real complexity but stays small is worth isolating from the architect's context, or when a declared quota or deadline constraint points here; and as the fallback when both CLI runners (grok and codex) are unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same flagship tier as the architect (value is context isolation, not a cheaper unit price). Disclose three costs on every route here: same family as the architect, so no cross-vendor review; it shares the main session's Anthropic quota; it is the highest unit price under the user's current ranking. |
 | Handoff | Any harness the user picks, driven by the user by hand | Five-part spec + operating guide written to `.fable-advisor/handoff/<slug>.md`, executed manually by the user | Only after an explicit user declaration. Pareto coordinates: price ≈ 0 (arbitrage on a subscription the user already pays for), slowest lane by far (a human round-trip), capability = whatever the user picks at the time, available only while the user is present and has declared it. See "The handoff lane" below. |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
 
@@ -66,18 +66,9 @@ Implementers share none of your conversation context. Every delegation prompt ca
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to a cheaper model.
 
-## Spawning the grok lane — keep the guardrail structural
+## The CLI lanes — runners, not agents
 
-`grok-implementer` restricts itself to `Bash, Read, Grep, Glob` — no `Write`/`Edit` — on purpose: it structurally removes the direct-edit path to silent self-implementation (arbitrary Bash can still write files, which is why independent verification stays mandatory). That whitelist only holds on the plain subagent path. **Spawn this lane without a `name`.** The plugin also carries this rule as a PreToolUse hook (`hooks/hooks.json`) that denies named CLI-lane spawns at the harness layer, fail-closed when no python runtime exists.
-
-Passing a `name` routes the spawn to an in-process teammate, which ignores the agent's tool whitelist and hands it the full default toolset — `Write`/`Edit` included — so a named lane can quietly write the code itself and report success. Verified on the harness: named → teammate (Write/Edit present); no `name` → `local_agent` (Write/Edit don't exist).
-
-- **grok lane: never pass `name`.** For parallel fan-out use `run_in_background: true` — unnamed background subagents still run concurrently and still keep the whitelist; you just can't message them mid-run, so send a fresh self-contained spec instead of a follow-up.
-- **`implementer` (in-house Claude) is exempt** — it has no whitelist and is *meant* to write code directly. Name it freely if you want it addressable.
-
-## The codex lane — a runner, not an agent
-
-The codex lane has no wrapper agent: the architect drives GPT-5.6 Sol directly through the deterministic runner. One flow:
+Neither CLI lane has a wrapper agent: the architect drives both producers directly through deterministic runners — no subagent startup cost, no wrapper that could silently self-implement. Same flow for both lanes; the codex walkthrough below is canonical, the grok deltas follow it.
 
 1. Write the five-part spec as JSON to `.fable-advisor/pending/<slug>.json` in the target repo:
 
@@ -114,6 +105,16 @@ The receipt is mechanically enforced: a plugin Stop hook (the **receipt gate**) 
 
 Add `.fable-advisor/` to the target repo's `.gitignore` — receipts embed command output. Receipts are keyed by spec hash, so parallel runner invocations with distinct spec files don't collide.
 
+**The grok runner.** `scripts/run-grok.mjs` — same CLI contract (`--spec`, `--cwd`), same pending/receipt flow, same receipt gate. Deltas:
+
+- Spec keys: the five parts plus optional `model` and `timeout_sec` only — no `effort`/`service_tier` (the grok CLI has no such knobs).
+- `model` is validated against the live `grok models` catalog and defaults to the CLI's own default, so a newly shipped grok generation is usable the day the CLI lists it. A model not in the catalog is `spec_invalid`; an unreadable catalog is `grok_unavailable` — never silent passthrough.
+- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`). The receipt additionally records `usage` and `total_cost_usd` from grok's end event, and `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
+
+```bash
+node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
+```
+
 ## The handoff lane — user-mediated, no mechanical gate
 
 Every other lane requires this session to be able to invoke the producer. The handoff lane trades that away: the user carries the work to a harness of their own choosing (a fixed subscription whose marginal cost is ≈ 0) and brings the result back. What the architect produces is a file, not a process. The flow:
@@ -128,7 +129,7 @@ Sweet spot: large-grained, spec fully settled, no time pressure, and the user ha
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, a pick-the-stronger-diff race — `grok-implementer` (unnamed background subagent) and the codex runner (background Bash) on the same spec, architect judges — buys three-vendor confidence for one extra lane's cost.
+Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, a pick-the-stronger-diff race — both CLI runners as background Bash on the same spec content (two distinct pending files, so receipts don't collide), architect judges — buys three-vendor confidence for one extra lane's cost.
 
 ## Commitment boundaries
 
@@ -146,17 +147,17 @@ Reports are claims, not evidence. Accept lane work through a three-tier protocol
 
 1. **Tier 1 — every lane by default.** Accept on the lane's verification evidence — command, exit code, and output tail, spot-checked against the working tree — plus `git diff --stat`. A full unscoped `git diff` never enters the architect's context.
 2. **Tier 2 — specific doubt.** When the report, the stat, or the verification output raises a specific doubt, read a path-scoped `git diff <file>` for the suspect files only.
-3. **Tier 3 — correctness-critical and in-house work.** For correctness-critical tasks and for every in-house-lane diff, delegate whole-diff review to a context-clean reviewer subagent that returns a verdict plus flagged hunks, then personally read only the flagged hunks. For in-house diffs, prefer a cross-vendor lane as the reviewer; this restores the cross-vendor review the in-house lane otherwise lacks. A reviewer verdict is still a claim, so the architect keeps final judgment and may spot-check beyond the flags.
+3. **Tier 3 — correctness-critical and in-house work.** For correctness-critical tasks and for every in-house-lane diff, delegate whole-diff review to a context-clean reviewer subagent that returns a verdict plus flagged hunks, then personally read only the flagged hunks. For in-house diffs, prefer a cross-vendor lane as the reviewer; this restores the cross-vendor review the in-house lane otherwise lacks. When the OpenAI Codex plugin is installed, `/codex:adversarial-review` (schema-backed verdict, read-only sandbox) is a ready-made reviewer for this tier. A reviewer verdict is still a claim, so the architect keeps final judgment and may spot-check beyond the flags.
 
 "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
 
-Codex-lane acceptance = `error_class: complete`, a non-null `codex_session_id`, verification output you can spot-check against the working tree, **and** the diff passes tiered acceptance. The receipt gate (Stop hook) enforces the receipt's existence; you still judge its content.
+CLI-lane acceptance = `error_class: complete`, a non-null session id (`codex_session_id` / `grok_session_id`), verification output you can spot-check against the working tree, **and** the diff passes tiered acceptance. The receipt gate (Stop hook) enforces the receipt's existence; you still judge its content.
 
-A subagent that goes idle without delivering its report is not a blocker: verify the workspace evidence directly (diff, verification command, and for the codex lane the newest matching rollout file) and move on — don't stall the pipeline waiting for a resend.
+A subagent that goes idle without delivering its report is not a blocker: verify the workspace evidence directly (diff and verification command) and move on — don't stall the pipeline waiting for a resend.
 
 ## Subagent lifecycle
 
-A subagent spawned with a `name` ("teammate") persists after finishing so it can be messaged again — which means every named batch you don't clean up lingers as "background work" until the session exits. (The grok lane, spawned unnamed per the rule above, isn't addressable this way — it finishes and returns.) Two rules:
+A subagent spawned with a `name` ("teammate") persists after finishing so it can be messaged again — which means every named batch you don't clean up lingers as "background work" until the session exits. Two rules:
 
 - Serial batches (same file, strict ordering) gain nothing from backgrounding: run them with `run_in_background: false` and consume the report inline.
 - When a batch does run in the background, stop its teammate once its work is verified and it has no follow-up role. Don't leave verified lanes idling to session end.

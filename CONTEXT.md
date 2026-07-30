@@ -6,13 +6,9 @@
 
 ### 护栏与门禁
 
-**spawn 护栏**:
-PreToolUse hook，fail closed；针对的是 CLI lane **子代理**——被带 `name` 派生后绕过工具白名单而静默自实现的威胁。
-_Avoid_: 笼统称"护栏/guardrail"而不指明针对子代理；勿与 receipt gate 互换（二者针对两类不同威胁）。
-
 **receipt gate**:
-Stop hook，fail open；针对的是**主会话自己**——排了 codex spec 却不跑、或把非-complete receipt 当完成的威胁。
-_Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与 spawn 护栏互换（二者针对两类不同威胁）。
+Stop hook，fail open；针对的是**主会话自己**——排了 spec 却不跑、或把非-complete receipt 当完成的威胁。
+_Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与历史上的 spawn 护栏混同（后者针对 wrapper 子代理，已随 wrapper 一并退役，见 ADR 0009）。
 
 ### 实现车道
 
@@ -21,7 +17,7 @@ _Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与 spawn �
 _Avoid_: 把任意实现路径都叫"lane"而不区分四条；把车道名与具体模型型号混为一谈。
 
 **Routine lane**:
-spec 完全决定结果时的默认实现车道，经 grok CLI 执行。
+spec 完全决定结果时的默认实现车道，经 grok runner 执行。
 _Avoid_: 把"默认"理解成"唯一"或"可随意改道而不说明依据"。
 
 **Cross-vendor lane**:

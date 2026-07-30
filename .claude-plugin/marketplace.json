@@ -10,6 +10,7 @@
   "plugins": [
     {
       "name": "fable-advisor",
+      "version": "3.7.0",
       "source": "./",
       "description": "Architect-as-orchestrator: your session runs Claude's most capable model, routing implementation to Grok 4.5 (Grok CLI) and GPT-5.6 Sol at high reasoning (Codex) — with an in-house Claude fallback lane when neither CLI is installed, and a commitment-boundary advisor."
     }
