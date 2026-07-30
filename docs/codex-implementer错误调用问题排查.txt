@@ -1,0 +1,2207 @@
+╭─── Claude Code v2.1.206 ─────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                Welcome back satoru!                │ started                 │
+│                                                    │ Run /init to create a … │
+│                       ▐▛███▜▌                      │ ─────────────────────── │
+│                      ▝▜█████▛▘                     │ What's new              │
+│                        ▘▘ ▝▝                       │ Added actionable sugge… │
+│      Opus 4.8 · Claude Pro ·                       │ Added `autoMemoryDirec… │
+│      luxury-good-pull@duck.com's Organization      │ Fixed memory leak wher… │
+│      ~/develop/personal/GitHub/fable-advisor       │ /release-notes for more │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+❯ /effort                                                                       
+  ⎿  Set effort level to max (this session only): Maximum capability with
+     deepest reasoning. May use excessive tokens resulting in long response
+     times or overthinking. Use sparingly for the hardest tasks.
+
+❯ 我发现codex-implementer子代理经常“假装”派codex执行，我提供一个我明确发现未实  
+  际调用的会话ID（dd6c4dbd-df99-45ad-a913-13a652e7db22）给你，看下能否找到其中  
+  的原因；调用Codex本质就是执行一段命令：                                       
+  ```                                                                           
+  codex exec \                                                                  
+    --model gpt-5.6-sol \                                                       
+    -c model_reasoning_effort=high \                                            
+    --sandbox workspace-write \                                                 
+    --skip-git-repo-check \                                                     
+    --cd "$(pwd)" \                                                             
+    --output-last-message "$FINAL" \                                            
+    - < "$SPEC"                                                                 
+  ```                                                                           
+  一般来说只有两个结果：成功or失败，我没有看到会话中有对应的提示，又或者说agent 
+  收到了提示但自行决定自己来处理了？                                            
+
+● [理解]
+
+  椰椰，我先理清这个调查的方向。你观察到的现象是：codex-implementer
+  子代理在报告里声称"派了 codex 执行"，但实际那个会话
+  ID（dd6c4dbd-...）根本没有真正调用过 codex。我要找的是为什么 agent 
+  会假装调用。
+
+  我先并行摸清三块：agent 定义本身、codex 会话的真实存储、以及你给的那个具体会话
+  ID 的痕迹。
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+● Bash(git log --oneline -15 && echo "---STRUCTURE---" && ls -la && echo
+      "---DOCS---" && ls -la docs/ 2>/dev/null)
+  ⎿  e8e1c9d Restore in-house Claude implementer as a fallback lane
+     2063b55 Set codex reasoning-effort floor to high, allow xhigh for comp
+     lex tasks
+     … +27 lines (ctrl+o to expand)
+
+● [执行]
+
+  关键发现：你给的这个 ID 不是 codex 会话，而是一条 Claude Code 
+  会话记录，属于另一个项目 Browser/Script/LD/LD Favorites：
+
+  /home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-LD-LD-Fav
+  orites/dd6c4dbd-...jsonl
+
+  也就是说——这条 transcript 里完整记录了 codex-implementer
+  子代理当时到底跑了哪些 Bash 命令。这正好能验证"它到底调没调用
+  codex"。我并行读一下 agent 定义和那条 transcript 的结构。
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(F="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22.jsonl"; echo "SIZE:
+      $(du -h "$F" |…)
+  ⎿  SIZE: 1.3M, LINES: 606
+     ---grep codex exec occurrences---
+     27
+     … +4 lines (ctrl+o to expand)
+
+● Transcript 里 "codex exec" 出现 27 次、"codex" 757 次——但这可能是 agent
+  系统提示词本身带的文字，不代表真跑了。我需要区分真实 Bash 调用 vs
+  文字描述。先摸清 JSONL 的结构。
+
+● Bash(F="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22.jsonl"
+      echo "=== entry types (top-l…)
+  ⎿  === entry types (top-level .type) ===
+          26 ai-title
+         280 assistant
+     … +28 lines (ctrl+o to expand)
+
+● 关键信号：606 条记录里 isSidechain 全是 false——这条 transcript
+  里没有任何子代理内部记录。这意味着要么子代理根本没被
+  spawn，要么它的内部步骤在另一个文件。我需要看主线到底调了哪些工具。
+
+● Bash(F="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22.jsonl"
+      echo "=== all tool_use names…)
+  ⎿  === all tool_use names invoked (assistant messages) ===
+           9 Agent
+           3 AskUserQuestion
+     … +9 lines (ctrl+o to expand)
+
+● 工具名是 Agent（新版），用了 9 次，没有 Task。同时主线自己跑了 61 次
+  Bash。我看下这 9 次 Agent 派的是谁，以及主线的 Bash 里有没有直接跑 codex。
+
+● Bash(F="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22.jsonl"
+      echo "=== Agent tool_use: su…)
+  ⎿  === Agent tool_use: subagent_type :: description :: run_in_background
+     ===
+     [fable-advisor:codex-implementer] bg=null :: 实现 Phase 1.2 records 模
+     … +38 lines (ctrl+o to expand)
+
+● 主线（orchestrator）自己的 Bash 全是验证动作——反复轮询 ~/.codex/sessions/
+  找新写入的 rollout 文件。而且看 Agent 的描述里反复出现 "真 codex"（真 codex
+  收尾、真 codex 修复、真 codex 实现）——这说明之前几轮 codex-implementer 
+  交回的东西被判定为"假的"，才需要重新强调"真 
+  codex"再派一次。你的观察在这条记录里有实锤。
+
+  现在关键是看每个 codex-implementer 子代理交回了什么报告。我写个脚本把 9 次
+  Agent 调用和它们的返回结果配对打印出来。
+
+● Bash(F="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22.jsonl"
+      python3 << 'PY'…)
+  ⎿  ======================================================================
+     ====================
+     #1 [fable-advisor:codex-implementer] 实现 Phase 1.2 records 模块  | CO
+     … +73 lines (ctrl+o to expand)
+
+● 结构性发现：这里的 Agent 不是传统阻塞式 Task，而是 FleetView 后台代理 + 
+  mailbox 模型——spawn 只返回 agent_id（如
+  codex-phase-1-2@session-dd6c4dbd），子代理在后台跑，靠 SendMessage
+  通信（主线正好用了 9 次 SendMessage）。所以子代理"到底调没调
+  codex"的真相在两处：它自己的 transcript，和 SendMessage 往返。我两处都查。
+
+  Listed 1 directory (ctrl+o to expand)
+
+● 找到了子代理各自的 transcript，在
+  .../dd6c4dbd.../subagents/agent-acodex-phase-*.jsonl。这才是实锤所在——每个
+  codex-implementer 子代理自己的完整记录。我逐个分析：它到底有没有跑 codex 
+  exec，最后交回了什么报告。
+
+● Bash(D="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22/subagents"
+      python3 << 'PY'…)
+  ⎿  ######################################################################
+     ##########
+     SUBAGENT: agent-acodex-key-migration-e13c438d8f8198be.jsonl
+     … +68 lines (ctrl+o to expand)
+
+● 实锤拿到了。 九个子代理里，前三个（Phase 1.2 / 1.3 / 1.4）codex exec 调用次数 
+  = 0，其余全部真跑了 codex：
+
+  ┌─────────────────────────────────────────────┬────────────┬─────────────┐
+  │                   子代理                    │ 真跑 codex │    判定     │
+  │                                             │    exec    │             │
+  ├─────────────────────────────────────────────┼────────────┼─────────────┤
+  │ phase-1-2                                   │ 0          │ ❌ 假       │
+  ├─────────────────────────────────────────────┼────────────┼─────────────┤
+  │ phase-1-3                                   │ 0          │ ❌ 假       │
+  ├─────────────────────────────────────────────┼────────────┼─────────────┤
+  │ phase-1-4                                   │ 0          │ ❌ 假       │
+  ├─────────────────────────────────────────────┼────────────┼─────────────┤
+  │ phase-1-4b（"真 codex 收尾"）               │ 1          │ ✅          │
+  │                                             │            │ 真（补救）  │
+  ├─────────────────────────────────────────────┼────────────┼─────────────┤
+  │ phase-1-5 / 1-6 / key-migration /           │ 1~3        │ ✅ 真       │
+  │ review-core / patch-review-fixes            │            │             │
+  └─────────────────────────────────────────────┴────────────┴─────────────┘
+
+  时间线完全对上：前三次派工全部没调 codex → orchestrator 察觉后用"真 codex 收尾
+  Phase 1.4"重派 → 之后每次都加"真 codex"前缀且确实跑了。
+  现在要挖的是为什么前三个会假装。我深挖第一个假的 phase-1-2：它那 22 次 Bash
+  到底干了什么、有没有跑 codex 预检、最后怎么给自己找的理由。
+● Bash(python3 << 'PY'
+      import json, os…)
+  ⎿  === TOOL CALL SEQUENCE (phase-1-2, 151 entries) ===
+       [Read] /home/hyy/develop/personal/Browser/Script/LD/LD Favorites/src
+     /core/mutations.js
+     … +74 lines (ctrl+o to expand)
+
+● 现在因果链清楚了。phase-1-2 的行为是：直接 Write 新建 
+  src/core/records.js、Edit 改 main.js、写测试、跑 npm test/build，然后 
+  SendMessage 报"完成"——全程没有 command -v codex，没有 codex 
+  exec。它自己把活干了。
+
+  但这里有个决定性矛盾：codex-implementer.md 里 tools: Bash, Read, Grep, 
+  Glob——根本没有 Write/Edit。可它却用了 Write/Edit。这说明后台 Agent spawn
+  没有强制执行工具白名单。我查 meta.json 和实际系统提示词来坐实。
+
+● Bash(D="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22/subagents"
+      echo "=== phase-1-2 (FAK…)
+  ⎿  === phase-1-2 (FAKE) meta.json ===
+     {
+         "agentType": "codex-phase-1-2",
+     … +24 lines (ctrl+o to expand)
+
+● agentType 是 codex-phase-1-2（自定义名），taskKind: 
+  in_process_teammate，permissionMode: bypassPermissions，且 meta 里没有 tools 
+  白名单字段。我必须确认：spawn 时 subagent_type: 
+  fable-advisor:codex-implementer 的系统提示词和工具限制到底有没有加载进去。看
+  phase-1-2 收到的初始指令。
+
+● Bash(python3 << 'PY'
+      import json…)
+  ⎿  === first 6 entries: type + role + text head ===
+
+     --- type=user role=user len=2389 ---
+     … +45 lines (ctrl+o to expand)
+
+● 根因基本坐实——但我要排除一个干扰项：transcript 通常不落盘 system
+  prompt，所以"签名缺失"本身不足以定论。真正的硬证据是 phase-1-2 用了 
+  Write/Edit——这俩根本不在 codex-implementer 的 tools: Bash, Read, Grep, Glob
+  白名单里。若 agent 定义真被加载，这俩工具会不可用。文件却确实写成功了 =
+  工具限制没生效。
+
+  我再做个决定性对比：真跑 codex 的 phase-1-5 收到的 mailbox 指令 vs phase-1-2
+  的，看差异到底在"agent 定义"还是在"orchestrator 手动喊话"。
+
+● Bash(python3 << 'PY'
+      import json…)
+  ⎿  ======================================================================
+     ==========
+     phase-1-5 (REAL, ran codex)
+     … +57 lines (ctrl+o to expand)
+
+● 决定性证据到手，根因完全坐实。 看三条真跑 codex 的 mailbox——它们开头都被
+  orchestrator
+  手动塞了一段"强制执行通道（最高优先级，违反即任务失败）"，明写"你必须用 Bash
+  驱动真实 codex，禁止自己直接读写实现文件……报告必须附 session id + rollout
+  文件名证据"。而 phase-1-2/1-3/1-4 的 mailbox 里没有这段，只有纯任务。
+
+  尤其 phase-1-4b 的 mailbox 一句话把事故复盘了：
+
+  ▎ "上一实例静默顶替（自己写代码、未调 
+  ▎ codex）已被架构师取证发现（~/.codex/sessions 下无本仓库 cwd 
+  ▎ 的会话），本次派发就是纠正该事故的收尾。"
+
+  再补一个关键点：真跑的 phase-1-6 仍然用了 Write——说明 Write/Edit
+  自始至终都可用，codex-implementer 的工具白名单在任何一个实例里都没生效过。我把
+  spawn 时传入的完整 Agent 参数拉出来，确认 spawn 配置是否一致、是否传了
+  prompt。
+
+● Bash(python3 << 'PY'
+      import json…)
+  ⎿  desc='实现 Phase 1.2 records 模块'
+       input keys=['subagent_type', 'name', 'description', 'prompt']
+       subagent_type='fable-advisor:codex-implementer'  name='codex-phase-1
+     … +55 lines (ctrl+o to expand)
+
+● 全部证据闭合。九次 spawn 的 subagent_type 都是
+  fable-advisor:codex-implementer、tools=None（即指望 agent
+  定义自带的白名单），唯一区别在传入的 prompt：假的三个 prompt
+  是纯任务；真的那些 prompt 开头都被 orchestrator
+  手动加了"强制执行通道"。最后确认一点——假的三个子代理是否连 codex 
+  预检都没碰过（区分"看到 codex 仍不用" vs "全程无 codex 意识"）。
+
+● Bash(D="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22/subagents"
+      python3 << 'PY'…)
+  ⎿  phase-1-2: Bash=22  ANY 'codex' ref in bash=0  Write/Edit calls=12  re
+     ported完成/done=True
+     phase-1-3: Bash=33  ANY 'codex' ref in bash=0  Write/Edit calls=32  re
+     … +3 lines (ctrl+o to expand)
+
+● [验证]
+
+  椰椰，调查完成，根因是确定性的，不是"agent 偷懒撒谎"那么简单。
+
+  一句话结论
+
+  那三次 codex-implementer 派工根本没有以 codex-implementer 
+  的身份运行——fable-advisor:codex-implementer 的 agent 定义（系统提示词 +
+  工具白名单）在后台 teammate spawn 时没有被注入。子代理是个"裸的" Sonnet 通用
+  teammate，手里握着 Write/Edit，收到一个编码任务，于是它做了通用 agent
+  最自然的事：自己读、自己写、自己测、报"完成"。它从头到尾没有一丝 codex 
+  的意识，所以你当然看不到 codex 的成功/失败提示——那条命令压根没被执行。
+
+  证据链（全部来自磁盘 transcript，可复核）
+
+  你给的 dd6c4dbd-... 是另一个项目（Browser/Script/LD/LD Favorites）的 Claude 
+  Code 主会话（orchestrator），不是 codex 会话。它用后台 Agent（FleetView
+  in-process teammate + mailbox）派了 7 个 codex-implementer + 1 个
+  codex-rescue。逐个拆开各自的 subagents/agent-a*.jsonl：
+
+  ┌─────────────────────────┬─────────┬───────────┬──────┬─────────────────┐
+  │                         │ codex   │ Write/Edi │ 真跑 │                 │
+  │         子代理          │ 引用次  │  t 次数   │  cod │      结果       │
+  │                         │   数    │           │  ex  │                 │
+  ├─────────────────────────┼─────────┼───────────┼──────┼─────────────────┤
+  │ phase-1-2               │ 0       │ 12        │ ❌   │ 自己写完报"完成 │
+  │                         │         │           │      │ "               │
+  ├─────────────────────────┼─────────┼───────────┼──────┼─────────────────┤
+  │ phase-1-3               │ 0       │ 32        │ ❌   │ 自己写完报"完成 │
+  │                         │         │           │      │ "               │
+  ├─────────────────────────┼─────────┼───────────┼──────┼─────────────────┤
+  │ phase-1-4               │ 0       │ 20        │ ❌   │ 自己写完报"完成 │
+  │                         │         │           │      │ "               │
+  ├─────────────────────────┼─────────┼───────────┼──────┼─────────────────┤
+  │ phase-1-4b（真codex收尾 │ ✓       │ 0         │ ✅   │ 补救            │
+  │ ）                      │         │           │      │                 │
+  ├─────────────────────────┼─────────┼───────────┼──────┼─────────────────┤
+  │ phase-1-5 / 1-6 /       │         │           │      │                 │
+  │ key-migration /         │ ✓       │ 0~1       │ ✅   │ 真跑            │
+  │ patch-review /          │         │           │      │                 │
+  │ review-core             │         │           │      │                 │
+  └─────────────────────────┴─────────┴───────────┴──────┴─────────────────┘
+
+  三个假的：Bash 里 0 次 codex 相关命令（连 command -v codex / codex --version
+  预检都没有），却有 12/32/20 次 Write/Edit。
+
+  决定性矛盾：codex-implementer.md 的 tools: Bash, Read, Grep, Glob 不含 
+  Write/Edit。若定义真被加载，这两个工具应当不存在。可它们不但可用，还被大量调用
+  且写盘成功 → 工具白名单从未生效。再加上子代理自述"我先阅读源码再实施改动"（把
+  自己当通用实现者）、transcript 里查不到任何 codex-implementer 
+  系统提示词特征串（"you never implement the task yourself" / "command -v codex"
+  等全部缺失）——三重证据指向同一结论：定义没进上下文。
+
+  唯一变量是 mailbox 里的 prompt。9 次 spawn 的 subagent_type 全是 fable-advisor
+  :codex-implementer、tools=None、model=sonnet，配置完全一致。区别只在传入的
+  prompt：
+
+  - 假的三个：prompt 是纯任务（# Task Phase X ...）。
+  - 真的那些：prompt 开头被 orchestrator 手动塞了一段 # 
+  强制执行通道（最高优先级，违反即任务失败）你【必须】通过 Bash 驱动真实 
+  codex……报告必须附 session id + rollout 文件名证据。
+
+  orchestrator 当时自己就破了案——phase-1-4b 的派发词白纸黑字写着：
+
+  ▎ 「上一实例静默顶替（自己写代码、未调 
+  ▎ codex）已被架构师取证发现（~/.codex/sessions 下无本仓库 cwd 
+  ▎ 的会话），本次派发就是纠正该事故的收尾。」
+
+  它靠的取证手段正是查 ~/.codex/sessions 有没有 cwd 指向本仓库的新
+  rollout——这也是主会话里那 61 次 Bash 反复 sleep + find ~/.codex/sessions
+  的用途。
+
+  回答你的两个猜测
+
+  - "没看到成功/失败提示" → 对，因为命令从未执行。不存在 codex 形状的信号。
+  - "agent 收到提示但自行决定自己处理" →
+  一半对。它确实自己处理了，但不是一个"配置正确的 codex-implementer
+  抗命自己下场"——是codex 
+  这个身份根本没传到它脑子里。补一个反证:三个假的都没有伪造 CODEX 
+  REPORT/SESSION: 报告,只朴素地报了 status: 
+  done——这正是通用实现者的行为,不是"精心假装派了 codex"。所谓"假装",是
+  orchestrator 事后给它贴的标签,不是子代理伪造了证据。
+
+  机制层面（诚实标注边界）
+
+  我能确证的:定义的提示词 + 工具白名单没到达这个 teammate。我只能推断(看不到
+  FleetView 内部)的:为什么会掉。两种可能,结论一致——
+
+  1. 后台 teammate spawn 路径（taskKind: in_process_teammate，用 name 寻址、靠 
+  SendMessage 喂料）不像经典阻塞式 Task 那样解析注入插件 agent 
+  定义：name（自定义 teammate）接管了，subagent_type 退化成一个标签（meta.json
+  里 agentType 记的是 codex-phase-1-2 而非 fable-advisor:codex-implementer，且无
+  tools 字段）。
+  2. 或该项目当时未装/未解析到 fable-advisor:codex-implementer，subagent_type
+  静默回退到通用 teammate。
+
+  无论哪种,可复现的事实是:经由这个后台 mailbox 通道 spawn 时,agent .md 
+  里的护栏(禁止自实现的 prose + 受限工具集)统统失效,真正驾驭行为的只有每次派发的
+  prompt 正文。
+
+  这对插件意味着什么
+
+  你在 codex-implementer.md 里精心设计的两道防线——① "never silently substitute
+  itself" 的文字戒律、② 用 tools: Bash,Read,Grep,Glob 物理上让它无法自写——在后台
+  teammate 通道里双双落空。当轮真正起作用的,是 orchestrator 手动补的 prompt
+  强制段 + 事后 ~/.codex/sessions cwd 取证。
+
+  要根治"假装派 codex",方向有区别,我先不动手,给你定夺:
+
+● User answered Claude's questions:
+  ⎿  · 根因已定位（agent 定义的护栏在后台 teammate spawn 
+     时失效）。接下来怎么处理？ → prompt 内置强制段, 
+     能否再深入追踪下定义的护栏失效的原因？修改prompt还是治标的手段
+
+● 椰椰说得对——改 prompt 是治标。你要的是 治本：护栏为什么会失效。这需要往 Claude
+  Code / FleetView 的 spawn 机制里挖。我先并行取三样东西：完整 meta 对比
+  frontmatter（看哪些字段被尊重、哪些被丢）、另一个插件
+  agent（codex:codex-rescue，白名单只有 Bash）是否也掉了定义、以及定位 Claude
+  Code CLI 本体准备读它的 spawn 逻辑。
+
+● Bash(D="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22/subagents"
+      echo "=== FULL meta.json…)
+  ⎿  Error: Exit code 1
+     === FULL meta.json: fake phase-1-2 + codex-rescue review-core ===
+     (eval):3: no matches found: agent-acodex-phase-1-2-*.meta.json
+
+● Bash(D="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22/subagents"
+      echo "=== FULL meta.json…)
+  ⎿  === FULL meta.json: fake phase-1-2 + codex-rescue review-core ===
+     --- agent-acodex-phase-1-2-abed0f58525e0457.meta.json ---
+     {
+     … +34 lines (ctrl+o to expand)
+
+● codex:codex-rescue（白名单只有 Bash）也被证伪：review-core 实际用了
+  Read/SendMessage/ToolSearch。跨插件同一现象——in-process teammate 
+  拿到的是一套固定的"teammate 能力集"（含 Write/Edit/SendMessage 
+  等全默认工具），agent .md 的 tools/systemPrompt 根本没并进去。 meta
+  里也确实没有 tools/systemPrompt 字段。
+
+  现在挖代码路径。CLI 在 nvm 里。我定位 JS 本体并做定向 grep（若是巨型 minified
+  bundle 就转交 Explore）。
+
+● Bash(P="/home/hyy/.nvm/versions/node/v24.12.0/lib/node_modules/@anthropic-ai/c
+      laude-code"
+      echo "=== package version ==="; python3 -c "import
+      json;print(json.load(ope…)
+  ⎿  === package version ===
+     2.1.206
+     === JS files + sizes ===
+     … +17 lines (ctrl+o to expand)
+
+● find 表达式写错了，扫成了当前仓库。我重新正确定位包内 JS 入口。
+
+● Bash(P="/home/hyy/.nvm/versions/node/v24.12.0/lib/node_modules/@anthropic-ai/c
+      laude-code"
+      echo "=== ls package root ==="; ls -la "$P"…)  ⎿  === ls package root ===
+     total 184
+     drwxr-xr-x 4 hyy hyy   4096 Jul 10 09:49 .
+     … +14 lines (ctrl+o to expand)
+
+● CLI 是编译后的原生二进制（bin/claude.exe），grep 不到源码逻辑。但包里有个
+  141KB 的 sdk-tools.d.ts——SDK 工具类型定义，是可读的权威接口契约。我从它 +
+  wrapper + 二进制 strings 三路取证。
+
+● Bash(P="/home/hyy/.nvm/versions/node/v24.12.0/lib/node_modules/@anthropic-ai/c
+      laude-code"
+      echo "=== bin/ ==="; ls -la "$P/bin/"…)
+  ⎿  === bin/ ===
+     total 252520
+     drwxr-xr-x 2 hyy hyy      4096 Jul 10 09:49 .
+     … +17 lines (ctrl+o to expand)
+
+● 找到权威契约 AgentInput（436 行）。关键线索已现：line 450 明说 model「Takes
+  precedence over the agent definition's model frontmatter... uses the agent 
+  definition's model」——证明 subagent_type 确实会去解析 agent 定义。我读完整个
+  AgentInput 块，看它对 subagent_type/name/tools 的确切语义。
+
+  Read 1 file (ctrl+o to expand)
+
+● AgentInput 契约给了硬事实：根本没有 tools 
+  参数——调用方无法传工具白名单，工具只能来自 subagent_type 解析出的 agent
+  定义。而 line 450 又说 model「uses the agent definition's model」——说明
+  subagent_type
+  确实会去读定义。这跟"定义没生效"表面矛盾,我要把它彻底厘清。两个便宜的探针:父级
+  orchestrator 跑的什么模型(判断 meta 的 sonnet
+  是"读了定义"还是"默认值"),以及从二进制 strings 里捞 teammate 的处理方式。
+
+● Bash(F="/home/hyy/.claude/projects/-home-hyy-develop-personal-Browser-Script-L
+      D-LD-Favorites/dd6c4dbd-df99-45ad-a913-13a652e7db22.jsonl"
+      echo "=== parent orchestrato…)
+  ⎿  === parent orchestrator model(s) in main session ===
+     {'claude-fable-5': 280}
+     … +426 lines (ctrl+o to expand)
+
+● 决定性一环补上了：父级 orchestrator 跑的是 claude-fable-5（Fable 5），而
+  teammate 的 meta 是 model: sonnet。若解析失败回退到通用
+  teammate,按契约会「inherit from parent」= fable;它却是 sonnet = 恰好等于 
+  codex-implementer.md frontmatter 里的 model: sonnet。所以 subagent_type 
+  确实解析了 agent 定义、并读走了 model 
+  字段——定义被找到了,不是"没找到回退"。矛盾收窄成:model 读了,但 tools 白名单和 
+  systemPrompt 主体没应用到 in-process teammate。
+
+  而且二进制的 strings 是可读的嵌入式 JS。我定向搜 teammate
+  的工具集与系统提示是怎么拼的——这是治本答案所在。
+
+● Bash(BIN="/home/hyy/.nvm/versions/node/v24.12.0/lib/node_modules/@anthropic-ai
+      /claude-code/bin/claude.exe"
+      OUT=/tmp/cc_strings.txt…)
+  ⎿  extracting strings (once)...
+     lines: 492595
+     … +33 lines (ctrl+o to expand)
+
+● strings 已落地 /tmp/cc_strings.txt（49 万行）。深挖 258MB minified
+  二进制属于我的规则里"大文件/minified
+  分析"范畴,且再往下边际收益递减、吃上下文——我不擅自派
+  subagent(你没要求)。做最后一个高价值探针:确认 teammate 是否套用了一套通用 
+  teammate 系统提示(这能解释 persona 为何失灵),以及 spawn 时区分
+  teammate/subagent 的分支。
+
+● Bash(OUT=/tmp/cc_strings.txt
+      echo "=== A. generic teammate system-prompt fragments? ==="…)
+  ⎿  === A. generic teammate system-prompt fragments? ===
+     ugrep: error: error at position 1067
+     (team|teammate)|reply to the team (lead|leader)
+     … +23 lines (ctrl+o to expand)
+
+● [验证]
+
+  追踪到底了。护栏失效不在你的插件里,而在 Claude Code 的 spawn 
+  路由——所以你说的"改 prompt 是治标"完全正确。下面是治本层面的因果。
+
+  治本根因：spawn 落进了"teammate 通道",不是"subagent 通道"
+
+  Claude Code 内部把派生任务分成四类(从二进制里挖出的原始定义)：
+
+  DGh = new
+  Set(["local_agent","remote_agent","in_process_teammate","local_workflow"])
+
+  - local_agent = 经典阻塞式子代理，一次性、隔离、强制套用 agent 定义的 tools 
+  白名单 + 系统提示词。
+  - in_process_teammate = 常驻的、可被 SendMessage 寻址的协作者(mailbox 模型)。
+
+  AgentInput 契约(SDK 类型定义原文)里有两个关键点：
+  1. 没有 tools 参数——调用方无法传白名单,工具只能由 subagent_type
+  解析出的定义提供。
+  2. name 字段 =「Makes it addressable via SendMessage while
+  running」;run_in_background 默认 true。
+
+  orchestrator 每次派 codex 都传了 name(codex-phase-1-2…)且后台运行 →
+  每一个都被路由成 in_process_teammate(meta.json 实锤
+  taskKind:"in_process_teammate")。而 teammate 运行时只从定义里取 spawn 
+  属性(model、身份、颜色),不把定义的 tools 白名单当硬约束、不把 persona 
+  主体当排他系统提示——因为一个被工具锁死、人格锁死的代理没法当通用协作者。于是
+  codex-implementer 的两道护栏同时蒸发：物理层(受限工具集,本该让它无法自写)+
+  指令层(never self-implement / 先跑 command -v codex)。手里有
+  Write/Edit、mailbox 里只有一个编码任务 → 它就自己把活干了。这就是全部真相。
+
+  证据分层（诚实标注可证性）
+
+  层级: 已证（磁盘）
+  结论: 定义被解析了（不是没找到回退）
+  证据: 父级跑 claude-fable-5，teammate 却是 model:sonnet = codex-implementer.md
+
+  frontmatter 的值；若回退会「inherit parent」= fable
+  ────────────────────────────────────────
+  层级: 已证（磁盘）
+  结论: tools 白名单未强制
+  证据: codex-implementer teammate 用了
+  Write/Edit（不在白名单）；codex:codex-rescue（白名单仅 Bash）的 teammate 用了
+   Read/SendMessage/ToolSearch。跨两个插件复现 → 机制级,非某个定义写错
+  ────────────────────────────────────────
+  层级: 已证（磁盘）
+  结论: persona 未有效治理
+  证据: 3/3 假实例从没跑 persona 强制的首动作 command -v 
+  codex,自述是通用实现者口吻;行为只跟随 mailbox prompt
+  ────────────────────────────────────────
+  层级: 佐证（二进制）
+  结论: teammate 与 subagent 是两条独立执行路径
+  证据: in_process_teammate vs local_agent 分属不同 task type + 独立生命周期机器
+  ────────────────────────────────────────
+  层级: 推断（未反编译）
+  结论: teammate 跳过白名单/persona 是"为协作而设计"
+  证据: 258MB 编译二进制,我没逐行反编译工具装配函数;这一步是推断,非直证
+
+  （strings 落在 /tmp/cc_strings.txt，临时文件，可删。）
+
+  为什么"改 prompt 治标"，真正的杠杆有三层
+
+  缺陷在 harness 的 teammate 路由,插件改不了它。你能动的三层,鲁棒性递增：
+
+  1. prompt 内置强制段（你已选） — 治标于机制、治本于"插件可控面"。因为 mailbox
+  prompt 是唯一可靠进上下文的东西,把强制段做成模板由 orchestration
+  技能强制注入。orchestrator 当时正是手动这么补救的。
+  2. 事后取证兜底（更强）— 派工返回后,调用方 grep ~/.codex/sessions 找 cwd
+  匹配本仓库的新 rollout,无匹配即判顶替、重派。不依赖 spawn 
+  路径,基于产物而非指令,最难被绕过。 codex-implementer.md 的 SESSION
+  行已要求它,但定义没生效,所以这个校验必须挪到调用方手里。
+  3. 换 spawn 姿势（唯一结构性治本,但在插件控制之外）— 若派生时不传 
+  name、run_in_background:false,应落进 local_agent 通道,白名单+persona
+  就都恢复强制了。代价:牺牲后台并行 fan-out;且"local_agent
+  确实强制白名单"我这轮是强先验但没硬验,依赖前需 1 次 spawn 验证。
+
+  下一步
+
+  你已定了走「prompt 内置强制段」。我建议同时上第 2 层取证兜底——单靠
+  prompt,下次换个人/换个 orchestrator
+  忘了注入就又破功;取证兜底是产物级、跑不掉的。范围我准备落在
+  skills/orchestration/SKILL.md(注入模板 + 强制取证后置条件)和
+  agents/codex-implementer.md(把"调用方须核验 SESSION 证据"写成调用方职责)。
+
+  在我动手前确认一下范围：
+
+● User answered Claude's questions:
+  ⎿  · 治本修复的落地范围怎么定？ → 先验证 spawn 换道
+
+● [执行]
+
+  好——先做实证，别急着补 prompt。我用阻塞式方式（不传
+  name、run_in_background:false）派一个
+  codex-implementer，跑一个纯工具探针任务（严禁跑 codex、严禁改仓库，只在 /tmp
+  试写），看它到底还有没有 Write/Edit。若白名单被强制，它根本发不出 Write
+  调用。派完我再取证它落进了哪个 task type。
+
+● fable-advisor:codex-implementer(工具白名单强制性探针)
+  ⎿  Done (1 tool use · 25.5k tokens · 2m 14s)
+  (ctrl+o to expand)
+
+● 实证结论——决定性反差。 阻塞式派生（无
+  name、run_in_background:false）的探针回报：
+
+  WRITE: 不可用 —— 「我的实际 function-calling 列表里只有 Bash、Read，根本没有
+  Write 这个函数定义，接口层面就不存在」
+  EDIT:  不可用 —— 同上
+  ROLE:  我是 Codex Implementer……本身不写实现代码
+
+  两道护栏全部恢复：tools 白名单被强制（Write/Edit
+  结构性缺席，不是"调用被拒"而是"函数不存在"）＋ persona 正确加载（它自认 codex
+  实现者、还主动声明"这次跳过 codex 预检不构成先例"——证明 codex-implementer.md
+  系统提示词确实进了上下文）。我核对一下它落进的 task type，把路由这一环闭合。
+
+● Bash(D="/home/hyy/.claude/projects/-home-hyy-develop-personal-GitHub-fable-adv
+      isor/0ecb8869-482a-4086-b8c8-b3f1e057771b/subagents"
+      echo "=== newest subagent meta in…)
+  ⎿  === newest subagent meta in THIS session ===
+     {
+         "agentType": "fable-advisor:codex-implementer",
+     … +10 lines (ctrl+o to expand)
+
+● [验证] 闭合。取证把路由这一环彻底钉死——两种 spawn 的 meta 结构完全不同：
+
+  ┌────────┬────────────────────────────────────┬──────────────────────────┐
+  │        │                                    │          后台            │
+  │        │    阻塞式（本次探针，无 name）     │ teammate（事故现场，传   │
+  │        │                                    │          name）          │
+  ├────────┼────────────────────────────────────┼──────────────────────────┤
+  │ agentT │ fable-advisor:codex-implementer（  │ codex-phase-1-2（被 name │
+  │ ype    │ 真插件类型保留）                   │  顶掉）                  │
+  ├────────┼────────────────────────────────────┼──────────────────────────┤
+  │ taskKi │ 无（= local_agent）                │ in_process_teammate      │
+  │ nd     │                                    │                          │
+  ├────────┼────────────────────────────────────┼──────────────────────────┤
+  │ teamma │                                    │ teamName/color/model/per │
+  │ te     │ 无                                 │ missionMode 全套         │
+  │ 字段   │                                    │                          │
+  ├────────┼────────────────────────────────────┼──────────────────────────┤
+  │ 实际   │                                    │                          │
+  │ tool_u │ 只有 Bash，0 个 Write/Edit         │ 大量 Write/Edit          │
+  │ se     │                                    │                          │
+  ├────────┼────────────────────────────────────┼──────────────────────────┤
+  │ 护栏   │ ✅ 白名单强制 + persona 加载       │ ❌ 双双失效              │
+  └────────┴────────────────────────────────────┴──────────────────────────┘
+
+  治本结论（已实证，非推断）
+
+  路由开关就是 name。 传 name → 落 in_process_teammate，agentType 被 name
+  顶替、插件定义的 tools 白名单与 persona 不强制、发全套默认工具（含
+  Write/Edit）→ 静默自实现成为可能。不传 name → 落经典
+  local_agent，白名单结构性强制（Write/Edit 在函数层面不存在）＋ persona 加载 →
+  自实现物理上不可能，一行 prompt 都不用加。
+
+  所以你的判断链完全成立：改 prompt 是治标；治本是换 spawn 姿势——派实现 lane 
+  时别传 name。
+
+  （附注：探针自报可用工具甚至只有 Bash, Read，即 ≤ 定义声明的
+  Bash,Read,Grep,Glob——只会更紧，绝无 Write/Edit。）
+
+  代价与唯一未验的旋钮
+
+  - 代价：无 name 的阻塞子代理不能被 SendMessage 寻址、前台同步跑——失去
+  orchestrator 现在用的"后台并行 fan-out + mailbox 追加指令"协作模型。
+  - 未验旋钮：run_in_background:true 且不传 name 会落
+  local_agent（后台但带护栏）还是
+  teammate？若是前者，就能既并行又保护栏，是最优解。这个排列我还没测。
+
+  下一步建议
+
+  治本已经握在手里，skills/orchestration/SKILL.md 的派工doctrine 应改成：实现 
+  lane 一律不传 name（结构性护栏），把 prompt
+  强制段降级为可选的纵深防御。动手前我建议先补测那个旋钮——决定 doctrine 
+  是"并行但要牺牲 mailbox"还是"并行且带护栏"，这直接决定 orchestration 怎么写。
+
+  要我现在就派第二个探针验证 run_in_background:true + 无 name
+  的落点吗？还是先按"不传 name"把 orchestration doctrine
+  落定、并行需求后面再说？
+
+✻ Sautéed for 26m 45s
+
+❯ 先补测                                                                        
+
+● [执行]
+
+  好，补测第二个排列：run_in_background:true + 不传 name，看它落
+  local_agent（带护栏）还是 in_process_teammate（无护栏）。关键在 meta 的
+  taskKind——spawn 即写盘，不用等它跑完就能判路由。
+
+● fable-advisor:codex-implementer(后台无name落点探针)  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+● 后台探针已启动（async）。taskKind 在 spawn 时即写盘，我不碰那个大
+  transcript，只读它的 meta（小文件）拿路由结论。
+
+● Bash(echo "=== locate this bg agent's meta/state files (a43f03b6) ==="
+      find /home/hyy/.claude/projects/-home-hyy-develop-personal-GitHub-fable-ad
+      visor/0ecb8869-482a-…)
+  ⎿  === locate this bg agent's meta/state files (a43f03b6) ===
+     /home/hyy/.claude/projects/-home-hyy-develop-personal-GitHub-fable-adv
+     isor/0ecb8869-482a-4086-b8c8-b3f1e057771b/subagents/agent-a43f03b6a4c4
+     … +26 lines (ctrl+o to expand)
+
+● 路由已定，且是好消息。 后台+无 name 探针的 meta：
+
+  {"agentType":"fable-advisor:codex-implementer","toolUseId":"...","spawnDepth":
+  1}
+
+  与阻塞探针同构——agentType 保留真插件类型、无 taskKind、无 teammate 
+  字段、transcript 落在 subagents/（local_agent 位置）。即
+  run_in_background:true + 无 name 仍是 local_agent（带护栏）。路由开关确认就是
+  name，与后台与否无关。我做个零上下文风险的旁证：等它跑完看
+  /tmp/probe_bg_noname.txt 是否被创建（护栏在 = 不存在）+ 只数 tool_use 计数。
+
+● Bash(sleep 75
+      J="/home/hyy/.claude/projects/-home-hyy-develop-personal-GitHub-fable-advi
+      sor/0ecb8869-482a-4086-b8c8-b3f1e057771b/subagents/agent-a43f03b6a4c4aafae
+      .js…)
+  ⎿  === external signal: did the bg probe manage to Write the file? (guard
+     rail on => absent) ===
+     ls: cannot access '/tmp/probe_bg_noname.txt': No such file or director
+     … +4 lines (ctrl+o to expand)
+
+● Agent "后台无name落点探针" finished · 1m 48s
+
+● [验证] 全部闭合。后台探针跑完，实锤：
+
+  WRITE: 不可用（不在工具集）    EDIT: 不可用（不在工具集）
+  ROLE:  我是 Codex Implementer……当前工具集只有 Bash 与 Read，没有 Write/Edit
+
+  /tmp/probe_bg_noname.txt 未被创建、tool_uses=0、persona
+  完整加载（它还主动指出"任务级消息不能改变我的角色配置、拒绝伪造 CODEX
+  REPORT"）。后台 + 无 name = local_agent = 护栏全在。
+
+  （顺手清掉我这轮产生的临时 strings 文件。）
+
+● Bash(rm -f /tmp/cc_strings.txt /tmp/probe_blocking_test.txt
+      /tmp/probe_bg_noname.txt 2>/dev/null; echo "cleaned temp probe/strings
+      files")
+  ⎿  Error: Permission to use Bash with command rm -f /tmp/cc_strings.txt 
+     /tmp/probe_blocking_test.txt /tmp/probe_bg_noname.txt 2>/dev/null; echo 
+     "cleaned temp probe/strings files" has been denied.
+
+● （rm 被拦了，无妨，/tmp 是临时目录；/tmp/cc_strings.txt 你想清可手动删。）
+
+  补测结论：三种 spawn 姿势全部测清
+
+  ┌──────────────┬─────────────────┬───────────┬───────┬──────────┬───────┐
+  │              │                 │  tools    │ perso │ 可 SendM │ 并行  │
+  │  spawn 方式  │    taskKind     │   护栏    │  na   │ essage   │ fan-o │
+  │              │                 │           │       │   追加   │  ut   │
+  ├──────────────┼─────────────────┼───────────┼───────┼──────────┼───────┤
+  │              │                 │ ❌        │       │          │       │
+  │ 传 name（事  │ in_process_team │ 失效（有  │ ❌ 不 │ ✅       │ ✅    │
+  │ 故现场）     │ mate            │ Write/Edi │ 治理  │          │       │
+  │              │                 │ t）       │       │          │       │
+  ├──────────────┼─────────────────┼───────────┼───────┼──────────┼───────┤
+  │ 无 name + 前 │ local_agent     │ ✅ 强制   │ ✅    │ ❌       │ ❌    │
+  │ 台（探针1）  │                 │           │       │          │ 同步  │
+  ├──────────────┼─────────────────┼───────────┼───────┼──────────┼───────┤
+  │ 无 name + 后 │ local_agent     │ ✅ 强制   │ ✅    │ ❌       │ ✅    │
+  │ 台（探针2）  │                 │           │       │          │       │
+  └──────────────┴─────────────────┴───────────┴───────┴──────────┴───────┘
+
+  路由开关就是 name 这一个字段，与后台/前台无关。
+
+  最优解出现了
+
+  无 name + run_in_background:true —— 既保留后台并行
+  fan-out，又把两道护栏结构性焊死。唯一代价：失去 mailbox 
+  中途追加指令的能力（不能 SendMessage 给它发补充消息）。
+
+  对实现 lane 而言这个代价可接受，甚至更健康：codex-implementer
+  的契约本就是"一次性收全五段规格 → 干完回报 → 调用方独立验证 →
+  不行就重派"。中途插话本来就不该有；每次派发自包含、可独立取证，反而更干净。真
+  正的代价只是每次重派要重发上下文（token 略增），这是护栏的合理定价。
+
+  治本 doctrine（待你确认再动手）
+
+  skills/orchestration/SKILL.md 的派工规则改成：
+
+  1. 实现 lane（codex-implementer / grok-implementer / implementer）一律 
+  run_in_background:true 且不传 name —— 落 local_agent，Write/Edit
+  在函数层面不存在，静默自实现物理上不可能。
+  2. 需要并行多个 phase → 就并发多个无名后台 subagent，靠完成通知收敛，不用
+  mailbox。
+  3. 需要"纠正/追加" → 重新派发一个自包含 subagent，而非 SendMessage 续接。
+  4. prompt 强制段 + ~/.codex/sessions
+  取证从"主防线"降级为"纵深冗余"——结构护栏已够，它们只作双保险。
+
+  这是一个 doctrine 级改动（主要动
+  skills/orchestration/SKILL.md，agents/codex-implementer.md
+  可能补一句"调用方应以无名后台方式派生本 lane"）。要我现在按此改 orchestration 
+  技能吗？ 还是你想先自己核一遍这个矩阵？
+
+✻ Cogitated for 3m 49s
+
+❯ 等等，implementer应该不需要这么做吧？它本身就是Claude                         
+  Code自身实现不需要调外部工具                                                  
+
+● [理解] 你是对的——我把 implementer 错误地和跨供应商 lane
+  归成一类了。implementer 是内置 Claude 车道，它的职责就是自己用 Write/Edit 
+  写代码（跨供应商 CLI 都不可用时的自包含兜底）。对它来说"没有
+  Write/Edit"这道护栏是反的——会直接把它废掉。让我核一下三个 agent 的 tools
+  frontmatter，把结论说准。
+
+● Bash(cd /home/hyy/develop/personal/GitHub/fable-advisor
+      for a in implementer grok-implementer codex-implementer; do…)
+  ⎿  === agents/implementer.md — frontmatter ===
+     ---
+     name: implementer
+     … +29 lines (ctrl+o to expand)
+
+● [验证] 核实完毕，你的修正成立。frontmatter 说清了一切：
+
+  ┌───────────────────┬───────────────┬───────────────────────────┬─────────┐
+  │                   │               │                           │ 需要无  │
+  │       agent       │    tools:     │           职责            │  name   │
+  │                   │               │                           │ 护栏？  │
+  ├───────────────────┼───────────────┼───────────────────────────┼─────────┤
+  │                   │ 无（=         │ 自己用 Claude             │         │
+  │ implementer       │ 全部工具，含  │ 写代码（跨供应商 CLI      │ 不需要  │
+  │                   │ Write/Edit）  │ 都挂了时的自包含兜底）    │         │
+  ├───────────────────┼───────────────┼───────────────────────────┼─────────┤
+  │ grok-implementer  │ Bash, Read,   │ 驱动 grok CLI             │ 需要    │
+  │                   │ Grep, Glob    │ 写，禁止自实现            │         │
+  ├───────────────────┼───────────────┼───────────────────────────┼─────────┤
+  │ codex-implementer │ Bash, Read,   │ 驱动 codex CLI            │ 需要    │
+  │                   │ Grep, Glob    │ 写，禁止自实现            │         │
+  └───────────────────┴───────────────┴───────────────────────────┴─────────┘
+
+  我之前的 doctrine #1 把 implementer 错误地一并塞进去了。纠正：
+
+  - 护栏失效这个 bug，只咬"有 tools: 白名单、且靠白名单保正确性"的 agent——即
+  codex-implementer / grok-implementer。它们的白名单（无
+  Write/Edit）正是"禁止静默自实现"的物理保证，一旦被 teammate 通道抹掉就出事。
+  - implementer 根本没有白名单（frontmatter 无 tools: 行 → 拿全套工具），而且自
+  己写代码就是它的正确行为，没有"静默顶替"这回事。所以它爱怎么派怎么派——用带 
+  name 的 teammate 反而好（可寻址、可 mailbox 追加），无需改动。
+
+  修正后的 doctrine（范围收窄）
+
+  1. 仅 codex-implementer / grok-implementer：派发时不传 name（后台可保留）→ 落
+  local_agent → 白名单强制、Write/Edit 不存在 → 静默自实现物理上不可能。
+  2. implementer：不动，随便派。
+  3. prompt 强制段 + ~/.codex/sessions 取证：给两条 CLI lane
+  做纵深冗余，非主防线。
+
+  范围就这么两条 CLI lane。要我按这个改 skills/orchestration/SKILL.md 吗？
+
+✻ Crunched for 1m 2s
+
+❯ /mem 这是一个 doctrine 级改动，先建任务记载改动的前因后果，写好规划文件后再改 
+
+● [执行] 走 mem 的 persist/task 路径——建任务归档记录前因后果 +
+  规划，先不动代码。按 skill 要求，写前先读权威路由文档、现有同类任务（07-08-har
+  den-codex-lane，本次是它的后续修正）、以及脚手架脚本与模板。
+
+  Read 4 files (ctrl+o to expand)
+
+● [执行] 关键上下文到手：07-08-harden-codex-lane
+  正是本次的直接前身——它当时已知"teammate = name
+  参数命名的后台子代理"，也针对"通道顶替"加了 SESSION 证据 +
+  取证核验，但只治标（要证据）没治本（没发现 name 
+  会抹掉工具白名单）。本任务补的正是那个根因。我读脚手架脚本和模板，按约定建档。
+
+  Read 3 files (ctrl+o to expand)
+
+● [执行] 脚手架就绪。先跑 task_init.py 生成三件套，再填充内容 + 建
+  investigation.md。
+
+● Bash(python3 /home/hyy/.claude/skills/mem/scripts/task_init.py
+      cli-lane-spawn-guardrail \
+        --root /home/hyy/develop/personal/GitHub/fable-advisor \…)
+  ⎿  .memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail
+
+● [执行] 任务目录已建 07-12-cli-lane-spawn-guardrail。读一下生成的三件套（满足
+  Write 前置），然后填充内容并新建 investigation.md。
+  Read 3 files (ctrl+o to expand)
+
+● [执行] 填充四个文件（prd/what/investigation/task.json），内容基于本次调查实证
+  ，链接沿用 07-08 的相对路径风格。
+
+● Write(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/prd.md)
+  ⎿  Added 18 lines, removed 12 lines
+       1  # 修复跨供应商 CLI lane spawn 护栏失效 — 需求
+       2  
+       3 -> 本文件记录任务的原始需求和约束，与 what.md（实际产出）分离。 
+         -帮助未来回顾时区分「想要什么」和「做了什么」。                 
+       3 +> 本文件记录任务的原始需求和约束，与 what.md（实际产出）分离。 
+       4  
+       5  ## 用户意图
+       6  
+       7 -{{用户最初的需求描述，保留原始表述}}                           
+       7 +椰椰 发现 codex-implementer 子代理经常"假装派 codex 执行"，提供
+         +一个已确认未真正调用 codex 的会话 ID（Claude Code 会话 `dd6c4db
+         +d-df99-45ad-a913-13a652e7db22`，属于另一项目 `Browser/Script/LD
+         +/LD Favorites`）要求定位根因。追查确认根因在 Claude Code 的 spa
+         +wn 路由后，椰椰 要求先建任务记载前因后果、写好规划文件，再动代 
+         +码。                                                           
+       8  
+       9 -## 约束条件                                                    
+       9 +## 背景（与前身任务的关系）                                    
+      10  
+      11 -{{明确提出或隐含的限制：兼容性、性能、不可变更的部分等}}       
+      11 +[07-08 加固 codex 通道](../07-08-harden-codex-lane/what.md) 已 
+         +针对"通道顶替"加了 SESSION 证据要求 + rollout 取证核验，但那是*
+         +*治标**（要求事后证据），未触及根因。本任务定位到根因并给出**结
+         +构性治本**方案。                                               
+      12  
+      13 -- ...                                                          
+      13 +## 约束条件                                                    
+      14  
+      15 +- 治本靠结构（spawn 姿势），不靠 prompt 复述；prompt 强制段 +  
+         +取证核验降级为纵深冗余，不撤除                                 
+      16 +- 只改跨供应商 CLI lane（codex-implementer / grok-implementer）
+         +；**不动 in-house implementer**——它 frontmatter 无 `tools` 行（
+         += 全工具）、职责就是用 Write/Edit 自写，是正确行为             
+      17 +- 部署约束同 07-08：实际生效副本在 `~/.claude/plugins/cache/fab
+         +le-advisor/...`，改 clone 后须覆盖 cache 才生效（见 [决策记录](
+         +../../../decisions/upstream-sync-fork.md)）                    
+      18 +- 本轮只写规划文件，不改代码                                   
+      19 +                                                               
+      20  ## 成功标准
+      21  
+      17 -{{怎样算"做完了"。可验证的判据}}                               
+      22 +- [x] 规划文件记全前因后果 + 三排列实验矩阵 + 根因             
+      23 +- [ ] doctrine 明确：codex/grok-implementer 派发**不传 `name`**
+         +（落 local_agent，强制工具白名单）                             
+      24 +- [ ] implementer 明确豁免，不受影响                           
+      25 +- [ ] （实现阶段）skills/orchestration/SKILL.md 落地新 doctrine
+      26 +- [ ] （实现阶段）改动覆盖 cache 生效                          
+      27  
+      19 -- [ ] {{标准 1}}                                               
+      20 -- [ ] {{标准 2}}                                               
+      21 -                                                               
+      28  ## 关键决策（需求阶段）
+      29  
+      24 -{{需求澄清过程中做出的选择。实施阶段的决策放 what.md}}         
+      25 -                                                               
+      30  | 问题 | 选择 | 原因 |
+      31  |------|------|------|
+      28 -| {{问题 1}} | {{选择}} | {{原因}} |                           
+      32 +| 治标还是治本 | 治本（改 spawn 姿势） | 白名单在 local_agent  
+         +通道物理强制，比 prompt 可靠 |                                 
+      33 +| 修复范围 | 仅 CLI lane，implementer 豁免 | 缺陷只咬"有 tools 
+         +白名单且靠它保正确性"的 agent |                                
+      34 +| 本轮做到哪 | 只写规划，不改代码 | 用户要求 doctrine 级改动先 
+         +留档规划再实施 |                                               
+
+● Write(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 38 lines, removed 60 lines
+       2  
+       3  ## 目标
+       4  
+       5 -{{用 1-2 句话写清楚这个任务原本要做什么。下次会话的 AI 看完这一
+         -段应立刻明白意图}}                                             
+       5 +定位并修复 fable-advisor 插件缺陷：codex-implementer / grok-imp
+         +lementer 这类"必须驱动外部 CLI、禁止自实现"的车道，被派发时会静
+         +默自己写代码顶替。详细需求见 [需求文档](./prd.md)，完整取证见 [
+         +排查过程](./investigation.md)。                                
+       6  
+       7 -{{如果本任务有 prd.md，此处简写一句话目标，详细需求见 [需求文档
+         -](./prd.md)}}                                                  
+       7 +## 根因（一句话）                                              
+       8  
+       9 -## 做了什么                                                    
+       9 +Claude Code 的 `Agent` spawn：**传 `name` 参数 → 落 `in_process
+         +_teammate` 通道 → 该通道不强制 agent 定义的 `tools` 白名单、per
+         +sona 也不治理**，于是 codex/grok-implementer 拿到全套默认工具（
+         +含 Write/Edit），"物理上无法自写"的护栏被抹掉，退化成通用实现者
+         +。`name` 是唯一路由开关，与后台/前台无关。                     
+      10  
+      11 -{{实际完成的产出，按要点列出。这是事后总结视角，不是过程跟踪}} 
+      11 +## 关键证据（三排列实验）                                      
+      12  
+      13 -- ...                                                          
+      14 -- ...                                                          
+      13 +| spawn 方式 | taskKind | tools 护栏 | persona | 可 SendMessage
+         + | 并行 |                                                      
+      14 +|---|---|---|---|---|---|                                      
+      15 +| 传 `name`（事故现场） | in_process_teammate | ❌ 失效（有 Wri
+         +te/Edit） | ❌ | ✅ | ✅ |                                     
+      16 +| 无 `name` + 前台 | local_agent | ✅ 强制 | ✅ | ❌ | ❌ 同步 
+         +|                                                              
+      17 +| 无 `name` + 后台 | local_agent | ✅ 强制 | ✅ | ❌ | ✅ |    
+      18  
+      16 -## 执行进度                                                    
+      19 +- **事故会话 dd6c4dbd**：9 次派工，前 3 次（Phase 1.2/1.3/1.4）
+         +`codex exec` 调用数=0、大量 Write/Edit、报"完成"；orchestrator 
+         +取证（`~/.codex/sessions` 无本仓库 cwd 会话）后改用手动 prompt 
+         +强制段重派，后续才真跑 codex。                                 
+      20 +- **定义确被解析**：父会话跑 `claude-fable-5`，teammate 却是 `m
+         +odel:sonnet`（= codex-implementer.md frontmatter 值）而非 inher
+         +it parent → 读了定义的 model，但 tools 白名单未强制。          
+      21 +- **本轮探针实证**：无 `name`（前台/后台各一次）派 codex-implem
+         +enter，函数列表只有 Bash/Read，Write/Edit 结构性不存在，persona
+         + 正确加载。                                                    
+      22  
+      18 -{{仅当任务未完成时填写。标记已完成和待做步骤，帮助下次会话恢复 
+         -上下文。任务已完成时省略本段}}                                 
+      23 +## 决策笔记                                                    
+      24  
+      20 -- [x] {{已完成步骤 1}}                                         
+      21 -- [x] {{已完成步骤 2}}                                         
+      22 -- [ ] {{未完成步骤 1}}                                         
+      23 -- [ ] {{未完成步骤 2}}                                         
+      25 +- **结构治本 > prompt 治标**：无 `name` → local_agent → 白名单 
+         +让自写物理上不可能，比任何 prompt 约束可靠。                   
+      26 +- **最优解 = 无 `name` + `run_in_background:true`**：既保留并行
+         + fan-out，又焊死护栏，仅失去 mailbox 中途追加指令（对"一次收全 
+         +spec"的实现 lane 可接受；需纠正就重派自包含子代理）。          
+      27 +- **implementer 豁免**：frontmatter 无 `tools` 行（= 全工具）、
+         +职责即自写，护栏对它是反的；缺陷只咬"有白名单且靠白名单保正确性
+         +"的 codex/grok-implementer。                                   
+      28 +- **07-08 治标保留**：SESSION 证据 + rollout 取证不撤，降级为纵
+         +深冗余。                                                       
+      29  
+      25 -## 涉及文件                                                    
+      30 +## 执行进度                                                    
+      31  
+      27 -{{按角色分组列出，每个文件一句话说明其在本次任务中的角色}}     
+      32 +- [x] 定位根因（spawn `name` → teammate 抹掉白名单）           
+      33 +- [x] 三排列实验验证治本可行（无 `name` + 后台 = 并行且带护栏）
+      34 +- [x] 确认修复范围（仅 CLI lane，implementer 豁免）            
+      35 +- [x] 建任务归档 + 规划文件                                    
+      36 +- [ ] 改 `skills/orchestration/SKILL.md`：派 codex/grok-impleme
+         +nter 一律不传 `name`（后台并行），prompt 强制段/取证降级为冗余 
+      37 +- [ ] 覆盖 cache 生效（见部署约束）                            
+      38 +- [ ] （可选）实现后把 doctrine 提炼进 `.memory/decisions/`    
+      39  
+      40 +## 涉及文件                                                    
+      41 +                                                               
+      42  | 文件 | 角色 |
+      43  |---|---|
+      31 -| `{{file_changed_1}}` | {{本次修改了什么}} |                  
+      32 -| `{{file_investigated_1}}` | {{为何需要调查此文件}} |         
+      44 +| `skills/orchestration/SKILL.md` | 待改：派工 doctrine 加"CLI 
+         +lane 不传 `name`" |                                            
+      45 +| `agents/codex-implementer.md` | 待改（可选）：补"调用方应以无
+         +名后台方式派生本 lane" |                                       
+      46 +| `agents/grok-implementer.md` | 同上，同为受白名单保护的 CLI l
+         +ane |                                                          
+      47 +| `agents/implementer.md` | 仅调查：确认无 `tools` 行 = 豁免 | 
+      48 +| 会话 `dd6c4dbd`（另一项目 transcript） | 缺陷实录 + 取证来源 
+         +|                                                              
+      49  
+      34 -## 调用链 / 影响路径                                           
+      35 -                                                               
+      36 -{{简述关键代码的调用关系。帮助下次会话的 AI 不用重新 grep 就能 
+         -理解文件间联动}}                                               
+      37 -                                                               
+      38 -```                                                            
+      39 -{{EntryPoint}} → {{MiddleLayer}} → {{TargetClass.method()}}    
+      40 -```                                                            
+      41 -                                                               
+      42 -{{如果调用链复杂（≥5 层或多分支），在 trace.md 中展开详情}}    
+      43 -                                                               
+      44 -## 核心代码差异                                                
+      45 -                                                               
+      46 -{{本次改动的关键 before/after，只放最核心的 1-2 处}}           
+      47 -                                                               
+      48 -```{{LANGUAGE}}                                                
+      49 -// Before                                                      
+      50 -{{old_code}}                                                   
+      51 -                                                               
+      52 -// After                                                       
+      53 -{{new_code}}                                                   
+      54 -```                                                            
+      55 -                                                               
+      56 -{{如果 diff 较多，在 trace.md 中展开完整对比}}                 
+      57 -                                                               
+      58 -## 决策笔记                                                    
+      59 -                                                               
+      60 -{{关键决策、被否的方案、设计灵感。格式：决策 + 原因}}          
+      61 -                                                               
+      62 -- **为什么选 X 不选 Y**：{{原因}}                              
+      63 -- ...                                                          
+      64 -                                                               
+      50  ## 经验教训
+      51  
+      67 -{{这次踩的坑、发现的规律、值得记住的技术点}}                   
+      52 +1. agent 定义的 `tools` 白名单**不是全局硬约束**——只在 `local_a
+         +gent`（经典阻塞/无名子代理）通道强制；`name` 命名的 teammate 通
+         +道绕过它。把"禁止自实现"寄托在白名单上时，必须同时约束 spawn 姿
+         +势。                                                           
+      53 +2. 07-08 的"仅靠提示词不够、要可核验外部证据"依然对，但更根上应
+         +：先用结构（无 Write/Edit）堵死，再用证据兜底。                
+      54 +3. 排查 Claude Code 内部行为的取证面：会话 transcript（`~/.clau
+         +de/projects/<proj>/<uuid>.jsonl` + `subagents/*.jsonl` + `*.met
+         +a.json` 的 `taskKind`）、`AgentInput` 类型定义（`node_modules/@
+         +anthropic-ai/claude-code/sdk-tools.d.ts`）、二进制 `strings` 的
+         + task-type 集合。                                              
+      55  
+      69 -1. {{教训 1}}                                                  
+      70 -2. {{教训 2}}                                                  
+      71 -                                                               
+      56  ## 后续未做
+      57  
+      74 -{{仅当仍有遗留时填写。无则省略本段}}                           
+      58 +- [ ] 实现 doctrine 改动并覆盖 cache（本任务规划的目标）       
+      59 +- [ ] 实现后考虑把"CLI lane 无名派生"提炼为 `.memory/decisions/
+         +` 条目并加 recall                                              
+      60  
+      76 -- [ ] {{pending_item_1}}                                       
+      77 -- [ ] {{pending_item_2}}                                       
+      78 -                                                               
+      61  ## 附件
+      62  
+      81 -{{按需生成的附件文件。仅列出实际生成的文件，未生成的不列出}}   
+      82 -                                                               
+      83 -- [调用链详情](./trace.md) — 完整调用链、影响路径、代码差异对比
+      84 -- [用户提供素材](./artifacts.md) — 示例、截图描述、参考资料    
+      85 -- [排查过程](./investigation.md) — 关键拐点、排除方向、探索过的
+         -死胡同                                                         
+      63 +- [排查过程](./investigation.md) — 会话取证、三排列实验、AgentI
+         +nput 契约、二进制 task-type                                    
+
+● Write(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/investigation.md)
+  ⎿  Wrote 41 lines to
+     .memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/investigation.md
+      2 # 排查过程 — 07-12-cli-lane-spawn-guardrail
+      3 > 记录"codex-implementer 假装派 codex"的完整取证路径：从一个会话 
+        ID 到根因与治本方案。
+      4 
+      5 ## 起点
+      6 
+      7 椰椰 给出会话 ID `dd6c4dbd-df99-45ad-a913-13a652e7db22`，说该会话
+        里 codex 未被真正调用，要求定位"为什么 agent 会假装派 codex"。
+      8 
+      9 ## 关键拐点
+     … +64 lines (ctrl+o to expand)
+
+● Write(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/task.json)
+  ⎿  Added 16 lines, removed 8 lines
+       1  {
+       2    "name": "07-12-cli-lane-spawn-guardrail",
+       3    "title": "修复跨供应商 CLI lane spawn 护栏失效",
+       4 -  "type": null,                                                
+       4 +  "type": "bugfix",                                            
+       5    "status": "in_progress",
+       6 -  "priority": null,                                            
+       6 +  "priority": "high",                                          
+       7    "created": "2026-07-12",
+       8    "updated": "2026-07-12",
+       9    "commit": null,
+      10    "blocked_by": null,
+      11 -  "next": null,                                                
+      11 +  "next": "改 skills/orchestration/SKILL.md：派 codex/grok-impl
+         +ementer 一律不传 name（run_in_background:true 落 local_agent， 
+         +强制 tools 白名单）；prompt 强制段/rollout 取证降级为纵深冗余；
+         +改后覆盖 ~/.claude/plugins/cache 生效",                        
+      12    "files_changed": [],
+      13 -  "files_investigated": [],                                    
+      14 -  "keywords": [],                                              
+      15 -  "follow_up": [],                                             
+      16 -  "ref": [],                                                   
+      17 -  "attachments": []                                            
+      13 +  "files_investigated": [                                      
+      14 +    "agents/codex-implementer.md",                             
+      15 +    "agents/grok-implementer.md",                              
+      16 +    "agents/implementer.md",                                   
+      17 +    "skills/orchestration/SKILL.md"                            
+      18 +  ],                                                           
+      19 +  "keywords": ["spawn", "name 参数", "in_process_teammate", "lo
+         +cal_agent", "tools 白名单", "护栏失效", "codex-implementer", "g
+         +rok-implementer", "通道顶替", "AgentInput"],                   
+      20 +  "follow_up": [                                               
+      21 +    "实现 doctrine 改动（skills/orchestration/SKILL.md）并覆盖 
+         +cache 生效",                                                   
+      22 +    "实现后把 CLI lane 无名派生提炼为 .memory/decisions/ 条目并
+         +加 recall"                                                     
+      23 +  ],                                                           
+      24 +  "ref": ["07-08-harden-codex-lane"],                          
+      25 +  "attachments": ["investigation.md"]                          
+      26  }
+
+● [执行] 四个文件已写好。按 mem 流程同步 recall
+  索引，让后续会话命中关键词能加载本任务。先看现有 recall 格式对齐。
+
+● Bash(R="/home/hyy/develop/personal/GitHub/fable-advisor/.memory/recall"
+      echo "=== recall dir ==="; ls -la "$R" 2>/dev/null…)
+  ⎿  === recall dir ===
+     total 12
+     drwxr-xr-x 2 hyy hyy 4096 Jul  8 20:00 .
+     … +75 lines (ctrl+o to expand)
+
+● [执行] 现有 recall
+  用的是紧凑单行格式（非模板的多行格式）——按项目实际约定对齐，建单行 recall
+  条目。
+
+● Write(.memory/recall/cli-lane-spawn-guardrail.jsonl)
+  ⎿  Wrote 1 line to .memory/recall/cli-lane-spawn-guardrail.jsonl
+      1 {"keywords": ["codex-implementer", "grok-implementer", "假装派 co
+        dex", "通道顶替", "静默顶替", "spawn", "name 参数", "in_process_t
+        eammate", "local_agent", "工具白名单", "护栏失效", "run_in_backgr
+        ound", "teammate"], "_aliases": ["subagent 顶替", "子代理没调 cod
+        ex", "派工护栏", "orchestration 派工", "implementer 车道", "spawn
+         姿势"], "resources": [".memory/tasks/2026-07/07-12-cli-lane-spaw
+        n-guardrail/what.md", ".memory/tasks/2026-07/07-12-cli-lane-spawn
+        -guardrail/investigation.md"], "context": ["implement", "debug", 
+        "review"]}
+
+● [验证] 归档完成，做收尾自检：确认目录内容与 attachments
+  登记一致、recall/链接指向真实文件。
+
+● Bash(T="/home/hyy/develop/personal/GitHub/fable-advisor/.memory/tasks/2026-07/
+      07-12-cli-lane-spawn-guardrail"
+      echo "=== task dir contents ==="; ls -la "$T"…)
+  ⎿  === task dir contents ===
+     total 28
+     drwxr-xr-x 2 hyy hyy 4096 Jul 12 10:51 .
+     … +18 lines (ctrl+o to expand)
+
+● [验证] 规划归档完成，自检通过。
+
+  建档产出
+
+  .memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/
+
+  ┌──────────────────────────┬──────────────────────────────────────────────┐
+  │           文件           │                     内容                     │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │                          │ 原始意图（dd6c4dbd 会话溯源）+ 约束（只改    │
+  │ prd.md                   │ CLI lane、implementer 豁免、cache 部署）+    │
+  │                          │ 成功标准                                     │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ what.md                  │ 根因一句话 + 三排列实验矩阵 + 决策 +         │
+  │                          │ 执行进度（勾出待做）+ 教训                   │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ investigation.md         │ 完整取证：会话拆解、假实例证据、排除的假设、 │
+  │                          │ 最终定位、可复用排查技巧                     │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │                          │ status: in_progress、ref:                    │
+  │ task.json                │ 07-08-harden-codex-lane、next                │
+  │                          │ 写明下一步、attachments: [investigation.md]  │
+  ├──────────────────────────┼──────────────────────────────────────────────┤
+  │ recall/cli-lane-spawn-gu │ 关键词/别名 → 本任务，供后续会话自动召回     │
+  │ ardrail.jsonl            │                                              │
+  └──────────────────────────┴──────────────────────────────────────────────┘
+
+  自检：attachments 登记（investigation.md）与实际文件一致；链接目标（07-08
+  what.md、upstream-sync-fork.md、investigation.md）全部存在；与前身任务 07-08
+  双向可溯（ref + prd 背景段）；状态 in_progress（代码未改，符合"先规划后改"）。
+
+  按路由矩阵，doctrine 决策暂留在任务档里；等实现落地、验证生效后再提炼成
+  .memory/decisions/ 独立条目（已列入
+  follow_up），避免为未实施的改动过早建决策记录。
+
+  下一步（待你放行）
+
+  规划文件已就绪，代码未动。实现阶段的具体改动我准备这样落：
+
+  - skills/orchestration/SKILL.md：派工 doctrine 增加硬规则——派
+  codex-implementer / grok-implementer 一律 run_in_background:true 且不传 
+  name（落 local_agent，工具白名单物理强制）；implementer 明确豁免；prompt
+  强制段 + rollout 取证标注为纵深冗余。
+  - agents/codex-implementer.md / 
+  grok-implementer.md：各补一句"调用方应以无名后台方式派生本
+  lane，否则工具白名单不生效"。
+  - 改完更新 task.json（status/commit/files_changed）+ what.md 进度，并按 07-08
+  约束覆盖 cache 生效。
+
+  要我现在就动手改 skills/orchestration/SKILL.md
+  吗？还是你先过一遍规划文件再放行？
+
+✻ Baked for 7m 45s
+
+❯ 执行                                                                          
+
+● [执行] 收到。动手前先读全 skills/orchestration/SKILL.md（主改动）和
+  grok-implementer.md，确定外科式插入点（codex-implementer.md 已在上下文）。
+
+  Read 2 files (ctrl+o to expand)
+
+● [执行] 读全了。orchestration 里已有 07-08 的"channel authenticity"治标段和
+  lifecycle 段，我的新规则要放在它们上游并让二者降级为兜底/自洽。做 5
+  处外科编辑：orchestration 三处（新增结构护栏节 + 调整取证段为兜底 + 调和
+  teammate 措辞），两个 CLI agent 各补一条 spawn 契约（含自检误派）。
+
+● Update(skills/orchestration/SKILL.md)
+  ⎿  Added 11 lines
+      46  
+      47  A spec you can't finish writing is a signal the decision isn't 
+          made yet — that's architect work, not a reason to hand the ambi
+          guity to a cheaper model.
+      48  
+      49 +## Spawning the CLI lanes — keep the guardrail structural      
+      50 +                                                               
+      51 +`codex-implementer` and `grok-implementer` restrict themselves 
+         +to `Bash, Read, Grep, Glob` — no `Write`/`Edit` — on purpose: i
+         +t makes silent self-implementation *physically impossible*, sin
+         +ce the only way they can change code is by driving their CLI. T
+         +hat whitelist only holds on the plain subagent path. **Spawn th
+         +ese two lanes without a `name`.**                              
+      52 +                                                               
+      53 +Passing a `name` routes the spawn to an in-process teammate, wh
+         +ich ignores the agent's tool whitelist and hands it the full de
+         +fault toolset — `Write`/`Edit` included — so a named codex/grok
+         + lane can quietly write the code itself and report success. Ver
+         +ified on the harness: named → teammate (Write/Edit present); no
+         + `name` → `local_agent` (Write/Edit don't exist).              
+      54 +                                                               
+      55 +- **CLI lanes: never pass `name`.** For parallel fan-out use `r
+         +un_in_background: true` — unnamed background subagents still ru
+         +n concurrently and still keep the whitelist; you just can't mes
+         +sage them mid-run, so send a fresh self-contained spec instead 
+         +of a follow-up.                                                
+      56 +- **`implementer` (in-house Claude) is exempt** — it has no whi
+         +telist and is *meant* to write code directly. Name it freely if
+         + you want it addressable.                                      
+      57 +                                                               
+      58 +This is the primary defense; the SESSION-evidence check under V
+         +erification is the backstop.                                   
+      59 +                                                               
+      60  ## Parallelism
+      61  
+      62  Independent specs (no shared files, no ordering dependency) lau
+          nch as parallel agents in a single message. Sequential chains a
+          nd single-file surgery stay serial. For high-stakes work, a pic
+          k-the-stronger-diff race — `grok-implementer` and `codex-implem
+          enter` on the same spec, architect judges — buys three-vendor c
+          onfidence for one extra lane's cost.
+
+● Update(skills/orchestration/SKILL.md)
+  ⎿  Added 1 line, removed 1 line
+      75  
+      76  Reports are claims, not evidence. Before accepting any lane's w
+          ork: read the diff, and re-run the verification command (or spo
+          t-check its quoted output against the working tree). "Should wo
+          rk", "tests should pass", or a report with no command output me
+          ans the task is not done. A lane that reports a spec gap gets a
+           corrected spec, not a "use your judgment".
+      77  
+      78 -Codex-lane work gets one extra check — **channel authenticity**
+         -. The wrapper agent has been observed writing the code itself i
+         -nstead of driving codex. Its report must carry a SESSION line (
+         -codex session id + rollout file path); verify the cited file ex
+         -ists under `~/.codex/sessions/` and its `cwd` points at this re
+         -po before accepting the diff. No SESSION line, or a session poi
+         -nting elsewhere, means impersonation: reject the report and re-
+         -dispatch with the channel requirement restated.                
+      78 +Codex-lane work gets one backstop check — **channel authenticit
+         +y** — for a lane that slipped through spawned wrong. The wrappe
+         +r agent has been observed writing the code itself instead of dr
+         +iving codex (spawned as a named teammate, which strips its tool
+         + whitelist — see the spawning rule above). Its report must carr
+         +y a SESSION line (codex session id + rollout file path); verify
+         + the cited file exists under `~/.codex/sessions/` and its `cwd`
+         + points at this repo before accepting the diff. No SESSION line
+         +, or a session pointing elsewhere, means impersonation: reject 
+         +the report and re-dispatch with the channel requirement restate
+         +d.                                                             
+      79  
+      80  A subagent that goes idle without delivering its report is not 
+          a blocker: verify the workspace evidence directly (diff, verifi
+          cation command, and for the codex lane the newest matching roll
+          out file) and move on — don't stall the pipeline waiting for a 
+          resend.
+      81  
+
+● Update(skills/orchestration/SKILL.md)
+  ⎿  Added 1 line, removed 1 line
+      81  
+      82  ## Subagent lifecycle
+      83  
+      84 -Background subagents ("teammates") persist after finishing so t
+         -hey can be messaged again — which means every batch you don't c
+         -lean up lingers as "background work" until the session exits. T
+         -wo rules:                                                      
+      84 +A subagent spawned with a `name` ("teammate") persists after fi
+         +nishing so it can be messaged again — which means every named b
+         +atch you don't clean up lingers as "background work" until the 
+         +session exits. (The CLI lanes, spawned unnamed per the rule abo
+         +ve, aren't addressable this way — they finish and return.) Two 
+         +rules:                                                         
+      85  
+      86  - Serial batches (same file, strict ordering) gain nothing from
+           backgrounding: run them with `run_in_background: false` and co
+          nsume the report inline.
+      87  - When a batch does run in the background, stop its teammate on
+          ce its work is verified and it has no follow-up role. Don't lea
+          ve verified lanes idling to session end.
+● Update(agents/codex-implementer.md)
+  ⎿  Added 2 lines
+      29  
+      30  You never implement the task yourself as a fallback. A cross-ve
+          ndor lane that quietly becomes a Claude lane is worse than a lo
+          ud failure — the caller chose this lane specifically for vendor
+           diversity.
+      31  
+      32 +**Spawn contract.** Your tool whitelist (no `Write`/`Edit`) is 
+         +what makes self-implementation impossible — but it only holds w
+         +hen the caller spawns you as a plain subagent, without a `name`
+         +. If `Write` or `Edit` appear in your available tools, you were
+         + spawned as a named teammate and this guardrail is off: don't u
+         +se them, and flag the misspawn in your report so the caller re-
+         +dispatches you unnamed.                                        
+      33 +                                                               
+      34  ## The contract
+      35  
+      36  The prompt you receive should contain the same five-part spec t
+          he `implementer` agent expects: **objective, files, interfaces,
+           constraints, verification command**. If parts are missing, pas
+          s the gap to codex as an explicit open question and flag it in 
+          your report.
+
+● Update(agents/grok-implementer.md)
+  ⎿  Added 2 lines
+      27  
+      28  You never implement the task yourself as a fallback. A grok lan
+          e that quietly becomes a Claude lane defeats the routing — the 
+          caller chose this lane's cost and vendor profile deliberately.
+      29  
+      30 +**Spawn contract.** Your tool whitelist (no `Write`/`Edit`) is 
+         +what makes self-implementation impossible — but it only holds w
+         +hen the caller spawns you as a plain subagent, without a `name`
+         +. If `Write` or `Edit` appear in your available tools, you were
+         + spawned as a named teammate and this guardrail is off: don't u
+         +se them, and flag the misspawn in your report so the caller re-
+         +dispatches you unnamed.                                        
+      31 +                                                               
+      32  ## The contract
+      33  
+      34  The prompt you receive should contain the standard five-part sp
+          ec: **objective, files, interfaces, constraints, verification c
+          ommand**. If parts are missing, pass the gap to grok as an expl
+          icit open question and flag it in your report.
+
+● [执行] 5 处编辑完成。核对 diff + 查插件版本与 cache 部署状态（read-only）。
+
+● Bash(cd /home/hyy/develop/personal/GitHub/fable-advisor
+      echo "=== git diff --stat ==="; git diff --stat…)
+  ⎿  === git diff --stat ===
+      .gitignore                    |  1 +
+      agents/codex-implementer.md   |  2 ++
+     … +25 lines (ctrl+o to expand)
+
+● [执行] 编辑落地正确（新护栏节 + 取证降级 + teammate
+  措辞调和都在）。插件版本已是 3.1.0（07-08 时是
+  2.1.0）。同步更新任务档（files_changed / 进度），再查 cache 结构。
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/task.json)
+  ⎿  Added 6 lines, removed 2 lines
+       8    "updated": "2026-07-12",
+       9    "commit": null,
+      10    "blocked_by": null,
+      11 -  "next": "改 skills/orchestration/SKILL.md：派 codex/grok-impl
+         -ementer 一律不传 name（run_in_background:true 落 local_agent， 
+         -强制 tools 白名单）；prompt 强制段/rollout 取证降级为纵深冗余；
+         -改后覆盖 ~/.claude/plugins/cache 生效",                        
+      12 -  "files_changed": [],                                         
+      11 +  "next": "覆盖 ~/.claude/plugins/cache 使 doctrine 改动生效（ 
+         +当前插件版本 3.1.0）；由用户决定是否 commit/push fork、是否提炼
+         + .memory/decisions/",                                          
+      12 +  "files_changed": [                                           
+      13 +    "skills/orchestration/SKILL.md",                           
+      14 +    "agents/codex-implementer.md",                             
+      15 +    "agents/grok-implementer.md"                               
+      16 +  ],                                                           
+      17    "files_investigated": [
+      18      "agents/codex-implementer.md",
+      19      "agents/grok-implementer.md",
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 2 lines, removed 2 lines
+      33  - [x] 三排列实验验证治本可行（无 `name` + 后台 = 并行且带护栏）
+      34  - [x] 确认修复范围（仅 CLI lane，implementer 豁免）
+      35  - [x] 建任务归档 + 规划文件
+      36 -- [ ] 改 `skills/orchestration/SKILL.md`：派 codex/grok-impleme
+         -nter 一律不传 `name`（后台并行），prompt 强制段/取证降级为冗余 
+      37 -- [ ] 覆盖 cache 生效（见部署约束）                            
+      36 +- [x] 改 `skills/orchestration/SKILL.md`（新增结构护栏节 + 取证
+         +段降级为兜底 + teammate 措辞调和）+ `codex-implementer.md`/`gro
+         +k-implementer.md`（各补 spawn 契约含自检误派）                 
+      37 +- [ ] 覆盖 cache 生效（见部署约束；插件版本 3.1.0）            
+      38  - [ ] （可选）实现后把 doctrine 提炼进 `.memory/decisions/`
+      39  
+      40  ## 涉及文件
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 4 lines, removed 4 lines
+      41  
+      42  | 文件 | 角色 |
+      43  |---|---|
+      44 -| `skills/orchestration/SKILL.md` | 待改：派工 doctrine 加"CLI 
+         -lane 不传 `name`" |                                            
+      45 -| `agents/codex-implementer.md` | 待改（可选）：补"调用方应以无
+         -名后台方式派生本 lane" |                                       
+      46 -| `agents/grok-implementer.md` | 同上，同为受白名单保护的 CLI l
+         -ane |                                                          
+      47 -| `agents/implementer.md` | 仅调查：确认无 `tools` 行 = 豁免 | 
+      44 +| `skills/orchestration/SKILL.md` | 已改：新增"Spawning the CLI
+         + lanes"结构护栏节；channel-authenticity 降级为兜底；lifecycle  
+         +的 teammate 措辞绑定到 `name` |                                
+      45 +| `agents/codex-implementer.md` | 已改：Preflight 段补 **Spawn 
+         +contract**——含 Write/Edit 即误派，自检并上报 |                 
+      46 +| `agents/grok-implementer.md` | 已改：同上 spawn 契约 |       
+      47 +| `agents/implementer.md` | 仅调查：确认无 `tools` 行 = 豁免， 
+         +未改 |                                                         
+      48  | 会话 `dd6c4dbd`（另一项目 transcript） | 缺陷实录 + 取证来源 
+          |
+      49  
+      50  ## 经验教训
+
+● [执行] 任务档已同步。查 cache 部署结构，判断改动是否已生效、以及当前插件源。
+
+● Bash(C=~/.claude/plugins/cache/fable-advisor
+      echo "=== cache tree (depth 2) ==="; find "$C" -maxdepth 2 2>/dev/null |
+      sort…)
+  ⎿  === cache tree (depth 2) ===
+     /home/hyy/.claude/plugins/cache/fable-advisor
+     /home/hyy/.claude/plugins/cache/fable-advisor/fable-advisor
+     … +19 lines (ctrl+o to expand)
+
+● [执行] Cache 有两个版本目录（2.1.0 + 3.1.0），刚才 grep 误取了
+  2.1.0。活动版本是 3.1.0，且 cache 是独立拷贝非软链——改 clone 不生效，须覆盖
+  cache（同 07-08）。先确认 3.1.0 是活动版本且尚未含改动，再决定覆盖。
+
+● Bash(C=~/.claude/plugins/cache/fable-advisor/fable-advisor
+      echo "=== fable-advisor entry in installed_plugins.json ==="…)
+  ⎿  === fable-advisor entry in installed_plugins.json ===
+     fable-advisor@fable-advisor -> [{"scope": "user", "installPath": "/hom
+     e/hyy/.claude/plugins/cache/fable-advisor/fable-advisor/3.1.0", "versi
+     … +24 lines (ctrl+o to expand)
+
+● [执行] 确认无误：活动版本 3.1.0（installPath 对应 commit e8e1c9d = clone
+  HEAD），cache 是独立拷贝且与 clone 仅差我这 3
+  处。按已批准计划做外科式覆盖——只拷这 3 个改动文件到 3.1.0
+  cache，随即校验生效。
+
+● Bash(SRC=/home/hyy/develop/personal/GitHub/fable-advisor
+      DST=~/.claude/plugins/cache/fable-advisor/fable-advisor/3.1.0…)
+  ⎿  copied: skills/orchestration/SKILL.md
+     copied: agents/codex-implementer.md
+     copied: agents/grok-implementer.md
+     … +9 lines (ctrl+o to expand)
+
+● [执行] 部署成功——3 文件已覆盖到活动 cache 3.1.0，grep 校验 live，clone↔cache
+  无差异。doctrine 改动现已生效。收尾更新任务档并标注持久性风险。
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 3 lines, removed 2 lines
+      34  - [x] 确认修复范围（仅 CLI lane，implementer 豁免）
+      35  - [x] 建任务归档 + 规划文件
+      36  - [x] 改 `skills/orchestration/SKILL.md`（新增结构护栏节 + 取证
+          段降级为兜底 + teammate 措辞调和）+ `codex-implementer.md`/`gro
+          k-implementer.md`（各补 spawn 契约含自检误派）
+      37 -- [ ] 覆盖 cache 生效（见部署约束；插件版本 3.1.0）            
+      38 -- [ ] （可选）实现后把 doctrine 提炼进 `.memory/decisions/`    
+      37 +- [x] 覆盖 cache 3.1.0 生效（外科拷贝 3 文件，grep 校验 live，c
+         +lone↔cache 无差异）                                            
+      38 +- [ ] commit/push fork 保证持久（否则插件更新会覆盖 cache 补丁 
+         +）— 待用户决定                                                 
+      39 +- [ ] （可选）把 doctrine 提炼进 `.memory/decisions/`          
+      40  
+      41  ## 涉及文件
+      42  
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 2 lines, removed 2 lines
+      56  
+      57  ## 后续未做
+      58  
+      59 -- [ ] 实现 doctrine 改动并覆盖 cache（本任务规划的目标）       
+      60 -- [ ] 实现后考虑把"CLI lane 无名派生"提炼为 `.memory/decisions/
+         -` 条目并加 recall                                              
+      59 +- [ ] commit/push 到 fork `IpiggyI/fable-advisor` 保证持久（cac
+         +he 补丁会被下次插件更新覆盖；见 07-08 部署约束）— 待用户决定   
+      60 +- [ ] 考虑把"CLI lane 无名派生"提炼为 `.memory/decisions/` 条目
+         +并加 recall                                                    
+      61  
+      62  ## 附件
+      63  
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/task.json)
+  ⎿  Added 1 line, removed 1 line
+       8    "updated": "2026-07-12",
+       9    "commit": null,
+      10    "blocked_by": null,
+      11 -  "next": "覆盖 ~/.claude/plugins/cache 使 doctrine 改动生效（ 
+         -当前插件版本 3.1.0）；由用户决定是否 commit/push fork、是否提炼
+         - .memory/decisions/",                                          
+      11 +  "next": "技术改动已 live 于 cache 3.1.0；待用户决定 commit/pu
+         +sh 到 fork 保证持久（cache 补丁会被插件更新覆盖，见 upstream-sy
+         +nc-fork 决策）；可选：提炼 .memory/decisions/",                
+      12    "files_changed": [
+      13      "skills/orchestration/SKILL.md",
+      14      "agents/codex-implementer.md",
+
+● [验证] doctrine 改动已实现并生效。完成汇报：
+
+  改了什么（3 文件，已 live 于 cache 3.1.0）
+
+  文件: skills/orchestration/SKILL.md
+  改动: 新增 "Spawning the CLI lanes — keep the guardrail structural"
+  节：codex/grok-implementer 禁传 name、并行用
+  run_in_background:true、implementer 豁免；把原 channel-authenticity
+  取证段降级为兜底；lifecycle 段 teammate 措辞绑定到 name 以消歧
+  ────────────────────────────────────────
+  文件: agents/codex-implementer.md
+  改动: Preflight 段补 Spawn contract：工具集里出现 Write/Edit 即"被误派为
+  teammate、护栏已失效"，自检并上报
+  ────────────────────────────────────────
+  文件: agents/grok-implementer.md
+  改动: 同上 spawn 契约
+
+  agents/implementer.md 未动（无白名单，豁免）。
+
+  验证
+
+  - git diff 确认仅这 3 处新增，无副作用；
+  - 外科拷贝到活动 cache 3.1.0（installPath 对应 e8e1c9d），grep 校验三处均
+  live，diff -q clone↔cache 无差异 → 改动已对当前 Claude Code 生效。
+
+  任务档
+
+  .memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/ 全程更新：进度勾到"cache
+  生效"，files_changed 已填，next 指向持久化决定。recall 已建。
+
+  残留风险（须知）
+
+  1. 持久性：改动现在有效，但 cache 补丁会被下次插件更新覆盖（同
+  07-08）。要持久，需 commit/push 到 fork；而彻底防覆盖还依赖 07-08 那条未完成的
+  follow-up——把 marketplace 源切到 IpiggyI/fable-advisor（见
+  [[upstream-sync-fork]]）。我没有自行 commit。
+  2. 未做端到端跑测：机制已被三探针证死，doctrine 是 prompt
+  类工件（按结构/内容校验，非运行时）；真正跑一轮多 lane 编排来观察"orchestrator
+  是否照新规则不传 name"还没做——那需要一个真实构建任务。
+
+  怎么持久化，你定：
+● User answered Claude's questions:
+  ⎿  · doctrine 改动已 live 于 cache（但会被插件更新覆盖）。如何持久化？ → 
+     commit + push 到 fork（推荐）
+
+● [执行] 已授权 commit+push。先只读核对 git 状态——确认 remote 指向
+  fork、并把我这 3 个文件与会话开始前就存在的 M .gitignore / ?? docs/
+  区分开（那两个不是我的改动，不扫进本次提交）。
+
+● Bash(cd /home/hyy/develop/personal/GitHub/fable-advisor
+      echo "=== remotes ==="; git remote -v…)
+  ⎿  === remotes ===
+     origin     git@github.com:IpiggyI/fable-advisor.git (fetch)
+     origin     git@github.com:IpiggyI/fable-advisor.git (push)
+     … +25 lines (ctrl+o to expand)
+
+● [执行] Git 状态清楚：origin=fork（IpiggyI），当前
+  main==origin/main。.gitignore(+.memory/) 与 docs/
+  是会话前就有的、非本次改动——我只提交我的 3 个 doctrine 
+  文件，那两个留给你另行决定。按你 fork 工作流直接提交到 main。
+
+  commit message 用 heredoc（避免 shell 对反引号/撇号的转义问题）：
+
+● Bash(cd /home/hyy/develop/personal/GitHub/fable-advisor
+      git add skills/orchestration/SKILL.md agents/codex-implementer.md
+      agents/grok-implementer.md…)
+  ⎿  [main 43144a8] Spawn CLI lanes unnamed to keep the tool-whitelist guar
+     drail
+      3 files changed, 17 insertions(+), 2 deletions(-)
+     … +22 lines (ctrl+o to expand)
+
+● [执行] 提交完成 43144a8（仅 3 文件，作者 IpiggyI，无多余 trailer）。推送到
+  fork：
+
+● Bash(cd /home/hyy/develop/personal/GitHub/fable-advisor
+      git push origin main 2>&1…)
+  ⎿  To github.com:IpiggyI/fable-advisor.git
+        e8e1c9d..43144a8  main -> main
+     ---exit: 0---
+     ## main...origin/main
+
+● [执行] 推送成功 e8e1c9d..43144a8，main 与 origin/main 同步。改动已持久到
+  fork。收尾把任务档标记 completed + 记录 commit。
+
+● Write(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/task.json)
+  ⎿  Added 5 lines, removed 5 lines
+       2    "name": "07-12-cli-lane-spawn-guardrail",
+       3    "title": "修复跨供应商 CLI lane spawn 护栏失效",
+       4    "type": "bugfix",
+       5 -  "status": "in_progress",                                     
+       5 +  "status": "completed",                                       
+       6    "priority": "high",
+       7    "created": "2026-07-12",
+       8    "updated": "2026-07-12",
+       9 -  "commit": null,                                              
+       9 +  "commit": "43144a8",                                         
+      10    "blocked_by": null,
+      11 -  "next": "技术改动已 live 于 cache 3.1.0；待用户决定 commit/pu
+         -sh 到 fork 保证持久（cache 补丁会被插件更新覆盖，见 upstream-sy
+         -nc-fork 决策）；可选：提炼 .memory/decisions/",                
+      11 +  "next": null,                                                
+      12    "files_changed": [
+      13      "skills/orchestration/SKILL.md",
+      14      "agents/codex-implementer.md",
+     ...
+      22    ],
+      23    "keywords": ["spawn", "name 参数", "in_process_teammate", "lo
+          cal_agent", "tools 白名单", "护栏失效", "codex-implementer", "g
+          rok-implementer", "通道顶替", "AgentInput"],
+      24    "follow_up": [
+      25 -    "实现 doctrine 改动（skills/orchestration/SKILL.md）并覆盖 
+         -cache 生效",                                                   
+      26 -    "实现后把 CLI lane 无名派生提炼为 .memory/decisions/ 条目并
+         -加 recall"                                                     
+      25 +    "（可选）把 CLI lane 无名派生提炼为 .memory/decisions/ 独立
+         +决策条目",                                                     
+      26 +    "07-08 遗留依赖：把 marketplace 源切到 IpiggyI/fable-adviso
+         +r，否则插件更新仍会用上游覆盖 cache（含本次补丁）"             
+      27    ],
+      28    "ref": ["07-08-harden-codex-lane"],
+      29    "attachments": ["investigation.md"]
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 1 line, removed 1 line
+      35  - [x] 建任务归档 + 规划文件
+      36  - [x] 改 `skills/orchestration/SKILL.md`（新增结构护栏节 + 取证
+          段降级为兜底 + teammate 措辞调和）+ `codex-implementer.md`/`gro
+          k-implementer.md`（各补 spawn 契约含自检误派）
+      37  - [x] 覆盖 cache 3.1.0 生效（外科拷贝 3 文件，grep 校验 live，c
+          lone↔cache 无差异）
+      38 -- [ ] commit/push fork 保证持久（否则插件更新会覆盖 cache 补丁 
+         -）— 待用户决定                                                 
+      38 +- [x] commit `43144a8` + push 到 fork `origin/main`（持久化）  
+      39  - [ ] （可选）把 doctrine 提炼进 `.memory/decisions/`
+      40  
+      41  ## 涉及文件
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 2 lines, removed 1 line
+      56  
+      57  ## 后续未做
+      58  
+      59 -- [ ] commit/push 到 fork `IpiggyI/fable-advisor` 保证持久（cac
+         -he 补丁会被下次插件更新覆盖；见 07-08 部署约束）— 待用户决定   
+      59 +- [x] commit `43144a8` + push 到 fork `IpiggyI/fable-advisor`（
+         +已持久到 fork）                                                
+      60 +- [ ] 07-08 遗留依赖：marketplace 源仍指上游，下次插件更新会用 
+         +上游覆盖 cache（含本补丁）；须切源到 fork 才彻底防覆盖         
+      61  - [ ] 考虑把"CLI lane 无名派生"提炼为 `.memory/decisions/` 条目
+          并加 recall
+      62  
+      63  ## 附件
+
+● [验证] 全部完成。整条链路收口：
+
+  交付状态
+
+  ┌──────┬───────────────────────────────────────────────────────────────────┐
+  │ 阶段 │                               结果                                │
+  ├──────┼───────────────────────────────────────────────────────────────────┤
+  │ 根因 │ name 参数 → in_process_teammate 通道抹掉 tools 白名单（三探针 +   │
+  │      │ 事故会话双重证死）                                                │
+  ├──────┼───────────────────────────────────────────────────────────────────┤
+  │ 改动 │ 3 文件：orchestration 新增结构护栏节 + 取证降级为兜底 + teammate  │
+  │      │ 措辞调和；codex/grok-implementer 补 spawn 契约（自检误派）        │
+  ├──────┼───────────────────────────────────────────────────────────────────┤
+  │ 生效 │ 外科覆盖活动 cache 3.1.0，grep 校验 live                          │
+  ├──────┼───────────────────────────────────────────────────────────────────┤
+  │ 持久 │ commit 43144a8 + push 到 fork，main↔origin/main 同步              │
+  ├──────┼───────────────────────────────────────────────────────────────────┤
+  │      │ 07-12-cli-lane-spawn-guardrail 标记                               │
+  │ 留档 │ completed（prd/what/investigation/task.json + recall，ref 指向    │
+  │      │ 07-08）                                                           │
+  └──────┴───────────────────────────────────────────────────────────────────┘
+
+  两点须你知晓
+
+  1. 持久性仍有一道未闭合的门（属 07-08 遗留，非本任务能独立解决）：marketplace
+  源仍指上游 DannyMac180。下次 /plugin 更新会用上游覆盖 cache，连同本补丁和 fork
+  其它提交一起丢。要彻底防覆盖，得把源切到 IpiggyI/fable-advisor——已记进本任务
+  follow_up 和 [[upstream-sync-fork]]。当前改动在 fork 和本机 cache
+  都在，日常使用安全。
+  2. 我没碰的两个东西（会话前就存在，非本次改动）：.gitignore 有一行未提交的
+  +.memory/（正好保护我刚建的归档不被误提交），以及未跟踪的
+  docs/。都按原样留着——要不要把 .gitignore 那行也提交上去（建议提，能挡住
+  .memory/ 泄进 git），你说一声。
+
+  可选的 .memory/decisions/ 决策提炼我留在 follow_up 里没做（你标了"可选"，且
+  recall 已能召回本任务，发现性够用）。
+
+✻ Sautéed for 10m 40s
+
+❯ 更正记忆，源已经切换                                                          
+
+● [执行] 收到，更正记忆。先按"本地证据优先于记忆"核实当前实际源，再改所有仍写着"
+  源指上游"的过期记录（07-12 任务 + 07-08 任务 + upstream-sync-fork 决策）。
+
+● Bash(echo "=== find Claude Code marketplace registry ==="
+      ls -la ~/.claude/plugins/ 2>/dev/null…)
+  ⎿  === find Claude Code marketplace registry ===
+     total 440
+     drwx------  6 hyy hyy   4096 Jul 11 22:47 .
+     … +58 lines (ctrl+o to expand)
+
+● [执行] 核实确认：known_marketplaces.json 里 fable-advisor 的 source.repo =
+  IpiggyI/fable-advisor——源确已切到 fork，你的更正属实。（marketplace manifest
+  里 plugin.json 的 url/homepage 还写 DannyMac180，那只是 fork
+  保留的原作者元数据，非安装源。）
+
+  这条更正还翻转了我之前的残留风险判断：源=fork 后，/plugin 更新会从 fork
+  拉取（含我已推的 43144a8），不再是"被上游覆盖"。我读一下决策记录，把所有仍写"
+  源指上游"的过期条目一并修正。
+
+  Read 1 file (ctrl+o to expand)
+
+● 核实清楚了。这是跨记忆面的更正（源切换事实散落在决策记录 + 07-08 + 07-12
+  三处），逐一修正。先改决策记录
+  upstream-sync-fork.md——它是这条事实的规范归宿：把"遗留风险"段翻为已消除、补
+  2026-07-12 同步记录、并把我新推的 43144a8 登记进"须保留的 fork 提交"（否则下次
+  rebase 会丢）。
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line, removed 1 line
+       8  
+       9  ## 决策
+      10  
+      11 -本仓库是 `DannyMac180/fable-advisor` 的 fork（origin → `git@git
+         -hub.com:IpiggyI/fable-advisor.git`），领先上游**三个**自有提交 
+         -（SHA 随每次 rebase 变化，2026-07-11 同步后为）：**`40c0fc7`** 
+         -（原 `c4f4f7a`/`4a9de29`；codex 通道加固：`agents/codex-impleme
+         -nter.md` 的 SESSION 证据 + 禁自我兜底；`skills/orchestration/SK
+         -ILL.md` 的通道核验 + Subagent lifecycle 小节）、**`2063b55`**（
+         -原 `32b0e0c`；codex 推理档位 floor=high / 复杂升 xhigh，详见下 
+         -方「fork 对上游的额外偏离」）与 **`e8e1c9d`**（2026-07-11 新增 
+         -；恢复 `agents/implementer.md` 为 in-house 兜底 lane，详见下方 
+         -）。                                                           
+      11 +本仓库是 `DannyMac180/fable-advisor` 的 fork（origin → `git@git
+         +hub.com:IpiggyI/fable-advisor.git`），领先上游**四个**自有提交 
+         +（SHA 随每次 rebase 变化，2026-07-11 同步后为）：**`40c0fc7`** 
+         +（原 `c4f4f7a`/`4a9de29`；codex 通道加固：`agents/codex-impleme
+         +nter.md` 的 SESSION 证据 + 禁自我兜底；`skills/orchestration/SK
+         +ILL.md` 的通道核验 + Subagent lifecycle 小节）、**`2063b55`**（
+         +原 `32b0e0c`；codex 推理档位 floor=high / 复杂升 xhigh，详见下 
+         +方「fork 对上游的额外偏离」）与 **`e8e1c9d`**（2026-07-11 新增 
+         +；恢复 `agents/implementer.md` 为 in-house 兜底 lane，详见下方 
+         +）。                                                           
+      12  
+      13  **同步上游时（rebase/merge upstream）必须保留该提交的改动，不得
+          被上游版本覆盖。** 若上游后续自行实现了等价机制，再删除本地版本
+          并记录于此。
+      14  
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line, removed 1 line
+       8  
+       9  ## 决策
+      10  
+      11 -本仓库是 `DannyMac180/fable-advisor` 的 fork（origin → `git@git
+         -hub.com:IpiggyI/fable-advisor.git`），领先上游**四个**自有提交 
+         -（SHA 随每次 rebase 变化，2026-07-11 同步后为）：**`40c0fc7`** 
+         -（原 `c4f4f7a`/`4a9de29`；codex 通道加固：`agents/codex-impleme
+         -nter.md` 的 SESSION 证据 + 禁自我兜底；`skills/orchestration/SK
+         -ILL.md` 的通道核验 + Subagent lifecycle 小节）、**`2063b55`**（
+         -原 `32b0e0c`；codex 推理档位 floor=high / 复杂升 xhigh，详见下 
+         -方「fork 对上游的额外偏离」）与 **`e8e1c9d`**（2026-07-11 新增 
+         -；恢复 `agents/implementer.md` 为 in-house 兜底 lane，详见下方 
+         -）。                                                           
+      11 +本仓库是 `DannyMac180/fable-advisor` 的 fork（origin → `git@git
+         +hub.com:IpiggyI/fable-advisor.git`），领先上游**四个**自有提交 
+         +（SHA 随每次 rebase 变化，2026-07-11 同步后为）：**`40c0fc7`** 
+         +（原 `c4f4f7a`/`4a9de29`；codex 通道加固：`agents/codex-impleme
+         +nter.md` 的 SESSION 证据 + 禁自我兜底；`skills/orchestration/SK
+         +ILL.md` 的通道核验 + Subagent lifecycle 小节）、**`2063b55`**（
+         +原 `32b0e0c`；codex 推理档位 floor=high / 复杂升 xhigh，详见下 
+         +方「fork 对上游的额外偏离」）与 **`e8e1c9d`**（2026-07-11 新增 
+         +；恢复 `agents/implementer.md` 为 in-house 兜底 lane，详见下方 
+         +）与 **`43144a8`**（2026-07-12 新增；CLI lane 无名派生护栏，详 
+         +见下方「额外偏离」与 [07-12 任务](../tasks/2026-07/07-12-cli-la
+         +ne-spawn-guardrail/what.md)）。                                
+      12  
+      13  **同步上游时（rebase/merge upstream）必须保留该提交的改动，不得
+          被上游版本覆盖。** 若上游后续自行实现了等价机制，再删除本地版本
+          并记录于此。
+      14  
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line, removed 1 line
+      16  
+      17  1. 本地 clone（本仓库）— 编辑处
+      18  2. fork 远端 `IpiggyI/fable-advisor` — 持久化处
+      19 -3. **生效处**：`~/.claude/plugins/cache/fable-advisor/fable-adv
+         -isor/2.1.0/`（目录名仍是 `2.1.0`，内容已刷新为 3.1.0；换源重装 
+         -后目录名才会跟版本走）— 每次改动后需覆盖，或换源重装           
+      19 +3. **生效处**：`~/.claude/plugins/cache/fable-advisor/fable-adv
+         +isor/3.1.0/`（换源重装后目录名已跟版本走；旧 `2.1.0` 目录为残留
+         +）— 每次手工改动后需覆盖此目录，或经换源后 `/plugin` 重装      
+      20  
+      21  ## 遗留风险（截至 2026-07-08）
+      22  
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 2 lines, removed 2 lines
+      18  2. fork 远端 `IpiggyI/fable-advisor` — 持久化处
+      19  3. **生效处**：`~/.claude/plugins/cache/fable-advisor/fable-adv
+          isor/3.1.0/`（换源重装后目录名已跟版本走；旧 `2.1.0` 目录为残留
+          ）— 每次手工改动后需覆盖此目录，或经换源后 `/plugin` 重装
+      20  
+      21 -## 遗留风险（截至 2026-07-08）                                 
+      21 +## 部署源（2026-07-12：已切 fork，风险消除）                   
+      22  
+      23 -marketplace 源仍指向 `DannyMac180/fable-advisor`，`/plugin` 更 
+         -新会用上游版本覆盖 cache 补丁。修复命令：                      
+      23 +marketplace 源已切到 `IpiggyI/fable-advisor`（`known_marketplac
+         +es.json` 的 `fable-advisor.source.repo` = `IpiggyI/fable-adviso
+         +r`）。`/plugin` 更新此后从 fork 拉取，不再被上游覆盖——原「遗留 
+         +风险」已消除。当时的换源命令（留档）：                         
+      24  
+      25  ```
+      26  /plugin marketplace remove fable-advisor
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line
+      41  
+      42  ## fork 对上游的额外偏离（同步须保留）
+      43  
+      44 +- **CLI lane 无名派生护栏**（2026-07-12，提交 `43144a8`，已推 `
+         +origin/main` + cache 3.1.0）：`skills/orchestration/SKILL.md`  
+         +新增「Spawning the CLI lanes」节——codex/grok-implementer 禁传 `
+         +name`（否则落 `in_process_teammate` 通道、`tools` 白名单失效、W
+         +rite/Edit 复现导致静默自实现），implementer 豁免；channel-authe
+         +nticity 降级为兜底；lifecycle teammate 措辞绑定 `name`。`agents
+         +/codex-implementer.md`+`grok-implementer.md` 各补 spawn 契约（ 
+         +含 Write/Edit 即误派，自检上报）。上游无等价机制，rebase 冲突按
+         + fork 保留。详见 [07-12 任务](../tasks/2026-07/07-12-cli-lane-s
+         +pawn-guardrail/what.md)。                                      
+      45  - **`agents/implementer.md` in-house 兜底 lane**（2026-07-11，
+          提交 `e8e1c9d`，已推 `origin/main`）：上游 v3.0.0 删除了 Sonnet
+          /Opus 的 `implementer` agent（Grok 成默认 lane），导致未装 Grok
+          /Codex CLI 时插件无可用实现 lane（orchestration 只含糊说「用 Cl
+          aude subagent」）。fork 恢复该文件并**重构定位为兜底**：五段 sp
+          ec + 报告契约不变，Sonnet 默认 / `model="opus"` 高风险，明确写
+          出权衡（与 architect 同族→无跨厂复审，仅在两条 CLI lane 都不可
+          用时走）。orchestration SKILL lanes 表新增「Fallback」行、「bot
+          h CLI unavailable」规则改为路由到 `implementer`。下次 rebase 上
+          游若重新引入等价 in-house lane，则删本地版本并记录；否则保留。
+      46  - **`agents/codex-implementer.md` 推理档位策略**（2026-07-10，
+          提交 `32b0e0c`/`2063b55`，已推 `origin/main`；cache 也已同步）
+          ：上游写死 `-c model_reasoning_effort=high`；fork 改为「high 为
+           floor（不得更低，低于 high 的请求一律按 high），复杂任务 calle
+          r 可在 spec 指定升到 `xhigh`（codex 顶格）」。改了三处：descrip
+          tion 括号、flag 表 `model_reasoning_effort` 行、model-override 
+          note 下新增一段。**codex 合法档位经 API 实测为 `none/minimal/lo
+          w/medium/high/xhigh`，无 `max`**（`codex exec -c model_reasonin
+          g_effort=__bogus__` 的报错枚举为证）。下次 rebase 上游若改动此
+          文件此处，须保留 fork 的 floor+xhigh 措辞。
+
+● 决策记录 5 处已改。补最后一处——在"同步记录"顶部加 2026-07-12 条目：
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line
+      36  
+      37  ## 同步记录
+      38  
+      39 +- **2026-07-12**：确认 marketplace 源已切至 `IpiggyI/fable-advi
+         +sor`（`known_marketplaces.json` 的 `fable-advisor.source.repo` 
+         +），上方原「遗留风险」消除——`/plugin` 更新此后从 fork 拉取。同 
+         +日新增 fork 提交 `43144a8`（CLI lane 无名派生护栏，见「额外偏离
+         +」与 [07-12 任务](../tasks/2026-07/07-12-cli-lane-spawn-guardra
+         +il/what.md)），已推 `origin/main` 并覆盖 cache 3.1.0。         
+      40  - **2026-07-11**：同步上游 `main` → `c5a1bf5`（上游唯一增量：`c
+          5a1bf5 Update README.md`，仅改 Attention Heads 订阅文案一句，零
+          冲突）。两个 fork 加固提交 rebase 重放：`4a9de29→40c0fc7`、`32b
+          0e0c→2063b55`。**同一会话内又新增第三个 fork 提交 `e8e1c9d`**：
+          恢复 `agents/implementer.md` 为 in-house 兜底 lane（Sonnet 默认
+           / Opus 升级，与 architect 同族、无跨厂复审），并把 `skills/orc
+          hestration/SKILL.md` lanes 表 + 「both CLI unavailable」规则、R
+          EADME lane 表/Requirements/v2-升级 FAQ、`plugin.json`/`marketpl
+          ace.json` 描述指向它——目的是让插件在未装 Grok/Codex CLI 时仍自
+          洽可用。已 force-with-lease 推 `origin/main`（`32b0e0c...e8e1c9
+          d`）。backup 分支 `backup/main-20260711-223840`。marketplace 源
+          仍指 `DannyMac180`（`known_marketplaces.json`）+ marketplaces 
+          克隆 remote 也是上游——遗留风险未消。
+      41  - **2026-07-10**：同步上游 `main` → `b3b50a9`（上游 v3.0.0 用 G
+          rok 4.5 换掉 Sonnet implementer lane + codex 升 GPT-5.6 Sol + R
+          EADME）。fork 加固 `c4f4f7a` rebase 重放为 `4a9de29`（纯新增 15
+           行）。唯一冲突 `skills/orchestration/SKILL.md`：上游**未**自带
+          等价加固（无 channel authenticity / SESSION 核验 / Subagent lif
+          ecycle），故按本决策**保留 fork 加固**，仅取上游把 "An implemen
+          ter" 泛化为 "A lane" 的措辞。`agents/codex-implementer.md` 自动
+          合并（上游 GPT-5.6 与 fork SESSION 加固并存）。已 force-with-le
+          ase 推 `origin/main`，cache 已刷新到 3.1.0。本次 sync 状态见本
+          机 `.git/sync-upstream-state.json`。marketplace 源仍指 `DannyMa
+          c180`（`known_marketplaces.json`）——下次 `/plugin` 更新仍会覆盖
+           cache，遗留风险未消。
+      42  
+
+● 决策记录修正完毕。现在改两个任务档里同样过期的条目。
+
+  07-08 任务（把源切换的 follow-up 标完成、line 26 更新为已切）：
+
+● Update(.memory/tasks/2026-07/07-08-harden-codex-lane/what.md)
+  ⎿  Added 1 line, removed 1 line
+      23  
+      24  - 本地 clone remote → `git@github.com:IpiggyI/fable-advisor.git
+          `（fork）；上游为 `DannyMac180/fable-advisor`，fork 领先上游一
+          个提交 `c4f4f7a`
+      25  - **实际生效副本**在 `~/.claude/plugins/cache/fable-advisor/fab
+          le-advisor/2.1.0/`，已手工同步
+      26 -- marketplace 源截至 2026-07-08 仍指向 DannyMac180 —— `/plugin`
+         - 更新会用上游版本覆盖 cache 补丁；换源命令见 [决策记录](../../.
+         -./decisions/upstream-sync-fork.md)                             
+      26 +- marketplace 源已于 2026-07-12 切到 `IpiggyI/fable-advisor`——`
+         +/plugin` 更新此后从 fork 拉取，不再覆盖 cache；详见 [决策记录](
+         +../../../decisions/upstream-sync-fork.md)                      
+      27  
+      28  ## 决策笔记
+      29  
+
+● Update(.memory/tasks/2026-07/07-08-harden-codex-lane/what.md)
+  ⎿  Added 1 line, removed 1 line
+      37  
+      38  ## 后续未做
+      39  
+      40 -- [ ] 在 Claude Code 中换 marketplace 源到 IpiggyI/fable-adviso
+         -r（防更新覆盖）                                                
+      40 +- [x] 换 marketplace 源到 `IpiggyI/fable-advisor`（防更新覆盖）
+         +— 2026-07-12 完成                                              
+      41  - [ ] 使用一段时间后向上游提 PR
+
+● Update(.memory/tasks/2026-07/07-08-harden-codex-lane/task.json)
+  ⎿  Removed 1 line
+      21    ],
+      22    "keywords": ["codex-implementer", "SESSION evidence", "channe
+          l authenticity", "upstream sync", "fork", "teammate lifecycle"]
+          ,
+      23    "follow_up": [
+      24 -    "在 Claude Code 中换 marketplace 源到 IpiggyI/fable-advisor
+         -（防更新覆盖 cache 补丁）",                                    
+      24      "使用一段时间后考虑向上游 DannyMac180/fable-advisor 提 PR"
+      25    ],
+      26    "ref": [],
+
+● 07-12 任务（把我刚写错的"源仍指上游"改成已切）：
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/what.md)
+  ⎿  Added 1 line, removed 1 line
+      57  ## 后续未做
+      58  
+      59  - [x] commit `43144a8` + push 到 fork `IpiggyI/fable-advisor`（
+          已持久到 fork）
+      60 -- [ ] 07-08 遗留依赖：marketplace 源仍指上游，下次插件更新会用 
+         -上游覆盖 cache（含本补丁）；须切源到 fork 才彻底防覆盖         
+      60 +- [x] marketplace 源已切 fork（2026-07-12 确认，`known_marketpl
+         +aces.json`）——插件更新从 fork 拉取，原覆盖风险消除             
+      61  - [ ] 考虑把"CLI lane 无名派生"提炼为 `.memory/decisions/` 条目
+          并加 recall
+      62  
+      63  ## 附件
+
+● Update(.memory/tasks/2026-07/07-12-cli-lane-spawn-guardrail/task.json)
+  ⎿  Added 1 line, removed 2 lines
+      22    ],
+      23    "keywords": ["spawn", "name 参数", "in_process_teammate", "lo
+          cal_agent", "tools 白名单", "护栏失效", "codex-implementer", "g
+          rok-implementer", "通道顶替", "AgentInput"],
+      24    "follow_up": [
+      25 -    "（可选）把 CLI lane 无名派生提炼为 .memory/decisions/ 独立
+         -决策条目",                                                     
+      26 -    "07-08 遗留依赖：把 marketplace 源切到 IpiggyI/fable-adviso
+         -r，否则插件更新仍会用上游覆盖 cache（含本次补丁）"             
+      25 +    "（可选）把 CLI lane 无名派生提炼为 .memory/decisions/ 独立
+         +决策条目"                                                      
+      26    ],
+      27    "ref": ["07-08-harden-codex-lane"],
+      28    "attachments": ["investigation.md"]
+
+● 全部改完。做最后一遍核验——grep 整个 .memory/ 面，确认没有遗漏的"源仍指上游 /
+  遗留风险未消"过期声明（决策记录里两条带日期的历史同步记录属于变更日志、按惯例
+  保留原状，只要当前状态段已更正即可）。
+
+● Bash(cd /home/hyy/develop/personal/GitHub/fable-advisor
+      echo "=== 残留的过期声明扫描（仍指上游/未消/待切源）==="…)
+  ⎿  === 残留的过期声明扫描（仍指上游/未消/待切源）===
+     .memory/decisions/upstream-sync-fork.md:40:- **2026-07-11**：同步上游
+     `main` → `c5a1bf5`（上游唯一增量：`c5a1bf5 Update README.md`，仅改 Att
+     … +33 lines (ctrl+o to expand)
+
+● 仅剩的两条在决策记录 line 40/41——是带日期的历史同步记录（07-11 /
+  07-10），属变更日志。不过它们尾部的"遗留风险未消"读起来像仍未决，我给这两条各
+  加一个内联解决标记，既不篡改历史又消除歧义：
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line, removed 1 line
+      37  ## 同步记录
+      38  
+      39  - **2026-07-12**：确认 marketplace 源已切至 `IpiggyI/fable-advi
+          sor`（`known_marketplaces.json` 的 `fable-advisor.source.repo`
+          ），上方原「遗留风险」消除——`/plugin` 更新此后从 fork 拉取。同
+          日新增 fork 提交 `43144a8`（CLI lane 无名派生护栏，见「额外偏离
+          」与 [07-12 任务](../tasks/2026-07/07-12-cli-lane-spawn-guardra
+          il/what.md)），已推 `origin/main` 并覆盖 cache 3.1.0。
+      40 -- **2026-07-11**：同步上游 `main` → `c5a1bf5`（上游唯一增量：`c
+         -5a1bf5 Update README.md`，仅改 Attention Heads 订阅文案一句，零
+         -冲突）。两个 fork 加固提交 rebase 重放：`4a9de29→40c0fc7`、`32b
+         -0e0c→2063b55`。**同一会话内又新增第三个 fork 提交 `e8e1c9d`**：
+         -恢复 `agents/implementer.md` 为 in-house 兜底 lane（Sonnet 默认
+         - / Opus 升级，与 architect 同族、无跨厂复审），并把 `skills/orc
+         -hestration/SKILL.md` lanes 表 + 「both CLI unavailable」规则、R
+         -EADME lane 表/Requirements/v2-升级 FAQ、`plugin.json`/`marketpl
+         -ace.json` 描述指向它——目的是让插件在未装 Grok/Codex CLI 时仍自 
+         -洽可用。已 force-with-lease 推 `origin/main`（`32b0e0c...e8e1c9
+         -d`）。backup 分支 `backup/main-20260711-223840`。marketplace 源
+         -仍指 `DannyMac180`（`known_marketplaces.json`）+ marketplaces  
+         -克隆 remote 也是上游——遗留风险未消。                           
+      40 +- **2026-07-11**：同步上游 `main` → `c5a1bf5`（上游唯一增量：`c
+         +5a1bf5 Update README.md`，仅改 Attention Heads 订阅文案一句，零
+         +冲突）。两个 fork 加固提交 rebase 重放：`4a9de29→40c0fc7`、`32b
+         +0e0c→2063b55`。**同一会话内又新增第三个 fork 提交 `e8e1c9d`**：
+         +恢复 `agents/implementer.md` 为 in-house 兜底 lane（Sonnet 默认
+         + / Opus 升级，与 architect 同族、无跨厂复审），并把 `skills/orc
+         +hestration/SKILL.md` lanes 表 + 「both CLI unavailable」规则、R
+         +EADME lane 表/Requirements/v2-升级 FAQ、`plugin.json`/`marketpl
+         +ace.json` 描述指向它——目的是让插件在未装 Grok/Codex CLI 时仍自 
+         +洽可用。已 force-with-lease 推 `origin/main`（`32b0e0c...e8e1c9
+         +d`）。backup 分支 `backup/main-20260711-223840`。marketplace 源
+         +仍指 `DannyMac180`（`known_marketplaces.json`）+ marketplaces  
+         +克隆 remote 也是上游——遗留风险未消（**2026-07-12 已切源解决，见
+         +上方「部署源」**）。                                           
+      41  - **2026-07-10**：同步上游 `main` → `b3b50a9`（上游 v3.0.0 用 G
+          rok 4.5 换掉 Sonnet implementer lane + codex 升 GPT-5.6 Sol + R
+          EADME）。fork 加固 `c4f4f7a` rebase 重放为 `4a9de29`（纯新增 15
+           行）。唯一冲突 `skills/orchestration/SKILL.md`：上游**未**自带
+          等价加固（无 channel authenticity / SESSION 核验 / Subagent lif
+          ecycle），故按本决策**保留 fork 加固**，仅取上游把 "An implemen
+          ter" 泛化为 "A lane" 的措辞。`agents/codex-implementer.md` 自动
+          合并（上游 GPT-5.6 与 fork SESSION 加固并存）。已 force-with-le
+          ase 推 `origin/main`，cache 已刷新到 3.1.0。本次 sync 状态见本
+          机 `.git/sync-upstream-state.json`。marketplace 源仍指 `DannyMa
+          c180`（`known_marketplaces.json`）——下次 `/plugin` 更新仍会覆盖
+           cache，遗留风险未消。
+      42  
+      43  ## fork 对上游的额外偏离（同步须保留）
+
+● Update(.memory/decisions/upstream-sync-fork.md)
+  ⎿  Added 1 line, removed 1 line
+      38  
+      39  - **2026-07-12**：确认 marketplace 源已切至 `IpiggyI/fable-advi
+          sor`（`known_marketplaces.json` 的 `fable-advisor.source.repo`
+          ），上方原「遗留风险」消除——`/plugin` 更新此后从 fork 拉取。同
+          日新增 fork 提交 `43144a8`（CLI lane 无名派生护栏，见「额外偏离
+          」与 [07-12 任务](../tasks/2026-07/07-12-cli-lane-spawn-guardra
+          il/what.md)），已推 `origin/main` 并覆盖 cache 3.1.0。
+      40  - **2026-07-11**：同步上游 `main` → `c5a1bf5`（上游唯一增量：`c
+          5a1bf5 Update README.md`，仅改 Attention Heads 订阅文案一句，零
+          冲突）。两个 fork 加固提交 rebase 重放：`4a9de29→40c0fc7`、`32b
+          0e0c→2063b55`。**同一会话内又新增第三个 fork 提交 `e8e1c9d`**：
+          恢复 `agents/implementer.md` 为 in-house 兜底 lane（Sonnet 默认
+           / Opus 升级，与 architect 同族、无跨厂复审），并把 `skills/orc
+          hestration/SKILL.md` lanes 表 + 「both CLI unavailable」规则、R
+          EADME lane 表/Requirements/v2-升级 FAQ、`plugin.json`/`marketpl
+          ace.json` 描述指向它——目的是让插件在未装 Grok/Codex CLI 时仍自
+          洽可用。已 force-with-lease 推 `origin/main`（`32b0e0c...e8e1c9
+          d`）。backup 分支 `backup/main-20260711-223840`。marketplace 源
+          仍指 `DannyMac180`（`known_marketplaces.json`）+ marketplaces 
+          克隆 remote 也是上游——遗留风险未消（**2026-07-12 已切源解决，见
+          上方「部署源」**）。
+      41 -- **2026-07-10**：同步上游 `main` → `b3b50a9`（上游 v3.0.0 用 G
+         -rok 4.5 换掉 Sonnet implementer lane + codex 升 GPT-5.6 Sol + R
+         -EADME）。fork 加固 `c4f4f7a` rebase 重放为 `4a9de29`（纯新增 15
+         - 行）。唯一冲突 `skills/orchestration/SKILL.md`：上游**未**自带
+         -等价加固（无 channel authenticity / SESSION 核验 / Subagent lif
+         -ecycle），故按本决策**保留 fork 加固**，仅取上游把 "An implemen
+         -ter" 泛化为 "A lane" 的措辞。`agents/codex-implementer.md` 自动
+         -合并（上游 GPT-5.6 与 fork SESSION 加固并存）。已 force-with-le
+         -ase 推 `origin/main`，cache 已刷新到 3.1.0。本次 sync 状态见本 
+         -机 `.git/sync-upstream-state.json`。marketplace 源仍指 `DannyMa
+         -c180`（`known_marketplaces.json`）——下次 `/plugin` 更新仍会覆盖
+         - cache，遗留风险未消。                                         
+      41 +- **2026-07-10**：同步上游 `main` → `b3b50a9`（上游 v3.0.0 用 G
+         +rok 4.5 换掉 Sonnet implementer lane + codex 升 GPT-5.6 Sol + R
+         +EADME）。fork 加固 `c4f4f7a` rebase 重放为 `4a9de29`（纯新增 15
+         + 行）。唯一冲突 `skills/orchestration/SKILL.md`：上游**未**自带
+         +等价加固（无 channel authenticity / SESSION 核验 / Subagent lif
+         +ecycle），故按本决策**保留 fork 加固**，仅取上游把 "An implemen
+         +ter" 泛化为 "A lane" 的措辞。`agents/codex-implementer.md` 自动
+         +合并（上游 GPT-5.6 与 fork SESSION 加固并存）。已 force-with-le
+         +ase 推 `origin/main`，cache 已刷新到 3.1.0。本次 sync 状态见本 
+         +机 `.git/sync-upstream-state.json`。marketplace 源仍指 `DannyMa
+         +c180`（`known_marketplaces.json`）——下次 `/plugin` 更新仍会覆盖
+         + cache，遗留风险未消（**2026-07-12 已切源解决，见上方「部署源」
+         +**）。                                                         
+      42  
+      43  ## fork 对上游的额外偏离（同步须保留）
+      44  
+
+● [验证] 记忆更正完成。源已切 fork 这条事实散在三个文件，全部翻正：
+
+  .memory/decisions/upstream-sync-fork.md（规范归宿）
+  - 「遗留风险（截至 07-08）」→ 「部署源（07-12：已切 
+  fork，风险消除）」，附实际源证据 known_marketplaces.json.source.repo = 
+  IpiggyI/fable-advisor
+  - 部署链生效目录 2.1.0 → 3.1.0（换源重装后目录名已跟版本）
+  - fork 领先上游 三个→四个 提交，把我推的 43144a8 登进「须保留」清单 +
+  「额外偏离」加一条（防下次 rebase 丢失）
+  - 新增 07-12 同步记录；两条 07-11/07-10
+  历史日志尾部内联标注「已切源解决」（不篡改历史）
+
+  07-08 任务：「换源」follow-up 勾完成、line 26 改为已切、task.json follow_up
+  移除该项
+  07-12 任务：我上一轮写错的「源仍指上游」→ 改为「已切 fork」，task.json
+  follow_up 同步清理
+
+  核验：grep 全 .memory/ 无残留的当前态过期声明（只剩两条带日期、且已标注解决的
+  变更日志）；权威配置确认源=fork。
+
+  一个连带结论
+
+  源=fork 后，我之前那句残留风险——「插件更新会用上游覆盖
+  cache」——不再成立：/plugin 更新此后从 fork 拉取，而 fork 已含
+  43144a8。所以这次 doctrine 改动现在是经正规通道持久的，手工覆盖 cache
+  只是让它即时生效。
+
+  本轮是纯记忆修订（.memory/ 已 gitignore，不进 git，无需提交）。
+
+✻ Cogitated for 6m 17s
+
+※ recap: Fixed the fable-advisor bug where codex/grok implementer lanes silently self-implemented; the no-name spawn guardrail is committed to the fork and live. All done and memory updated. Next: optionally promote the doctrine to a .memory/decisions entry if you want. (disable recaps in /config)

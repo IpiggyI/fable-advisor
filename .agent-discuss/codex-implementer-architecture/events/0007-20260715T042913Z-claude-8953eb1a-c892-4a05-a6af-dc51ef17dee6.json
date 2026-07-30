@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "seq": 7,
+  "event_id": "8953eb1a-c892-4a05-a6af-dc51ef17dee6",
+  "type": "user_relayed",
+  "actor": "claude",
+  "created_at": "2026-07-15T04:29:13Z",
+  "refs": {
+    "source": "user-relayed"
+  },
+  "data": {}
+}

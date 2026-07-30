@@ -1,0 +1,26 @@
+{
+  "version": 3,
+  "seq": 10,
+  "event_id": "ab37a50e-f0fb-4028-a24d-67a32607b920",
+  "type": "comparison_started",
+  "actor": "claude",
+  "created_at": "2026-07-15T04:29:20Z",
+  "refs": {
+    "publications": [
+      "claude-001",
+      "codex-001",
+      "claude-003",
+      "codex-002",
+      "claude-004"
+    ],
+    "request_refs": [
+      "sha256:bc8fac427bb1322b93f6b3dcd6fa28c2a697f7b3140e9784887c029fa9b9d6f9",
+      "sha256:bc8fac427bb1322b93f6b3dcd6fa28c2a697f7b3140e9784887c029fa9b9d6f9",
+      "sha256:bc8fac427bb1322b93f6b3dcd6fa28c2a697f7b3140e9784887c029fa9b9d6f9",
+      "sha256:bc8fac427bb1322b93f6b3dcd6fa28c2a697f7b3140e9784887c029fa9b9d6f9",
+      "sha256:bc8fac427bb1322b93f6b3dcd6fa28c2a697f7b3140e9784887c029fa9b9d6f9"
+    ],
+    "mixed": false
+  },
+  "data": {}
+}

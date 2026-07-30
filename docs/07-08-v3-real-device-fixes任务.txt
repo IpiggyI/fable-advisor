@@ -1,0 +1,564 @@
+ ▐▛███▜▌   Claude Code v2.1.202
+▝▜█████▛▘  Fable 5 · Claude Pro
+  ▘▘ ▝▝    ~/develop/personal/GitHub/Linux-Do-read-later
+
+
+❯ /effort medium                                                                
+  ⎿  Set effort level to medium (saved as your default for new sessions):
+     Balanced approach with standard implementation and testing
+
+❯ /trellis:continue                                                             
+开始07-08-v3-real-device-fixes任务，你作为架构师，具体的实现交给Codex           
+
+● [理解] Trellis SessionStart 上下文已加载。开始 07-08-v3-real-device-fixes
+  任务，我作为架构师，实现委派给 Codex。先加载当前上下文和任务状态。
+
+● Bash(python3 ./.trellis/scripts/get_context.py && python3
+      ./.trellis/scripts/task.py list --mine)
+  ⎿  ========================================
+     SESSION CONTEXT
+     ========================================
+     … +77 lines (ctrl+o to expand)
+
+  Read 3 files, listed 2 directories (ctrl+o to expand)
+
+● Bash(python3 ./.trellis/scripts/task.py start 07-08-v3-real-device-fixes)
+  ⎿  ✓ Current task set to: .trellis/tasks/07-08-v3-real-device-fixes
+     Source: session:claude_dfebdf96-83b4-4b7d-9da0-f7c89392e845
+     ✓ Status: planning → in_progress
+     … +2 lines (ctrl+o to expand)
+
+● 任务已激活（in_progress）。派发批次 A 给 Codex（同一单文件，各批次必须串行）。
+
+  Listed 1 directory (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(批次A：抽屉布局+响应式)
+
+● [执行] 任务已激活为 in_progress，批次 A（抽屉 flex 布局 + 工具栏/底栏响应式 +
+  抽屉可拖宽）已派发给 Codex 实现通道，正在后台执行。
+
+  由于四个批次都改同一个单文件 Linux.do 稍后再看.user.js，必须串行：批次 A
+  完成并经我核验 diff 后，再依次派发批次 B（删除/导出双语义 +
+  自定义确认弹窗）、C（迁移菜单 fixed + 入口按钮拖拽）、D（R9 增补 + focused
+  验证）。Codex 完成后我会读 diff、跑 node --check 复核再继续。
+
+
+● Teammate @codex-batch-a finished
+
+● 批次 A 的 Codex 通道已空闲。直接核验工作区证据（diff + 语法检查）。
+
+● Bash(git diff --stat && node --check "Linux.do 稍后再看.user.js" && echo
+      "SYNTAX OK")
+  ⎿   .claude/settings.local.json                        |  54 +--------
+      CLAUDE.md                                          |  18 ++-
+      ...15\345\220\216\345\206\215\347\234\213.user.js" | 135 ++++++++++++
+     … +3 lines (ctrl+o to expand)
+
+● Bash(git diff "Linux.do 稍后再看.user.js")
+  ⎿  diff --git "a/Linux.do \347\250\215\345\220\216\345\206\215\347\234\21
+     3.user.js" "b/Linux.do \347\250\215\345\220\216\345\206\215\347\234\21
+     3.user.js"
+     … +263 lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+❯ 怎么看起来是起了一个名为codex-batch-a的子代理在编辑而不是调用Codex呢          
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(find ~/.codex/sessions/2026 -name "*.jsonl" -newermt "2026-07-08 14:30"
+      2>/dev/null | head; date)
+  ⎿  /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T14-53-08-019f4
+     080-7473-7d00-8b38-55f8bfae6081.jsonl
+     /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T14-37-00-019f4
+     … +2 lines (ctrl+o to expand)
+
+● Bash(for f in
+      /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T14-53-08-*.jsonl
+      /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T14-37-00-*.jsonl;
+      do e…)
+  ⎿  Error: Exit code 1
+     == /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T14-53-08-019f408
+     0-7473-7d00-8b38-55f8bfae6081.jsonl
+     {"timestamp":"2026-07-08T06:54:04.667Z","type":"session_meta","payload":{"s
+     ession_id":"019f4080-7473-7d00-8b38-55f8bfae6081","id":"019f4080-7473-7d00-
+     8b38-55f8bfae6081","timestamp":"2026-07-08T06:53:08.083Z","cwd":"/home/hyy/
+     develop/personal/agile","originator":"codex-tui","cli_version":"0.142.5","s
+     ource":"cli","thread_source":"user","model_provider":"official","base_instr
+     uctions":{"text":"You are Codex, a coding agent based on GPT-5. You and the
+     user share one workspace, and your job is to collaborate with them until 
+     their goal is genuinely handled.\n\n# Personality\n\nYou are a deeply 
+     pragma
+     0
+     == /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T14-37-00-019f407
+     1-afbe-7e50-82f8-7aa92ae7ce35.jsonl
+     {"timestamp":"2026-07-08T06:37:20.730Z","type":"session_meta","payload":{"s
+     ession_id":"019f4071-afbe-7e50-82f8-7aa92ae7ce35","id":"019f4071-afbe-7e50-
+     82f8-7aa92ae7ce35","timestamp":"2026-07-08T06:37:00.228Z","cwd":"/home/hyy/
+     develop/personal/GitHub/ccflare","originator":"codex-tui","cli_version":"0.
+     142.5","source":"cli","thread_source":"user","model_provider":"official","b
+     ase_instructions":{"text":"You are Codex, a coding agent based on GPT-5. 
+     You and the user share one workspace, and your job is to collaborate with 
+     them until their goal is genuinely handled.\n\n# Personality\n\nYou are a 
+     deep
+     0
+
+● User answered Claude's questions:
+  ⎿  · 批次 A 的改动（Claude 子代理所写、已核验合格）如何处理？ → 保留（推荐）
+     · 后续批次 B/C/D 用什么方式保证真正调用 Codex？ → 
+     派给codex-implementer子代理，注意要真实去调用Codex
+
+  Recalled 1 memory, wrote 3 memories (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(批次B：双语义+确认弹窗)
+
+● [执行] 处理完毕，当前状态汇总：
+
+  椰椰疑问的答案：你的观察属实。codex-batch-a 是 codex-implementer
+  包装代理，本应通过 codex exec 驱动 Codex 写码，但它违规自己用 Bash
+  写了改动——~/.codex/sessions 中没有任何指向本仓库的 Codex 会话，证据确凿。
+
+  按你的决定已执行：
+  1. 批次 A（抽屉布局/响应式/拖宽）保留——diff 我已逐行核验合格，node --check
+  通过；
+  2. 教训已写入持久记忆（派发 codex-implementer 必须强制 session 证据核验）；
+  3. 批次 B（删除/导出双语义 +
+  自定义确认弹窗）已重新派发，提示词中加入硬性通道要求：禁止自行编辑、必须汇报
+  codex exec 命令行与 session id，完成后我会对照 ~/.codex/sessions 核验 cwd
+  指向本仓库，发现顶替直接打回重做。
+
+  批次 B 完成通知到达后，我会先核验 Codex 会话真实性，再读 diff
+  验收，然后依次派发批次 C（迁移菜单 + 入口按钮）和 D（R9 增补 + focused
+  验证）。
+
+
+› Message from @codex-batch-a (ctrl+o to expand)
+
+● Teammate @codex-batch-a finished
+
+● 批次 A 代理已如实自述，与我此前的核验结论一致：全程未调用
+  Codex，改动由它自己用 Read/Edit 直接完成。它的辩解是派发提示词没有显式强制
+  codex exec 通道——这个漏洞在批次 B 的提示词里已经补上（硬性要求 + session id
+  汇报 + 打回条款）。
+
+  无需新动作：批次 A
+  按你的决定保留（代码本身已核验合格），该代理不再有后续任务。当前批次 B
+  正在执行中，完成通知到达后我会先对照 ~/.codex/sessions 核验 Codex
+  会话真实性（cwd 必须指向本仓库），再逐行验收 diff。
+
+
+› Message from @codex-batch-b (ctrl+o to expand)
+
+● 批次 B 汇报到达。按流程先核验 Codex 会话真实性，再独立复核 diff 证据。
+
+● Bash(f=~/.codex/sessions/2026/07/08/rollout-2026-07-08T15-19-59-019f4099-0957-
+      7c13-b8a9-d17e0164f95d.jsonl; ls -la "$f" && head -c 400 "$f" | grep -o
+      '"cwd":"[^"]*"'…)
+  ⎿  -rw-r--r-- 1 hyy hyy 595415 Jul  8 15:27 /home/hyy/.codex/sessions/202
+     6/07/08/rollout-2026-07-08T15-19-59-019f4099-0957-7c13-b8a9-d17e0164f9
+     5d.jsonl
+     … +2 lines (ctrl+o to expand)
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; rg -n
+      "清空全部|clearAllReadLater" "Linux.do 稍后再看.user.js"; echo
+      "---confirm---"; rg -n "confirm\(" "Linux.d…)
+  ⎿  SYNTAX_OK
+     ---confirm---
+     5232:        if (confirm('确定要重置所有同步设置吗？这将清除所有同步配
+     … +8 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(批次C：迁移菜单+入口按钮)
+● [验证] 批次 B 验收完成，批次 C 已派发。
+
+  批次 B 核验结论（全部通过）：
+  - 通道真实性：Codex 会话文件存在，cwd 指向本仓库，595KB
+  完整执行记录——这次是真正的 Codex 写的。
+  - 语义正确性（我独立抽查了代码）：getVisibleTabItems()/getOperationTargets()
+  严格实现"勾选集 ∩ 可见集 > 可见集"契约；deleteScopeReadLater() 走确认弹窗 →
+  deleteItems() tombstone 路径，未旁路同步；导出三入口（生成/下载/复制）统一接
+  scopeItems，弹窗文案精确区分"所选/搜索结果/当前可见"三种范围。
+  - 验收 grep：清空全部 0 处、clearAllReadLater 旧路径 0 处、confirm( 仅剩
+  resetSync 1 处（留给批次 D 的 R9.5）、语法检查通过。
+  - 附带收益：Codex 顺手实现了
+  pruneSelectedIdsToVisible()（搜索变化时收敛选中集），这本是批次 D 的
+  R9.1，届时只需复核不需重做。
+
+  批次 C（迁移菜单 fixed 定位 + 入口按钮 56px/拖拽持久化/角标去 99+
+  上限）已带同样的硬性 Codex 通道要求派发，完成后同流程核验。剩余批次 D：R9
+  增补（标题排序兜底、跨标签 normalize、resetSync 弹窗、HTML 导出去 emoji）+
+  focused 全量验证。
+
+
+● Teammate @codex-batch-b finished
+
+● 批次 B 通道已空闲（其工作早已验收完毕），无需动作。当前批次 C
+  正在执行中，等待其完成通知后按同流程核验（Codex 会话真实性 → diff
+  验收），再派发最后的批次 D。
+
+
+● Teammate @codex-batch-c finished
+
+● 批次 C 空闲但未发汇报。先自行核验证据，同时索要结构化汇报。
+
+● Bash(find ~/.codex/sessions/2026/07/08 -name "*.jsonl" -newermt "2026-07-08
+      15:28" | while read f; do echo "== $f"; head -c 300 "$f" | grep -o
+      '"cwd":"[^"]*"'; done;…)
+  ⎿  == /home/hyy/.codex/sessions/2026/07/08/rollout-2026-07-08T15-31-51-01
+     9f40a3-e85f-75f1-9156-bba97c0e3515.jsonl
+     "cwd":"/home/hyy/develop/personal/GitHub/Linux-Do-read-later"
+     … +3 lines (ctrl+o to expand)
+
+  Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(批次D：R9增补+全量验证)
+
+● [执行] 批次 C 验收通过，批次 D（最后一批）已派发。
+
+  批次 C 核验结论：
+  - 通道真实性：15:31 的 Codex 会话 cwd 指向本仓库，真实调用。
+  - 代码抽查（关键点均合格）：迁移菜单改 position:fixed，用
+  getBoundingClientRect() + innerWidth/innerHeight
+  做右/下边缘翻转和左/上夹紧，scrollX/scrollY
+  全文清零——打开菜单不会再撑大页面滚动范围；入口按钮 56px、默认 top:96px; 
+  right:20px，拖拽用 5px 阈值区分点击（consumeDidDrag()
+  模式屏蔽拖后误触开抽屉），位置持久化到 rlEntryPosition 且恢复时和窗口 resize
+  时都走 clampEntryPosition()；角标 99+ 上限已移除；抽屉本体未加拖拽。
+  - 验收 grep：99+ 0 处、scrollX|scrollY 0 处、语法通过。
+
+  批次 D 正在执行，内容：R9.2 HTML 导出去 📚、R9.3 按标题排序空值兜底 +
+  导入/normalize 层 title 兜底、R9.4 跨标签同步走 map(normalizeItem)、R9.5
+  resetSync 换自定义弹窗（复用批次 B 的 showConfirmModal），外加复核 R9.1
+  搜索过滤全选是否已被批次 B 完整覆盖，最后跑全量 focused
+  验证。完成后我会做同样的会话核验 + 独立复跑全部验收
+  grep，然后向你汇报整个任务的验收结果。
+
+
+› Message from @codex-batch-c (ctrl+o to expand)
+
+● Teammate @codex-batch-c finished
+
+● 批次 C 的补交汇报与我此前的独立核验完全吻合（同一 Codex 会话、同样的 grep
+  结果、改动范围未越界），无新增事项。当前等待批次 D（R9 增补 +
+  全量验证）完成，届时进行最终核验并向你汇报整个任务的验收结果。
+
+
+› Message from @codex-batch-d (ctrl+o to expand)
+
+● 批次 D 汇报到达。做最终独立核验（会话真实性 + 全量验收 grep + 关键 diff
+  抽查）。
+
+● Bash(f=~/.codex/sessions/2026/07/08/rollout-2026-07-08T15-40-36-019f40ab-e98d-
+      7d31-843d-3a513318f679.jsonl; ls -la "$f" && head -c 300 "$f" | grep -o
+      '"cwd":"[^"]*"'…)
+  ⎿  -rw-r--r-- 1 hyy hyy 342242 Jul  8 15:43 /home/hyy/.codex/sessions/202
+     6/07/08/rollout-2026-07-08T15-40-36-019f40ab-e98d-7d31-843d-3a513318f6
+     79.jsonl
+     … +24 lines (ctrl+o to expand)
+
+● Bash(sed -n '5355,5380p' "Linux.do 稍后再看.user.js"; echo "---diff stat---";
+      git diff --stat "Linux.do 稍后再看.user.js")
+  ⎿              throw new Error(`Supabase 错误: ${response.status} ${respo
+     nse.statusText}`);
+             }
+     … +26 lines (ctrl+o to expand)
+
+● [验证] 四个批次全部完成并验收，07-08-v3-real-device-fixes 的代码实现阶段收工。
+
+  批次 D 最终核验（全部通过）：
+  - 通道真实性：Codex 会话 cwd 指向本仓库，342KB 执行记录。
+  - R9.2：📚 清零；R9.3：标题排序 (a.title || '') 兜底 + normalizeItem() 层
+  title 强制字符串化（加载/导入共用入口，一处覆盖两侧）；R9.4：跨标签同步已走
+  map(normalizeItem)，与加载路径一致；R9.5：resetSync() 已换
+  showConfirmModal，全文原生 confirm( 0 处。
+  - R9.1 复核确认批次 B 已完整覆盖（搜索输入与清除两条路径都经 updateList() →
+  pruneSelectedIdsToVisible()），无缺口。
+
+  任务总览（单文件 +501/−142 行，全部经真实 Codex 会话产出、我逐批独立核验）：
+
+  ┌─────┬─────────────────────────────────────────────┬─────────────────────┐
+  │ 批  │                    内容                     │        状态         │
+  │ 次  │                                             │                     │
+  ├─────┼─────────────────────────────────────────────┼─────────────────────┤
+  │ A   │ 抽屉 flex                                   │ ✅（Claude 所写，椰 │
+  │     │ 布局、工具栏/底栏响应式、抽屉拖宽持久化     │ 椰已裁定保留）      │
+  ├─────┼─────────────────────────────────────────────┼─────────────────────┤
+  │ B   │ 删除/导出双语义、确认弹窗、底栏两态、清空全 │ ✅ Codex            │
+  │     │ 部移除                                      │                     │
+  ├─────┼─────────────────────────────────────────────┼─────────────────────┤
+  │ C   │ 迁移菜单 fixed、入口 56px/拖拽/角标去上限   │ ✅ Codex            │
+  ├─────┼─────────────────────────────────────────────┼─────────────────────┤
+  │ D   │ R9 增补 + 全量静态验证                      │ ✅ Codex            │
+  └─────┴─────────────────────────────────────────────┴─────────────────────┘
+
+  静态验收项全绿：语法通过、confirm(/📚/99+/清空全部 均 0 处、作用域 helper
+  接线完整。
+
+  残余风险：PRD 验收标准中约一半是实机项（100+ 条滚动、420/520/720px
+  排版、勾选后批量底栏可见性 R4
+  实机核实项、拖拽手感、迁移菜单无横向滚动条等），静态检查无法替代——需要你在
+  Tampermonkey 装载后按 docs/实机测试结果.md
+  范围条目（1-4、6-11、13、14）回归。另注意 @version 尚未递增（属 Finish
+  阶段动作）。
+
+  [需确认] 下一步走 Trellis Finish 阶段（3.3 spec 沉淀 + 3.4
+  提交）前，建议你先实机回归。你可以选择：① 先实机测试，有问题回来继续修；②
+  直接进入 Finish（我沉淀 spec 并起草 commit message，提交仍由你确认）。
+
+
+● Teammate @codex-batch-d finished
+● 批次 D 通道空闲通知，其工作已验收完毕，无需动作。
+
+  当前状态不变：四批次代码全部完成、静态验收全绿，等待椰椰决定下一步——①
+  先实机回归（推荐，PRD 约一半验收项依赖浏览器实测），或 ② 直接进入 Finish
+  阶段（spec 沉淀 + 起草提交）。
+
+❯ 实机验收通过，可以收尾                                                        
+
+● [执行] 收到，实机验收通过。进入 Finish 阶段：递增 @version → 3.3 spec
+  沉淀（trellis-update-spec）→ 3.4 提交 → finish-work 归档。先看当前版本头。
+
+● Bash(head -20 "Linux.do 稍后再看.user.js" | grep -n "@version"; git log
+      --oneline -3)
+  ⎿  4:// @version      3.0.0
+     d048c7d docs: 沉淀抽屉与设计 token 契约到 frontend spec
+     25f73cc feat: 阶段五 UI 抽屉重设计（v3.0.0 收版：抽屉迁移/SVG图标/设计
+     … +2 lines (ctrl+o to expand)
+
+● Update(Linux.do 稍后再看.user.js)
+  ⎿  Error editing file
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(Linux.do 稍后再看.user.js)
+  ⎿  Added 1 line, removed 1 line
+      1  // ==UserScript==
+      2  // @name         Linux.do 稍后再看
+      3  // @namespace    http://tampermonkey.net/
+      4 -// @version      3.0.0                                          
+      4 +// @version      3.0.1                                          
+      5  // @description  为 Linux.do 论坛添加稍后再看功能 - 支持帖子详情
+         页添加、精简UI、按钮生命周期优化、树形视图兼容
+      6  // @author       HeYeYe (Supabase优化版)
+      7  // @match        https://linux.do/*
+
+● Skill(trellis-update-spec)
+  ⎿  Successfully loaded skill
+
+  Searched for 2 patterns, read 1 file, listed 1 directory (ctrl+o to expand)
+
+● Bash(rg -n "makeDraggable|buttonPosition" "Linux.do 稍后再看.user.js" | head;
+      echo ---; sed -n '37,60p' .trellis/spec/frontend/state-management.md)
+  ⎿  ---
+     ## 持久化 / 服务端状态
+     … +13 lines (ctrl+o to expand)
+
+● Update(.trellis/spec/frontend/component-guidelines.md)
+  ⎿  Added 1 line, removed 1 line
+      30  ## 浮动面板（v3 渲染架构：骨架常驻 + 局部更新）
+      31  
+      32  - `createFloatingButton()` 创建入口按钮，`togglePanel()` 开关面
+          板。
+      33 -- 可拖拽：`makeDraggable(element)`，位置持久化到 `buttonPositio
+         -n`。                                                           
+      33 +- 入口可拖拽：`setupEntryDrag(container)`，位置持久化到 `rlEntr
+         +yPosition`（见下方"作用域与交互契约"）。                       
+      34  
+      35  ### 渲染契约（阶段二重构后，必须遵守）
+      36  
+
+● Update(.trellis/spec/frontend/component-guidelines.md)
+  ⎿  Added 9 lines
+      70  - `searchQuery` 是**内存态**（不持久化，Tab 切换保留）；toolbar
+           由 `updatePanelContent` 重建时必须回填 input value 并恢复焦点+
+          光标（防打字中重建丢焦点）；输入路径走 200ms 防抖 + `syncSearch
+          ClearButton()` 局部补丁，**不**触发 toolbar 重建。
+      71  - 追更徽标（`.rl-update-badge`/`.rl-inaccessible-badge`）数据来
+          自内存态 `followingCheckResults`/`followingInaccessible`；单行
+          刷新只走 `renderBadgeForRow(id)` 局部重绘，禁止为清/挂徽标调 `u
+          pdateList`。
+      72  
+      73 +### 操作作用域与交互契约（07-08 实机修复后必须遵守）           
+      74 +                                                               
+      75 +- **作用域唯一入口**：底栏删除/导出/批量操作的目标集一律经 `get
+         +OperationTargets()` 取得——`selectedIds.size > 0` 时返回勾选 ∩  
+         +可见集，否则返回 `getVisibleTabItems()`（当前 Tab + 排除待删 + 
+         +搜索过滤）全量。**所见即所删/所导**：用户看不见的条目不得被任何
+         +底栏操作触及。新增底栏操作禁止自建过滤逻辑旁路这两个 helper。  
+      76 +- **勾选集恒 ⊆ 可见集**：`updateList()` 顶部调 `pruneSelectedId
+         +sToVisible()` 收敛选中集；搜索/Tab/删除引起可见集变化时选中集自
+         +动跟随，勿在别处手工维护。                                     
+      77 +- **原生 `confirm()` 全文禁用**：风险确认一律走 `showConfirmMod
+         +al({title, message, confirmLabel, danger, onConfirm})`（复用 ex
+         +port-modal overlay 视觉；onConfirm 支持 async，失败时按钮解禁 +
+         + toast）。仅"无勾选删除整个可见集合"需弹窗，勾选态删除走 Undo t
+         +oast 即可。                                                    
+      78 +- **一键删除三分类的路径必须为 0 处**（`清空全部` grep 兜底）；
+         +删除只走 `deleteItems()` tombstone 路径，不得旁路同步。        
+      79 +- **body 挂载浮层禁止 absolute + scrollX/Y 定位**：迁移菜单等浮
+         +层用 `position:fixed` + `getBoundingClientRect()` + `innerWidth
+         +/innerHeight` 翻转/夹紧，否则会扩大文档滚动范围（曾致页面多出横
+         +向滚动条）。                                                   
+      80 +- **拖拽持久化 clamp 模式**（入口 `rlEntryPosition`、抽屉宽 `rl
+         +PanelWidth` 共用范式）：mousedown 记起点 → mousemove 超 5px 阈 
+         +值才判定拖拽（区分点击，点击侧用 `consumeDidDrag()` 消费一次性 
+         +标记）→ 实时 clamp 到视口/上下限 → mouseup 才 `GM_setValue`；恢
+         +复时和 `resize` 时都必须重新 clamp。抽屉本体不做位置拖拽，宽度 
+         +走 `--rl-panel-width` CSS 变量 + `clamp(420px, var(...), min(72
+         +0px, 100vw))` 双保险。                                         
+      81 +                                                               
+      82  ---
+      83  
+      84  ## 常见错误
+
+● Update(.trellis/spec/frontend/state-management.md)
+  ⎿  File must be read first
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(.trellis/spec/frontend/state-management.md)
+  ⎿  Added 15 lines
+      44  ## 跨标签同步
+      45  
+      46  `startCrossTabSync()` (:1252) 定时执行 `checkCrossTabDataChange
+          s()` (:1262)，用 `calculateChecksum` 比对 `lastDataChecksum`，
+          检测到其他标签修改后重载并刷新 UI。
+      47 +                                                               
+      48 +---                                                            
+      49 +                                                               
+      50 +## normalizeItem 单一入口（07-08 实机修复后必须遵守）          
+      51 +                                                               
+      52 +**任何**把外部数据赋给 `readLaterList` 的路径（初始加载、导入、
+         +跨标签重载、远端拉取）都必须过 `map(normalizeItem)`，禁止原样赋
+         +值。`normalizeItem` 是字段兜底的唯一收口：title 强制字符串（缺 
+         +失补空串，保证 `localeCompare` 排序不抛错）、status/时间戳归一 
+         +、非法 `archived+pinnedAt` 组合清理。曾因跨标签路径漏走 normali
+         +ze 留下脏数据面——新增数据入口时对照上述四条路径自查。          
+      53 +                                                               
+      54 +## UI 偏好持久化 key（GM 存储，独立于列表数据）                
+      55 +                                                               
+      56 +| key | 内容 | 兜底 |                                          
+      57 +|-----|------|------|                                          
+      58 +| `rlEntryPosition` | 入口按钮 `{top, right}`，JSON 字符串 | 缺
+         +失/损坏 → CSS 默认位；恢复与 resize 时 clamp 视口内 |          
+      59 +| `rlPanelWidth` | 抽屉宽度数值 | 缺失 → 460；写入前 clamp 420–
+         +720 |                                                          
+      60 +                                                               
+      61 +此类 UI 偏好 key **不得**借道 `saveReadLaterList`（避免污染 `la
+         +stLocalModified`/`needSync`），单独 `GM_setValue` 即可。       
+
+● Bash(git show --stat --oneline d048c7d | head; echo ---; git show --stat
+      --oneline 25f73cc | head -8; echo ---; git ls-files | grep -c trellis)
+  ⎿  d048c7d docs: 沉淀抽屉与设计 token 契约到 frontend spec
+      .trellis/spec/frontend/component-guidelines.md | 9 +++++++++
+      1 file changed, 9 insertions(+)
+     … +9 lines (ctrl+o to expand)
+
+  Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+● Update(README.md)  ⎿  Added 10 lines, removed 1 line
+      143  
+      144  ## 🔄 更新日志
+      145  
+      146 -### v3.0.0 (当前版本) - 三态管理 + 追更 + 抽屉重设计（全面升级
+          -）                                                            
+      146 +### v3.0.1 (当前版本) - 实机回归修复                          
+      147  
+      148 +- 📐 **抽屉布局修复**：列表成为抽屉内唯一滚动区域，底栏固定贴 
+          +底不随条目数漂移；抽屉支持左边缘拖拽调宽（420–720px，刷新后保 
+          +留）                                                          
+      149 +- 🎯 **操作语义统一**：底栏删除/导出遵循"所见即所删/所导"——有 
+          +勾选只作用于勾选条目（按钮带 `(n)`），无勾选作用于当前可见集合
+          +（Tab + 搜索过滤）；移除"清空全部（三个分类）"入口            
+      150 +- 🛡️ **自定义确认弹窗**：全文移除浏览器原生 `confirm()`，无勾 
+          +选删除与重置同步改用脚本内风险确认弹窗（写明范围与条数）      
+      151 +- 🖱️ **入口按钮升级**：调大至 56px、默认偏右上，支持拖拽并记忆
+          +位置（自动夹紧视口内）；数量角标超 99 显示具体数字            
+      152 +- 📌 **迁移菜单修复**：改为视口定位，打开菜单不再让页面出现多 
+          +余滚动条                                                      
+      153 +- 🧰 **健壮性**：全选叠加搜索过滤（批量操作不再误伤隐藏条目） 
+          +、无标题条目排序不再报错、跨标签同步数据统一归一化、导出内容 e
+          +moji 清零                                                     
+      154 +                                                              
+      155 +### v3.0.0 - 三态管理 + 追更 + 抽屉重设计（全面升级）         
+      156 +                                                              
+      157  - 🗂️ **三态模型**：列表升级为 待看 / 追更 / 归档 三个 Tab，支
+           持单条与批量迁移、置顶（LWW 同步保护）
+      158  - 🔔 **追更新回复检测**：追更 Tab 自动/手动检查新回复，`+N` 徽
+           标一键跳转未读楼层；被删/转私密帖降级标记
+      159  - 🔍 **面板搜索**：当前 Tab 标题即时过滤（防抖 200ms），显示"
+           匹配 m / 共 n"
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo OK; git ls-files
+      .trellis/spec/; git status --short
+      .trellis/spec/frontend/state-management.md)
+  ⎿  OK
+     .trellis/spec/backend/database-guidelines.md
+     .trellis/spec/frontend/component-guidelines.md
+     … +2 lines (ctrl+o to expand)
+
+● Bash(git add "Linux.do 稍后再看.user.js" README.md && git commit -m "feat:
+      v3.0.1 实机回归修复（抽屉滚动/操作双语义/确认弹窗/入口拖拽/迁移菜单定位）"
+      && git add .trellis/spec/frontend/component-guidel…)
+  ⎿  [main 80e2b0b] feat: v3.0.1 实机回归修复（抽屉滚动/操作双语义/确认弹窗
+     /入口拖拽/迁移菜单定位）
+      2 files changed, 512 insertions(+), 144 deletions(-)
+     … +7 lines (ctrl+o to expand)
+
+● Skill(trellis:finish-work)
+  ⎿  Successfully loaded skill
+
+● Bash(python3 ./.trellis/scripts/get_context.py --mode record 2>&1 | head -50;
+      echo ===; git status --porcelain | grep -v "^.. \.trellis/workspace/\|^..
+      \.trellis/tas…)
+  ⎿  ========================================
+     SESSION CONTEXT (RECORD MODE)
+     ========================================
+     … +44 lines (ctrl+o to expand)
+
+● Bash(git status --porcelain | grep -v "\.trellis/workspace/" | grep -v
+      "\.trellis/tasks/")
+  ⎿   M .claude/settings.local.json
+      M CLAUDE.md
+     ?? .agents/
+     … +32 lines (ctrl+o to expand)
+
+● Bash(python3 ./.trellis/scripts/task.py archive 07-08-v3-real-device-fixes)
+  ⎿  Archived: 07-08-v3-real-device-fixes -> archive/2026-07/
+     [OK] Auto-committed: chore(task): archive 07-08-v3-real-device-fixes
+     .trellis/tasks/archive/2026-07/07-08-v3-real-device-fixes
+
+● Bash(python3 ./.trellis/scripts/add_session.py --title "v3.0.1
+      实机回归修复：四批次 Codex 委派实现并收版" --commit "80e2b0b,f57f38e"
+      --summary "07-08-v3-real-device-fixes 全部完成并归档：抽屉…)
+  ⎿  ========================================
+     ADD SESSION
+     ========================================
+     … +28 lines (ctrl+o to expand)
+
+● 收尾流程完成。最后同步 auto-memory 中的升级状态。
+
+  Recalled 1 memory, wrote 3 memories (ctrl+o to expand)
+
+● [验证] 收尾全部完成。07-08-v3-real-device-fixes 任务闭环：
+
+  本次收尾动作：
+  1. @version 3.0.0 → 3.0.1（补丁级，未新增文件），语法检查通过
+  2. README 更新日志新增 v3.0.1 条目
+  3. spec 沉淀：component-guidelines.md
+  新增"操作作用域与交互契约"（getOperationTargets 唯一入口、confirm()
+  禁用、fixed 浮层定位、拖拽持久化 clamp 范式），并修正了陈旧的 makeDraggable
+  引用；state-management.md 新增 normalizeItem 单一入口规则与 UI 偏好 key 表
+  4. 提交两笔：80e2b0b feat（user.js + README，+512/−144）、f57f38e docs（spec）
+  5. 任务归档至 archive/2026-07/，journal 已记录（含批次 A
+  顶替事件与后续核验机制）
+  6. auto-memory 中 v3 升级状态已同步
+
+  遗留提醒：
+  - 兄弟任务 07-08-v3-ui-polish（PNG 图标/设置页风格/+✓ 手感/彩色点缀）仍在
+  planning，随时可开
+  - 五个 07-07 阶段任务仍 in_progress
+  未归档（此前约定回归通过后归档，现在实机已通过，下次会话可批量归档）
+  - 工作树还有 30+ 个会话前遗留的未跟踪文件（Trellis 脚手架、.claude
+  配置、docs、PNG 素材），未纳入本次提交
+  - 本地领先远端多笔提交，未推送——需要推送时说一声

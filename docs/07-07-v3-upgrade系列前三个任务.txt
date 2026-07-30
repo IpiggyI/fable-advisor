@@ -1,0 +1,980 @@
+ ▐▛███▜▌   Claude Code v2.1.197
+▝▜█████▛▘  Fable 5 · Claude Pro
+  ▘▘ ▝▝    ~/develop/personal/GitHub/Linux-Do-read-later
+
+
+❯ /trellis:continue 开始07-07-v3-upgrade系列任务，先做第一个，所有具体实现全部  
+交由Codex开发（UI除外）                                                         
+
+● Trellis SessionStart 上下文已加载。
+
+  [理解] 椰椰要求开始 07-07-v3-upgrade 系列任务的第一个（按记忆应为
+  p0-sync-protocol），实现交由 Codex（UI 除外）。先加载 Trellis 当前状态确认。
+
+● Bash(python3 ./.trellis/scripts/get_context.py && python3
+      ./.trellis/scripts/task.py list --mine)
+  ⎿  ========================================
+     SESSION CONTEXT
+     ========================================
+     … +71 lines (ctrl+o to expand)
+
+  Read 3 files, listed 2 directories (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · 确认激活任务 07-07-p0-sync-protocol（task.py start）并开始按 implement.md
+     执行？ → 确认启动 (Recommended)
+
+● [执行] 已确认。激活任务并加载 2.1 实施步骤指引。
+
+● Bash(python3 ./.trellis/scripts/task.py start 07-07-p0-sync-protocol &&
+      python3 ./.trellis/scripts/get_context.py --mode phase --step 2.1
+      --platform claude)
+  ⎿  ✓ Current task set to: .trellis/tasks/07-07-p0-sync-protocol
+     Source: session:claude_a243eb15-8b49-4fc3-81ab-09464ba0c65b
+     ✓ Status: planning → in_progress
+     … +3 lines (ctrl+o to expand)
+
+  Listed 1 directory (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex 实施批次 A（步骤1-3）)
+
+● [执行] 任务已激活（planning → in_progress），批次 A 已派发给
+  codex-implementer（Codex 通道，GPT-5.5）。
+
+  当前状态：
+  - 任务：07-07-p0-sync-protocol（阶段一：P0 同步地基修复与数据协议 v3）
+  - 批次 A 进行中：纯函数区（normalizeItem / toSupabaseRow / fromSupabaseRow /
+  assertHttpOk / safeRemoveElement）+ normalizeItem 四处接入 + 统一删除
+  deleteItems 替换五个删除入口
+  - 待批次 A 报告返回后，我会核验 diff 与 node --check 输出，再串行派发批次
+  B（HTTP 校验/Gist 冷启动/合并规则）和批次 C（启动校验引导/文档重写）
+
+  需要说明的残留项：implement.md 中每步的 Tampermonkey 浏览器手动验证（linux.do
+  实测）无法由 Codex 完成，全部批次结束后我会汇总一份手动验证清单给椰椰。
+
+※ recap: 正在做 v3 升级的第一个任务 p0-sync-protocol（同步缺陷修复与数据协议 v3），批次 A 已派发给 Codex 实施中。下一步是等 Codex 报告返回后核验 diff，再派发批次 B。 (disable recaps in /config)
+
+
+› Message from @codex-batch-a (ctrl+o to expand)
+
+● [执行] 批次 A 报告已收到。先亲自核验关键声明，再决定风险处理并推进批次 B。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "deleteItems(" "Linux.do 稍后再看.user.js" | head -20; grep -cn
+      "toISOString" "Linux.do 稍后再看.user.js…)
+  ⎿  SYNTAX_OK
+     1604:            deleteItems([topicInfo.id], { source: 'toggle' });
+     1635:        deleteItems([id], { source: 'panel' });
+     … +5 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex 实施批次 B（步骤4-6）)
+
+● [执行] 批次 B 已派发（HTTP 校验接入 / Gist 冷启动修复 / schemaVersion +
+  墓碑优先 LWW 合并）。
+
+  进度：
+  - ✅ 批次 A
+  完成并经我核验（语法通过、五删除入口收敛、时间戳数字化、safeRemoveElement
+  落地）
+  - 🔄 批次 B 进行中（Codex）
+  - ⏳ 批次 C 待派发（checkSupabaseSchema 引导 + SUPabase_SETUP.md 重写）
+
+  已决策：Supabase 缺列风险采用"批次 C
+  前不实测线上同步"方案，无需椰椰手动加列；批次 C 会产出可复制的 ALTER TABLE
+  SQL。
+
+  等批次 B 报告返回后核验，再派批次 C。
+
+● Teammate @codex-batch-a finished
+
+● 批次 A 代理已空闲（正常，其工作已完成并核验），无需处理。继续等待批次 B 报告。
+
+※ recap: v3.0.0 升级第一个任务（P0 同步地基修复）进行中：批次 A（统一删除/时间戳/纯函数）已完成并核验，批次 B（HTTP 校验/Gist 冷启动/合并规则）正由 Codex 实施。下一步：等批次 B 报告，核验后派批次 C。 (disable recaps in /config)
+
+
+● Teammate @codex-batch-b finished
+
+● 批次 B 代理已空闲但未发回报告，向它索取结构化结果。
+
+● 已向批次 B 代理索取报告，等待其回复。
+
+
+› Message from @codex-batch-b (ctrl+o to expand)
+
+● [执行] 批次 B 报告已收到，先独立核验再派批次 C。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "assertHttpOk(" "Linux.do 稍后再看.user.js" | wc -l; grep -n "provider ===
+      'github'\|performGitHubSy…)
+  ⎿  SYNTAX_OK
+     8
+     3669:                const needsSchemaNormalization = parsedData.schem
+     … +18 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex 实施批次 C（步骤7-8）)
+
+● [执行] 批次 C 已派发（checkSupabaseSchema 启动校验引导 + SUPABASE_SETUP.md
+  重写）。
+
+  进度：
+  - ✅ 批次 A：纯函数区 + normalizeItem 接入 + 统一删除（已核验）
+  - ✅ 批次 B：assertHttpOk 接入 7 处、Gist 冷启动修复、schemaVersion + 墓碑优先
+  LWW 合并（已核验：语法通过、目标字符串清零、仅脚本文件被改动）
+  - 🔄 批次 C 进行中
+
+  批次 B 有一处合理的连带改动需要记录：syncItemToSupabase
+  从吞错改为向上抛错（满足"非 2xx = 失败"契约的必要改动），其 3
+  处调用点均有兜底，无未捕获 rejection 风险。批次 C 返回后进入 2.2
+  质量检查（trellis-check）。
+
+
+● Teammate @codex-batch-b finished
+
+● 批次 B 代理空闲通知（其报告已收到并核验完毕），无需处理。继续等待批次 C。
+
+※ recap: v3 升级阶段一（P0 同步修复与数据协议 v3）执行中：批次 A、B 已由 Codex 完成并核验通过，批次 C（Supabase 启动校验 + 文档重写）正在运行。下一步：收到批次 C 报告后核验，再进入质量检查。 (disable recaps in /config)
+
+
+● Teammate @codex-batch-c finished
+
+● 已向批次 C 代理索取报告，等待回复。
+
+● Agent "Codex 批次C：schema校验+文档重写" finished · 6s
+
+● 批次 C 转发代理表示无法轮询，我直接检查工作区实际改动来判断 Codex 是否已完成。
+
+● Bash(grep -n "checkSupabaseSchema" "Linux.do 稍后再看.user.js" | head; git
+      status --short SUPABASE_SETUP.md; node --check "Linux.do 稍后再看.user.js"
+      && echo SYNTAX_OK)
+  ⎿  4086:            const schemaReady = await checkSupabaseSchema();
+     4231:    async function checkSupabaseSchema() {
+     4313:        const schemaReady = await checkSupabaseSchema();
+     … +2 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+● Bash(grep -n "ADD COLUMN" "Linux.do 稍后再看.user.js" | head -12; echo
+      ---DOC---; grep -n "ADD COLUMN\|CREATE TABLE\|read_later_posts\|read_later
+      " SUPABASE_SETUP.md | h…)
+  ⎿  43:  ADD COLUMN IF NOT EXISTS status text DEFAULT 'inbox',
+     44:  ADD COLUMN IF NOT EXISTS pinned_at bigint,
+     45:  ADD COLUMN IF NOT EXISTS status_changed_at bigint,
+     … +63 lines (ctrl+o to expand)
+
+● trellis-check(质量检查 p0-sync-protocol)
+  ⎿  Done (24 tool uses · 78.5k tokens · 4m 55s)
+  (ctrl+o to expand)
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "deletedAt" "Linux.do 稍后再看.user.js" | head -5; grep -n
+      "mergeSupabaseData\b\|mergeSupabaseDataCo…)
+  ⎿  SYNTAX_OK
+     3952:            // 兼容旧版墓碑字段 deletedAt（ISO 字符串）
+     3953:            const rawDeleteTime = (item.deleteTime !== undefined
+     … +8 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex 补齐 Supabase 合并规则)
+
+● [执行] 批次 D 已派发（Supabase 全量合并接入墓碑优先 + statusChangedAt LWW，与
+  Gist mergeData 同规则）。
+
+  当前状态汇总：
+  - ✅ 批次 A/B/C 实施完成并核验
+  - ✅ trellis-check 全范围检查：R1–R8 逐项通过、约束合规，自行修复 2 处（旧墓碑
+  deletedAt 兼容、墓碑 500 条上限）并经我核实
+  - 🔄 批次 D 进行中：补齐 Supabase 合并规则（检查发现的任务范围内遗漏）
+  - 批次 D 完成后需要一轮针对性复查，然后进入 Phase 3（spec 更新 + 提交确认）
+
+
+› Message from @codex-batch-c (ctrl+o to expand)
+
+● Teammate @codex-batch-c finished
+
+● 批次 C 转发代理的视图已过期——我已在主线独立核验其全部产出（checkSupabaseSchema
+  定义于 :4231、启动路径 :4086/:4313 两处接入、42703 判定存在、三处 SQL
+  列名逐字一致），且 trellis-check 已对 R7/R8 出具通过结论。通知其收工。
+
+● 已通知批次 C 代理收工（其产出早已落盘并经主线核验）。当前唯一在途工作是批次
+  D（Supabase 合并规则补齐），等待其报告。
+
+
+● Teammate @codex-batch-c finished
+
+● 批次 C 代理已确认空闲收工，无需处理。继续等待批次 D 报告。
+
+
+› Message from @codex-batch-d (ctrl+o to expand)
+
+● [验证] 批次 D 报告已收到。合并逻辑是高风险点，我直接读改动核验。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "mergeSupabaseCore\|function mergeSupabaseData\|function
+      mergeSupabaseDataConservative" "Linux.d…)
+  ⎿  SYNTAX_OK
+     4479:    function mergeSupabaseCore(localData, remoteData, { conservat
+     ive = false } = {}) {
+     … +7 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+
+● Skill(trellis-update-spec)
+  ⎿  Successfully loaded skill
+  Read 1 file (ctrl+o to expand)
+
+● Update(.trellis/spec/backend/database-guidelines.md)
+  ⎿  Added 24 lines, removed 4 lines
+      24  
+      25  ---
+      26  
+      27 -## 数据形状                                                    
+      27 +## 数据形状（协议 v3）                                         
+      28  
+      29 -帖子对象由 `parseTopicLink()` (:1482) 生成：                   
+      29 +记录规范形状由 `normalizeItem(raw)` 唯一定义（任何来源——GM 存储
+         +、Gist JSON、Supabase 行、导入——入库前必须过它）：             
+      30  
+      31  ```js
+      32 -{ id, title, url, slug, addedAt: Date.now() }                  
+      32 +{                                                              
+      33 +  id, title, url, slug,                                        
+      34 +  addedAt: number,            // 毫秒时间戳；所有时间字段一律数
+         +字，禁止 ISO 字符串                                            
+      35 +  status: 'inbox'|'following'|'archived',  // 默认 'inbox'     
+      36 +  pinnedAt: number|null,                                       
+      37 +  statusChangedAt: number,    // 默认 = addedAt；状态字段 LWW  
+         +的比较基准                                                     
+      38 +  savedRepliesCount: number|null,                              
+      39 +  lastCheckedAt: number|null,                                  
+      40 +  note: string,               // 预留，仅存储                  
+      41 +  isDeleted: boolean,                                          
+      42 +  deleteTime: number|null                                      
+      43 +}                                                              
+      44  ```
+      45  
+      35 -`id` 为帖子数字 ID 字符串，去重与匹配一律以 `item.id === topicI
+         -nfo.id` 为准。                                                 
+      46 +`id` 为帖子数字 ID 字符串；跨来源比较一律 `String(id)` 归一后再
+         +比。                                                           
+      47 +Gist payload 顶层携带 `schemaVersion: 3`；缺失或 <3 的远端数据 
+         +逐条过 `normalizeItem` 再合并。                                
+      48  
+      49 +### Supabase 列名唯一权威来源                                  
+      50 +                                                               
+      51 +`toSupabaseRow(item)` / `fromSupabaseRow(row)` 是本地字段 ↔ Sup
+         +abase 列的**唯一**映射点。加列/改列只改这两个纯函数 + `SUPABASE
+         +_SCHEMA_ALTER_SQL` 常量 + `SUPABASE_SETUP.md`，三处 SQL 列名必 
+         +须逐字一致。合并函数只接受**已经 `fromSupabaseRow` 转换过**的行
+         +（字段名 `deleteTime` 而非 `delete_time`），直接传原始行会导致 
+         +墓碑时间丢失。                                                 
+      52 +                                                               
+      53 +### 启动 schema 校验                                           
+      54 +                                                               
+      55 +`checkSupabaseSchema()`：探测 `select=status&limit=1`，仅 `400 
+         ++ PostgREST 42703` 判缺列（网络错误不误报）；缺列时弹一次性引导
+         +（含 ALTER TABLE）、本地功能不阻塞、同步挂起；结果缓存 24h。   
+      56 +                                                               
+      57  ---
+      58  
+      59  ## 云端同步
+
+● Update(.trellis/spec/backend/database-guidelines.md)
+  ⎿  Added 18 lines
+      71  
+      72  - `calculateChecksum(data)` (:1240) 生成校验和，跨标签轮询比对
+          （`lastDataChecksum`）。
+      73  - 删除走**软删除**：写入 `deletedItems` 墓碑再同步，避免多设备"
+          删除被覆盖"（详见 `docs/summary/ContextLibrary_软删除机制优化.m
+          d`）。
+      74 +                                                               
+      75 +### 删除必须走统一入口 `deleteItems(ids, {source})`            
+      76 +                                                               
+      77 +**禁止**任何路径直接从 `readLaterList` splice/filter 掉记录。历
+         +史上 `toggleReadLater` / `toggleTopicPageReadLater` 绕过墓碑直 
+         +接删，导致同步后删除复活（P0）。新增删除入口一律调用 `deleteIte
+         +ms`：它负责移除 + 写墓碑 `{id, deleteTime}` + Supabase 标记删除
+         +，墓碑上限 500 条（按 `deleteTime` 保留最新）。旧墓碑字段 `dele
+         +tedAt`（ISO 字符串）读取时需兼容（`deleteTime ?? deletedAt`）。
+      78 +                                                               
+      79 +### 合并规则（Gist `mergeData` 与 `mergeSupabaseCore` 同规则） 
+      80 +                                                               
+      81 +1. **墓碑优先级最高**：本地 `deletedItems` + 远端墓碑（Gist：de
+         +letedItems；Supabase：`isDeleted=true` 行）取并集，同 id 取 `de
+         +leteTime` 更大者；墓碑 `deleteTime` **严格大于**记录 `statusCha
+         +ngedAt` 则该记录不得进入结果（重新添加即 `statusChangedAt` 更新
+         +，可正常复活）。                                               
+      82 +2. **存活记录 LWW**：按 `statusChangedAt` 比较，remote **严格大
+         +于**才胜出，平局保本地。保守模式双活时始终保本地，但墓碑判定不 
+         +受模式影响。                                                   
+      83 +3. 按 `String(id)` 去重。                                      
+      84 +                                                               
+      85 +错误矩阵（wrong → correct）：                                  
+      86 +- ❌ 合并时不查墓碑 → 断网删除后全量同步复活 → ✅ 先构建 delete
+         +dMap 再逐条 `isBlockedByTombstone`                             
+      87 +- ❌ `>=` 判胜出 → 平局远端覆盖本地 → ✅ 严格 `>`              
+      88 +                                                               
+      89 +## 远端写入校验                                                
+      90 +                                                               
+      91 +所有 `GM_xmlhttpRequest` 读写路径的 `onload` 必须过 `assertHttp
+         +Ok(response)`（2xx 判定）；非 2xx = 失败：**不清 `needSync`**、
+         +`console.error('[稍后再看] ...', status, 响应体摘要)`、走与 `on
+         +error` 相同的失败路径。禁止只在 `onerror` 处理失败（HTTP 4xx/5x
+         +x 会触发 `onload`，静默吞掉即"假成功"P0）。                    
+
+  Recalled 1 memory, wrote 2 memories (ctrl+o to expand)
+
+● Bash(git diff --stat "Linux.do 稍后再看.user.js" SUPABASE_SETUP.md)
+  ⎿   ...15\345\220\216\345\206\215\347\234\213.user.js" | 1083 +++++++++++
+     ++++-----
+      SUPABASE_SETUP.md                                  |  164 ++-
+      2 files changed, 949 insertions(+), 298 deletions(-)
+
+  Recalled 1 memory, wrote 2 memories (ctrl+o to expand)
+
+● User answered Claude's questions:
+  ⎿  · 阶段一代码已完成（手动回归待测），接下来如何处理？ → 草拟提交信息并提交
+
+● Bash(cat .gitignore 2>/dev/null; echo ---; python3
+      ./.trellis/scripts/get_context.py --mode phase --step 3.4 --platform
+      claude 2>/dev/null | head -60)
+  ⎿  ---
+     #### 3.4 Commit changes `[required · once]`
+     … +49 lines (ctrl+o to expand)
+
+● [方案] 提交计划（依 3.4 流程，一次性确认）：
+
+  Proposed commits (in order):
+
+  1. feat: 阶段一 P0 同步地基修复与数据协议 v3
+    - Linux.do 稍后再看.user.js（统一删除/assertHttpOk/Gist
+  冷启动/normalizeItem/schemaVersion+合并规则/checkSupabaseSchema）
+    - SUPABASE_SETUP.md（重写为 read_later_posts 逐条记录 v3 结构）
+  2. docs: 沉淀 v3 数据协议与同步规范到 spec
+    - .trellis/spec/backend/database-guidelines.md
+    - ⚠️ 注意：整个 .trellis/ 目前未被 git
+  跟踪，单独提交这一个文件会开始部分跟踪 .trellis。如果椰椰不想把 Trellis
+  工件入库，回复时说明，我会把第 2 条从计划中去掉。
+
+  Unrecognized dirty files（不入任何提交——本 session 未改动，含之前遗留）：
+  CLAUDE.md、.claude/*、AGENTS.md、.agents/、.codex/、references/、docs/summary/
+  ContextLibrary_实现审查与领先功能建议.md、.trellis/
+  其余内容（任务工件、workspace 等）
+
+  回复 ok/行 执行；要调整就直接说；我自己来 则跳过由椰椰手动提交。
+
+
+● Teammate @codex-batch-d finished
+
+● 批次 D 代理空闲通知（其工作已核验完毕），无需处理。
+
+  提交计划仍在等待椰椰确认（队友消息不能替代椰椰的批准）：回复 ok/行
+  执行上述两条提交，或提出调整/我自己来。
+
+❯ ok, 这是个人项目 .trellis追踪没问题                                           
+
+● [执行] 确认收到，执行提交。
+
+● Bash(git add "Linux.do 稍后再看.user.js" SUPABASE_SETUP.md && git commit -m
+      "feat: 阶段一 P0 同步地基修复与数据协议 v3" && git add
+      .trellis/spec/backend/database-guidelines.md && git…)
+  ⎿  [main 7901686] feat: 阶段一 P0 同步地基修复与数据协议 v3
+      2 files changed, 949 insertions(+), 298 deletions(-)
+     [main 0436137] docs: 沉淀 v3 数据协议与同步规范到 spec
+     … +5 lines (ctrl+o to expand)
+
+● [验证] 提交完成，未推送：
+
+  - 7901686 feat: 阶段一 P0 同步地基修复与数据协议 v3（脚本 +949/-298 行 +
+  SUPABASE_SETUP.md）
+  - 0436137 docs: 沉淀 v3 数据协议与同步规范到 spec
+
+  任务 p0-sync-protocol 保持 in_progress 未归档——手动回归（Tampermonkey 实测 +
+  Supabase 加列）还没做，归档等回归通过后触发 /trellis:finish-work
+  即可。若回归发现问题，直接告诉我，修复会记入本任务继续处理；回归通过后也可以直
+  接说"开始阶段二"。
+
+❯ 先开始阶段二，等改的比较完善了再统一验证；基于前面调用Codex出现无返回和无法轮 
+  询的异常情况，可以将每次委派的任务拆的更细一些，多次委派；另外Codex是能够读取 
+  trellis规范的                                                                 
+
+● [理解] 收到三点：开始阶段二 07-07-render-refactor（统一验证推迟）、Codex
+  委派拆更细多次派发、派发时直接让 Codex 读 Trellis 规范文件（不必在 prompt
+  里复述）。先看阶段二工件再激活。
+
+  Listed 1 directory (ctrl+o to expand)
+● Bash(python3 ./.trellis/scripts/task.py start 07-07-render-refactor)
+  ⎿  ✓ Current task set to: .trellis/tasks/07-07-render-refactor
+     Source: session:claude_a243eb15-8b49-4fc3-81ab-09464ba0c65b
+     ✓ Status: planning → in_progress
+     … +2 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex D1：el/escapeHTML 纯函数)
+
+  Wrote 3 memories (ctrl+o to expand)
+
+● [执行] 阶段二启动完毕，当前状态：
+
+  - 任务 07-07-render-refactor 已激活（p0-sync-protocol 保持
+  in_progress，等统一验证后归档）
+  - D1 已派发（细粒度：仅 el() + escapeHTML() 两个纯函数），后续按 implement.md
+  单步一批串行派发：D2 骨架构建 → D3 行渲染/薄壳 → D4 事件委托 → D5 removeRow
+  接入 → D6 Gist 下拉/导出改造 → D7 纯函数抽取 → 最后性能回归 + trellis-check
+  - 委派方式反馈（拆细多派、Codex 自读 .trellis 工件）已写入记忆，本次 D1 的
+  prompt 已按此执行
+
+  D1 返回并核验后立即派 D2。
+
+
+● Teammate @codex-r2-d1 finished
+
+● D1 空闲但未发报告，直接在文件里核验其产出（细批次改动小，主线自查更快）。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "function el(\|function escapeHTML(" "Linux.do 稍后再看.user.js"; git diff
+      --stat "Linux.do 稍后再看.use…)
+  ⎿  SYNTAX_OK
+     146:    function escapeHTML(str) {
+     156:    function el(tag, attrs, ...children) {
+     … +3 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+
+● D1 核验通过（escapeHTML :146 五项替换且 & 最先、el :156 字符串子节点走
+  createTextNode、+36 行零副作用）。派发 D2。
+
+● fable-advisor:codex-implementer(Codex D2：面板骨架一次构建)
+
+● [执行] D2 已派发（骨架一次构建 + panelRefs 缓存 +
+  内联样式迁移，旧渲染路径保留为过渡）。
+
+  阶段二进度：D1 ✅（el/escapeHTML，已核验）→ D2 🔄 → D3 行渲染 → D4 事件委托 →
+  D5 removeRow → D6 Gist/导出 → D7 纯函数抽取。D2 返回后核验再派 D3。
+
+※ recap: v3.0.0 升级执行中：阶段一（同步修复+协议 v3）已完成并提交，现在做阶段二面板渲染重构，Codex 细批次派发到 D2（骨架构建）。下一步是等 D2 返回、核验后派 D3 行渲染。
+
+
+› Message from @codex-r2-d2 (ctrl+o to expand)
+
+● [执行] 判断：缺陷属实且必须修——panelRefs 指向游离节点会给 D3 埋雷。修法就按你
+  提的最小衔接做（这本来就是"骨架常驻、内容可替换"的过渡形态，同时天然收窄 D3
+  范围）。让原 Codex 会话补丁。
+
+● [执行] D2 返工指令已下达：骨架常驻挂载、updatePanelContent 改为只写 panelRefs
+  分区（列表/计数/同步状态），静态外壳不再被 innerHTML 冲掉。安全 DOM
+  构建（renderRow/textContent）仍留给 D3，事件委托留给
+  D4，边界不变。等补丁报告返回后核验再派 D3。
+
+
+● Teammate @codex-r2-d2 finished
+
+● D2 代理空闲，直接核验补丁是否落盘。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "panel\.innerHTML\s*=" "Linux.do 稍后再看.user.js"; grep -n
+      "panelRefs\.\(list\|syncBar\|header\|bot…)
+  ⎿  SYNTAX_OK
+     2135:        panel.innerHTML = `
+     3122:        panel.innerHTML = `
+     … +18 lines (ctrl+o to expand)
+● 已催促 D2 代理：补丁未落盘（panel.innerHTML = 覆写仍在 :2135），要求其跟进
+  Codex 会话或自行实施。等待其报告，落盘核验通过后再派 D3。
+
+
+● Teammate @codex-r2-d2 finished
+
+● D2 代理已把补丁指令转发给 Codex 会话（其空闲摘要可见转发记录），正在等 Codex
+  执行。继续等待，收到完成信号后我会再次直接核验文件。
+
+
+› Message from @codex-r2-d2 (ctrl+o to expand)
+
+● [执行] D2 补丁报告收到。注意一处偏离须如实说明：这个补丁是 Claude
+  包装代理直接实施的，不是 Codex——我在其报告 Codex
+  会话卡在嵌套流程后授权了兜底。改动是 87/48 行的过渡衔接补丁，后续批次仍走
+  Codex。先核验。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "panel\.innerHTML\s*=" "Linux.do 稍后再看.user.js"; sed -n '2083,2100p'
+      "Linux.do 稍后再看.user.js")
+  ⎿  SYNTAX_OK
+     3109:        panel.innerHTML = `
+         function togglePanel() {
+     … +18 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex D3：行渲染与安全 DOM)
+
+● [执行] D3 已派发（renderRow 安全 DOM 构建 +
+  updateList/updateCount/updateSyncBar + updatePanelContent 薄壳化）。
+
+  阶段二进度：D1 ✅ el/escapeHTML → D2 ✅ 骨架常驻（含一次返工：Codex
+  会话卡嵌套流程，衔接补丁由 Claude 包装代理兜底实施，已如实记录）→ D3 🔄 →
+  待派：D4 事件委托、D5 removeRow 保滚动、D6 Gist 下拉/导出、D7 纯函数抽取。
+
+
+● Teammate @codex-r2-d2 finished
+
+● D2 代理已通知其 Codex 会话停止，收尾完成。继续等待 D3 报告。
+
+
+› Message from @codex-r2-d3 (ctrl+o to expand)
+
+● [执行] D3 报告收到，核验后派 D4。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "function renderRow\|function updateList\|function updateCount\|function
+      updateSyncBar\|replaceC…)
+  ⎿  SYNTAX_OK
+     2137:    function renderRow(item) {
+     2153:    function updateList(items) {
+     … +6 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex D4：事件委托)
+
+● Agent "D2面板骨架构建实现" finished · 5m 39s
+
+● 后台通知已消化：这是 D2 那条旧 Codex 会话的收尾报告，它担心的"文件出现超出 D2
+  范围的 renderRow/updateList"其实就是我随后派发的 D3
+  的合法产出，时间线完全对得上，无冲突——当前盘面状态我在 D3
+  核验时已确认（语法通过、replaceChildren 唯二写入点）。无需处理，继续等 D4。
+
+
+● Teammate @codex-r2-d3 finished
+
+● D3 代理空闲通知（其报告已收到并核验），无需处理。等待 D4。
+
+※ recap: v3.0.0 升级进行中：阶段一已完成并提交，阶段二面板渲染重构进行到 D4（事件委托，Codex 实施中）。下一步是等 D4 返回后核验，再派 D5（removeRow 保滚动位置）。
+
+
+› Message from @codex-r2-d4 (ctrl+o to expand)
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "bindPanelEvents" "Linux.do 稍后再看.user.js"; grep -n
+      "panelRefs\.\(list\|syncBar\|toolbar\|bottomB…)  ⎿  SYNTAX_OK
+     2098:        panelRefs.list.addEventListener('click', async (e) => {
+     2107:        panelRefs.syncBar.addEventListener('click', (e) => {
+     … +3 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex D5：removeRow 保滚动)
+
+● [执行] D5 已派发（removeRow 局部删除，非空删除路径严禁全量刷新——核心验收项）。
+
+  阶段二进度：D1 ✅ → D2 ✅（含返工）→ D3 ✅ → D4 ✅ 事件委托（bindPanelEvents
+  已整体移除）→ D5 🔄 → 待派：D6 Gist 下拉/导出转义、D7 纯函数抽取，最后
+  trellis-check 全范围检查。
+
+
+● Teammate @codex-r2-d4 finished
+
+● D4 代理空闲通知（已核验收工），无需处理。等待 D5。
+
+
+● Teammate @codex-r2-d5 finished
+
+● D5 代理空闲但未发报告，直接核验文件。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "function removeRow\|removeRow(" "Linux.do 稍后再看.user.js")
+  ⎿  SYNTAX_OK
+     2079:                        removeRow(itemId);
+     2093:                removeRow(itemId);
+     2234:    function removeRow(id) {
+
+● Bash(sed -n '2060,2100p;2234,2260p' "Linux.do 稍后再看.user.js")
+  ⎿              panelRefs.list,
+                 panelRefs.bottomBar
+             ));
+     … +64 lines (ctrl+o to expand)
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+● Bash(sed -n '1813,1880p' "Linux.do 稍后再看.user.js" | grep -n
+      "updatePanelContent\|updateList\|panelRefs\|updateFloatingButton"; sed -n
+      '1770,1783p' "Linux.do 稍后再看.user…)
+  ⎿          saveReadLaterList();
+             updateBadge();
+             updateTopicPageButtonState();
+     … +10 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex D6：Gist 下拉与导出转义)
+
+● [执行] D6 已派发（Gist 下拉 DOM 化 + HTML 导出 escapeHTML 转义）。
+
+  阶段二进度：D1–D5 ✅（D5 核验含调用链穿透检查：删除路径确认无隐藏全量刷新）→
+  D6 🔄 → 待派 D7 纯函数抽取 → trellis-check。
+
+※ recap: v3.0.0 升级执行中：阶段一已提交，阶段二面板渲染重构进行到 D6（Gist 下拉 DOM 化 + 导出转义，Codex 实施中）。D6 返回核验后派最后一批 D7 纯函数抽取，再跑质量检查。
+
+
+› Message from @codex-r2-d6 (ctrl+o to expand)
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "escapedTitle\|escapedUrl" "Linux.do 稍后再看.user.js" | head; grep -n
+      "gist-dropdown-item" "Linux.d…)
+  ⎿  SYNTAX_OK
+     3017:            const escapedTitle = escapeHTML(item.title);
+     3018:            const escapedUrl = escapeHTML(item.url);
+     … +8 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex D7：纯函数抽取)
+
+● [执行] D7 已派发（纯函数抽取 + _legacy
+  遗留清理，阶段二最后实施批次）。返回核验后进入 2.2
+  全范围质量检查（trellis-check），检查通过后与椰椰确认提交。
+
+● Teammate @codex-r2-d6 finished
+
+● D6 代理空闲通知（已核验收工），无需处理。等待 D7。
+
+※ recap: v3 升级进行中：阶段一已提交，阶段二渲染重构 D1-D6 均完成并核验，最后一批 D7（纯函数抽取）正由 Codex 执行。等 D7 返回核验后跑 trellis-check，再与椰椰确认提交。
+
+
+● Teammate @codex-r2-d7 finished
+
+● D7 空闲未报，直接核验文件。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "function getSortedList\|function parseTopicLink\|function
+      formatTime\|function generateMarkdown…)
+  ⎿  SYNTAX_OK
+     182:    function parseTopicLink(link) {
+     203:    function getSortedList(list, mode) {
+     … +7 lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● trellis-check(质量检查 render-refactor)
+  ⎿  Done (19 tool uses · 61.1k tokens · 3m 57s)
+  (ctrl+o to expand)
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "panel-bottom-actions:empty\|panel-tab-bar { display: none" "Linux.do
+      稍后再看.user.js")
+  ⎿  SYNTAX_OK
+     1216:        .panel-bottom-actions:empty {
+
+  Searched for 1 pattern, read 1 file, listed 1 directory (ctrl+o to expand)
+
+● Update(.trellis/spec/frontend/component-guidelines.md)
+  ⎿  Added 21 lines, removed 4 lines
+      27  
+      28  ---
+      29  
+      30 -## 浮动面板                                                    
+      30 +## 浮动面板（v3 渲染架构：骨架常驻 + 局部更新）                
+      31  
+      32 -- `createFloatingButton()` (:1719) 创建入口按钮，`togglePanel()
+         -` 开关面板。                                                   
+      33 -- 可拖拽：`makeDraggable(element)` (:2469)，位置持久化到 `butto
+         -nPosition`。                                                   
+      34 -- 面板内容 `updatePanelContent()` (:1860) 在数据变化/打开时重渲
+         -染。                                                           
+      32 +- `createFloatingButton()` 创建入口按钮，`togglePanel()` 开关面
+         +板。                                                           
+      33 +- 可拖拽：`makeDraggable(element)`，位置持久化到 `buttonPositio
+         +n`。                                                           
+      34  
+      35 +### 渲染契约（阶段二重构后，必须遵守）                         
+      36 +                                                               
+      37 +```                                                            
+      38 +buildPanelSkeleton(panel)   // 仅首次：六分区（header/syncBar/t
+         +abBar/toolbar/list/bottomBar）                                 
+      39 +panelRefs                   // 模块级分区节点缓存，骨架常驻挂载
+         +，禁止重建                                                     
+      40 +renderRow(item)             // el() 构建单行，行根带 data-id， 
+         +标题走 textContent                                             
+      41 +updateList(items)           // panelRefs.list.replaceChildren(.
+         +..)，容器本身不重建                                            
+      42 +removeRow(id)               // 非空删除唯一 UI 路径：只移除该行
+         + + updateCount()                                               
+      43 +updatePanelContent()        // 薄壳：只调分区局部更新，禁止对 p
+         +anel 整体 innerHTML 覆写                                       
+      44 +```                                                            
+      45 +                                                               
+      46 +- **删除不回顶是硬约束**：非空删除路径严禁触发 `updateList`/`up
+         +datePanelContent`/重建 `panelRefs.list`；只有"删空"边界允许一次
+         +全量兜底。                                                     
+      47 +- **事件委托**：四分区各挂**一个** click 监听（骨架期绑定一次）
+         +，`closest('[data-action]')` + `data-id` 分发。新增按钮只扩分发
+         +表 + 补 `data-action`，禁止逐元素 addEventListener 随刷新重绑（
+         +历史 `bindPanelEvents` 已删除，勿复活）。                      
+      48 +- **安全 DOM**：用户/外部数据（标题、URL、Gist 描述、error.mess
+         +age）一律 `el()`/textContent；HTML 导出套 `escapeHTML()`（含 hr
+         +ef 属性位）。innerHTML 仅允许：静态文案、脚本自产 HTML（如 `get
+         +SyncStatusHTML`）。                                            
+      49 +- 纯函数区（IIFE 顶部）：`el`/`escapeHTML`/`parseTopicLink`/`ge
+         +tSortedList(list, mode)`/`formatTime`/`generateMarkdown|HTML|JS
+         +ON(timestamp, count, items)`——无 DOM/全局 UI 状态依赖，新增工具
+         +函数放同区并保持参数化。                                       
+      50 +                                                               
+      51  ---
+      52  
+      53  ## 常见错误
+     ...
+      55  - 忘记通过 `updateAllButtonStates()` 同步按钮态，导致 UI 与 `re
+          adLaterList` 不一致。
+      56  - 在 SPA 路由/虚拟滚动后未经 Observer 复扫就假设按钮仍在。
+      57  - 给单个元素挂监听而非委托，长列表性能退化。
+      58 +- 在删除路径上调用全量刷新导致列表回顶（v2 老毛病，靠 `removeRo
+         +w` 根治，勿回退）。                                            
+      59 +- 把用户数据拼进 innerHTML（注入面）；新代码一律 `el()`/`escape
+         +HTML`。                                                        
+
+● [方案] 阶段二完成。提交计划（一次性确认）：
+
+  Proposed commits (in order):
+
+  1. feat: 阶段二 面板渲染层重构（骨架常驻+局部更新+事件委托）
+    - Linux.do 稍后再看.user.js（+408/-322：el/escapeHTML、buildPanelSkeleton+pa
+  nelRefs、renderRow/updateList/removeRow、四分区事件委托、HTML
+  导出转义、纯函数抽取）
+  2. docs: 沉淀面板渲染契约到 frontend spec
+    - .trellis/spec/frontend/component-guidelines.md
+
+  Unrecognized dirty files（不入提交）：CLAUDE.md、.claude/*、AGENTS.md
+  等此前遗留 + .trellis/ 其余未跟踪内容（任务工件等，如需整体入库可单独一笔
+  chore 提交，说一声即可）。
+
+  残留风险（与阶段一同口径，统一验证时覆盖）：未做浏览器实测；重点回归项——30+
+  条中部删除不回顶、监听器不累加、特殊字符标题、100+ 条性能、导出三格式、Gist
+  下拉。
+
+  回复 ok/行 执行；要调整直接说。
+
+❯ ok                                                                            
+
+● Bash(git add "Linux.do 稍后再看.user.js" && git commit -m "feat: 阶段二
+      面板渲染层重构（骨架常驻+局部更新+事件委托）" && git add
+      .trellis/spec/frontend/component-guidelines.md && git commit -m…)
+  ⎿  [main 102463a] feat: 阶段二 面板渲染层重构（骨架常驻+局部更新+事件委托
+     ）
+      1 file changed, 418 insertions(+), 322 deletions(-)
+     … +7 lines (ctrl+o to expand)
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● [验证] 阶段二提交完成，未推送：
+
+  - 102463a feat: 阶段二 面板渲染层重构（+418/-322 行）
+  - 4a32acf docs: 沉淀面板渲染契约到 frontend spec
+
+  当前全局状态：
+  - 阶段一 p0-sync-protocol、阶段二 render-refactor 代码均完成并提交，任务保持
+  in_progress 等统一手动回归后归档
+  - 记忆已更新；下一个是阶段三 07-07-tri-state-core（三
+  Tab/迁移/置顶/批量/Undo）
+
+  随时可以说"开始阶段三"继续，或先做统一回归验证。
+
+❯ 开始阶段三                                                                    
+
+● Bash(python3 ./.trellis/scripts/task.py start 07-07-tri-state-core && cat
+      .trellis/tasks/07-07-tri-state-core/prd.md
+      .trellis/tasks/07-07-tri-state-core/design.md .t…)
+  ⎿  ✓ Current task set to: .trellis/tasks/07-07-tri-state-core
+     Source: session:claude_a243eb15-8b49-4fc3-81ab-09464ba0c65b
+     ✓ Status: planning → in_progress
+     … +129 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex E1：状态操作纯逻辑)
+● [执行] E1 已派发（setStatus/togglePin/sortForView 状态操作层，不含 UI）。
+
+  阶段三批次计划：E1 状态逻辑 🔄 → E2 Tab 栏 + 过滤视图 → E3
+  行内四按钮（置顶/复制/迁移/删除）→ E4 迁移迷你菜单 → E5 Undo 删除队列 → E6
+  多选批量工具栏 → E7 入口按钮三态适配 → trellis-check → 提交确认。步骤
+  8（双设备同步回归）并入最后的统一手动验证。
+
+
+● Teammate @codex-r3-e1 finished
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "function setStatus\|function togglePin\|function sortForView" "Linux.do
+      稍后再看.user.js"; git diff…)
+  ⎿  SYNTAX_OK
+     219:    function sortForView(items, mode) {
+     2042:    async function setStatus(ids, target) {
+     … +4 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex E2：三 Tab 栏与过滤视图)
+
+● [执行] E2 已派发（三 Tab 栏 + activeTab 持久化 + 过滤视图 +
+  计数徽标）。等待返回核验后派 E3。
+
+❯ 适当合并任务，不用拆的过细；自行推进到阶段三完成提交，中途不需要询问我，有疑  
+  问按推荐方案执行即可（不在）                                                  
+
+● [理解] 收到：批次适当合并、自行推进到阶段三完成并直接提交，疑问按推荐方案自决
+  。调整计划：E2（在途）→ E3+E4 合批（行内按钮组+迁移菜单）→ E5+E6+E7 合批（Undo
+  队列+批量操作+入口适配）→ trellis-check → spec 沉淀 →
+  直接提交。更新记忆中的粒度偏好。
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● 记忆已更新。等 E2
+  返回核验后，按合并计划推进，全程不再打断椰椰，直至阶段三提交完成。
+
+※ recap: v3.0.0 升级进行中：阶段一、二已完成提交，当前在阶段三三态核心（tri-state-core），E1 状态逻辑已核验、E2 Tab 栏派发中。下一步：核验 E2 后合批派发行内按钮+迁移菜单，自动推进到阶段三提交。
+
+
+› Message from @codex-r3-e2 (ctrl+o to expand)
+
+● [执行] E2 报告收到，两处疑点需查证：Tab 持久化为何走
+  saveReadLaterList()、删空边界的全局判断。直接看代码。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "activeTab" "Linux.do 稍后再看.user.js" | head -20; grep -n -A8 "function
+      removeRow" "Linux.do 稍后再看.…)
+  ⎿  SYNTAX_OK
+     1613:    let activeTab = 'inbox'; // 当前激活的 Tab：inbox/following/a
+     rchived
+     … +17 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex E3+E4：行内按钮与迁移菜单)
+
+● [执行] E3+E4 合批已派发（行内四按钮 + 迁移迷你菜单 + removeRow
+  删空边界修正）。返回核验后派最后一批 E5+E6+E7（Undo 队列 + 批量操作 +
+  入口三态适配），然后 trellis-check → spec → 直接提交。
+
+
+● Teammate @codex-r3-e2 finished
+
+● E2 代理空闲通知（已核验收工），无需处理。等待 E3+E4。
+
+※ recap: v3.0.0 升级执行中：阶段一、二已完成并提交，阶段三（三态核心）进行到 E3+E4 批次（行内按钮+迁移菜单），Codex 实施中。下一步：收到该批报告后核验，再派最后一批 E5-E7，检查通过后直接提交。
+
+
+● Teammate @codex-r3-e34 finished
+
+● E3+E4 空闲未报，直接核验文件。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "data-action.*pin\|'pin'\|\"pin\"\|move-to\|moveMenu\|copyTextToClipboard"
+      "Linux.do 稍后再看.user.j…)
+  ⎿  SYNTAX_OK
+     255:    async function copyTextToClipboard(text) {
+     273:    const moveMenuState = { node: null, open: false, onDocClick: n
+     … +24 lines (ctrl+o to expand)
+● Bash(sed -n '2674,2690p' "Linux.do 稍后再看.user.js"; grep -n "'pin'\|pin:"
+      "Linux.do 稍后再看.user.js" | head; grep -n "hover:none" "Linux.do
+      稍后再看.user.js"; grep -n "listAc…)
+  ⎿              row.remove();
+             }
+     … +23 lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(sed -n '650,700p' "Linux.do 稍后再看.user.js")
+  ⎿          .item-meta {
+                 font-size: 11px;
+                 color: #999;
+     … +48 lines (ctrl+o to expand)
+
+● fable-advisor:codex-implementer(Codex E5-E7:Undo/批量/入口适配)
+
+● [执行] E5+E6+E7 合批已派发（Undo 单批次延迟提交队列 + 多选批量工具栏 +
+  入口三态适配，含 updateList
+  过滤未决删除的竞态防护）。这是阶段三最后实施批次，返回核验后直接走
+  trellis-check → spec 沉淀 → 提交，不再打断椰椰。
+
+※ recap: v3.0.0 升级进行中：阶段一、二已完成提交，当前在阶段三（三态核心）。E1–E4 批次已核验通过，最后一批 E5+E6+E7（Undo 删除/批量操作/入口适配）已派给 Codex，等它返回后我核验、质检并直接提交阶段三。
+
+
+› Message from @codex-r3-e567 (ctrl+o to expand)
+
+● [执行] E5–E7 报告收到，核验关键点后进入全范围质量检查。
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "function queueDelete\|function undoPendingDeletes\|function
+      flushPendingDeletes\|isPendingDelet…)
+  ⎿  SYNTAX_OK
+     2295:    function isPendingDelete(id) {
+     2300:    function queueDelete(ids) {
+     … +18 lines (ctrl+o to expand)
+
+● trellis-check(质量检查 tri-state-core)
+  ⎿  Done (23 tool uses · 71.7k tokens · 5m 5s)
+  (ctrl+o to expand)
+
+● Bash(node --check "Linux.do 稍后再看.user.js" && echo SYNTAX_OK; grep -n
+      "listVersion" "Linux.do 稍后再看.user.js" | head -6; grep -n -B2 -A6
+      "逆序" "Linux.do 稍后再看.user.js" |…)
+  ⎿  SYNTAX_OK
+     1818:    // Undo 延迟提交删除队列：无未决批次为 null；有则 { ids:Set<s
+     tring>, timer, rowsSnapshot:[{row, nextSibling}], listVersion }
+     … +18 lines (ctrl+o to expand)
+
+● 修复核实无误。沉淀阶段三契约到 frontend spec。
+
+● Update(.trellis/spec/frontend/component-guidelines.md)
+  ⎿  Added 7 lines
+      48  - **安全 DOM**：用户/外部数据（标题、URL、Gist 描述、error.mess
+          age）一律 `el()`/textContent；HTML 导出套 `escapeHTML()`（含 hr
+          ef 属性位）。innerHTML 仅允许：静态文案、脚本自产 HTML（如 `get
+          SyncStatusHTML`）。
+      49  - 纯函数区（IIFE 顶部）：`el`/`escapeHTML`/`parseTopicLink`/`ge
+          tSortedList(list, mode)`/`formatTime`/`generateMarkdown|HTML|JS
+          ON(timestamp, count, items)`——无 DOM/全局 UI 状态依赖，新增工具
+          函数放同区并保持参数化。
+      50  
+      51 +### 三态与 Undo 契约（阶段三后必须遵守）                       
+      52 +                                                               
+      53 +- **单列表 + Tab 过滤视图**：数据永远只有 `readLaterList` 一份 
+         +，Tab 只是 `status === activeTab` 的过滤；新增列表视图逻辑不得 
+         +分裂成多列表。`activeTab` 持久化用独立 `GM_setValue('activeTab'
+         +, ...)`，**不得**借道 `saveReadLaterList`（会污染 `lastLocalMod
+         +ified`/`needSync`，触发无谓同步）。                            
+      54 +- **状态迁移只走 `setStatus(ids, target)`**（写 `status`+`statu
+         +sChangedAt`，归档清 `pinnedAt`）；置顶只走 `togglePin(id)`（同 
+         +时刷新 `statusChangedAt` 保证 LWW 整组覆盖）。禁止散落直写这些 
+         +字段。                                                         
+      55 +- **Undo 删除队列**（`pendingDeletes` 单批次）：删除先 DOM deta
+         +ch + 5s 后 `deleteItems` 提交；撤销期内 `readLaterList` 未变， 
+         +因此**所有**读列表做渲染/计数/导出/徽标/批量的路径必须过滤 `isP
+         +endingDelete(id)`——新增此类路径时勿遗漏（曾漏掉导出/updateBadge
+         +/全选，靠检查兜回）。锚点插回按删除逆序；`listVersion` 在每次 `
+         +updateList` 自增，撤销时版本不符则放弃锚点改走全量重画。       
+      56 +- 迁移迷你菜单是**单例**（`moveMenuState`），open/close 必须对 
+         +称挂/摘 document 监听；新弹层沿用此模式。                      
+      57 +                                                               
+      58  ---
+      59  
+      60  ## 常见错误
+
+● Bash(git add "Linux.do 稍后再看.user.js" && git commit -m "feat: 阶段三
+      三态核心功能（三Tab/迁移/置顶/Undo删除/批量操作）" && git add
+      .trellis/spec/frontend/component-guidelines.md && git com…)
+  ⎿  [main d3b7e5f] feat: 阶段三
+     三态核心功能（三Tab/迁移/置顶/Undo删除/批量
+     操作）
+      1 file changed, 605 insertions(+), 36 deletions(-)
+     … +5 lines (ctrl+o to expand)
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● [验证] 阶段三完成并已提交（按椰椰预授权，未再打断）：
+
+  - d3b7e5f feat: 阶段三 三态核心功能（净 +605/-36 行）
+  - 0f1ab9c docs: 沉淀三态与 Undo 契约到 frontend spec
+
+  交付摘要：三 Tab（计数徽标 + activeTab
+  记忆）、五组迁移路径（单例迷你菜单）、置顶（LWW 兼容）、纯 URL 复制、Undo
+  Toast 删除（5s 单批次延迟提交，撤销保滚动）、多选批量（迁移×2/复制/删除，批量
+  删可整体撤销）、入口 ✓ 三态判定、清空文案。
+
+  质量检查：trellis-check 发现并修复 10 处，其中 2 个真实
+  bug（批量撤销锚点需逆序插回、撤销期列表重渲染后锚点失效需 listVersion 检测）和
+  1 个同步污染问题（Tab 切换误走 saveReadLaterList 置 needSync，已改独立 GM
+  写入），均经我抽验核实。
+
+  自决事项记录：行内按钮常显（非 hover
+  显现）——功能完整，显隐行为归阶段五；removeAfterOpen 删除不进 Undo
+  队列（用户已离开页面，直接提交）。
+
+  遗留（已记入记忆）：normalizeItem 未清 archived+pinnedAt 旧数据组合，阶段四/五
+  顺手补；统一手动回归仍待全部阶段完成后进行。下一个是阶段四
+  follow-search-import，随时可开始。
+
+
+● Teammate @codex-r3-e567 finished
+
+● E5–E7 代理空闲通知（已核验收工，阶段三已提交），无需处理。等待椰椰指示是否开始
+  阶段四。

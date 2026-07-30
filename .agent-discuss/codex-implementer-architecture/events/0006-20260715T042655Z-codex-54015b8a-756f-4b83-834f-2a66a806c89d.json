@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "seq": 6,
+  "event_id": "54015b8a-756f-4b83-834f-2a66a806c89d",
+  "type": "peer_seen",
+  "actor": "codex",
+  "created_at": "2026-07-15T04:26:55Z",
+  "refs": {
+    "publication": "claude-004"
+  },
+  "data": {}
+}
