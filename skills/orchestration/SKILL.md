@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: Routing doctrine for the architect-as-orchestrator pattern — how a session running the smartest model delegates implementation to cheaper cross-vendor lanes to minimize cost. USE WHEN delegating implementation work, choosing between the grok and codex runners, writing a spec for a subagent, deciding whether to consult fable-advisor, managing session cost or token spend, or running any multi-task build where the session is the architect.
+description: Routing doctrine for the architect-as-orchestrator pattern — how a session running the smartest model delegates implementation to cheaper cross-vendor lanes to minimize cost. USE WHEN delegating implementation work, choosing between the grok and codex runners (Claude Code) or pinned-model subagent lanes (Cursor), writing a spec for a subagent, deciding whether to consult fable-advisor, managing session cost or token spend, or running any multi-task build where the session is the architect.
 ---
 
 # Orchestration — the architect's routing doctrine
@@ -21,10 +21,12 @@ What stays with the architect regardless of cost: decomposition, interface desig
 
 ## The lanes
 
+Lane semantics are harness-independent; only the invocation differs. In Claude Code the architect drives the CLI lanes through deterministic runners; in Cursor every lane is a subagent dispatch pinned to the lane's model — see "The lanes in Cursor" below.
+
 | Lane | Producer | Invoke | Route here when |
 |---|---|---|---|
-| Routine | Grok (catalog-selected, currently grok-4.5) | `scripts/run-grok.mjs` runner, driven by the architect | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
-| Cross-vendor | GPT-5.6 (Sol/Terra/Luna, selectable effort) | `scripts/run-codex.mjs` runner, driven by the architect | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI and Node. |
+| Routine | Grok (catalog-selected, currently grok-4.5) | `scripts/run-grok.mjs` runner, driven by the architect (Claude Code) · Task dispatch pinned to Grok 4.5 (Cursor) | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** In Claude Code, requires the [Grok CLI](https://x.ai/cli). |
+| Cross-vendor | GPT-5.6 (Sol/Terra/Luna, selectable effort) | `scripts/run-codex.mjs` runner, driven by the architect (Claude Code) · Task dispatch pinned to GPT-5.6 Sol (Cursor) | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. In Claude Code, requires the codex CLI and Node. |
 | In-house | Opus (in-house Claude; currently Opus as of 2026-07, chosen while Sonnet's price/capability positioning is poor — re-evaluate if the lane is swapped back to a future Sonnet) | `implementer` agent | Routed here on purpose when the user's profile marks the task as this lane's specialty (e.g. frontend), when a task that carries real complexity but stays small is worth isolating from the architect's context, or when a declared quota or deadline constraint points here; and as the fallback when both CLI runners (grok and codex) are unavailable or not installed. Keeps the plugin self-contained — no external CLI. Same flagship tier as the architect (value is context isolation, not a cheaper unit price). Disclose three costs on every route here: same family as the architect, so no cross-vendor review; it shares the main session's Anthropic quota; it is the highest unit price under the user's current ranking. |
 | Handoff | Any harness the user picks, driven by the user by hand | Five-part spec + operating guide written to `.fable-advisor/handoff/<slug>.md`, executed manually by the user | Only after an explicit user declaration. Pareto coordinates: price ≈ 0 (arbitrage on a subscription the user already pays for), slowest lane by far (a human round-trip), capability = whatever the user picks at the time, available only while the user is present and has declared it. See "The handoff lane" below. |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
@@ -68,7 +70,7 @@ Implementers share none of your conversation context. Every delegation prompt ca
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to a cheaper model.
 
-## The CLI lanes — runners, not agents
+## The CLI lanes — runners, not agents (Claude Code)
 
 Neither CLI lane has a wrapper agent: the architect drives both producers directly through deterministic runners — no subagent startup cost, no wrapper that could silently self-implement. Same flow for both lanes; the codex walkthrough below is canonical, the grok deltas follow it.
 
@@ -117,6 +119,17 @@ Add `.fable-advisor/` to the target repo's `.gitignore` — receipts embed comma
 node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
 ```
 
+## The lanes in Cursor — pinned subagents, no runners
+
+Cursor loads this same skill through its Claude-plugin compatibility paths, and Cursor exposes every lane's model natively: a subagent dispatch can pin its own model. The runner apparatus above is Claude Code machinery — in Cursor, skip it entirely.
+
+- **Which harness am I in?** If delegation happens through a Task/subagent tool that accepts a per-dispatch model, you are in Cursor — use this section. If you delegate by running `scripts/run-*.mjs`, you are in Claude Code — use the section above.
+- **Invocation.** Write the same five-part spec, verbatim, as the subagent's prompt, and pin the lane's model on the dispatch: Grok 4.5 for the routine lane, GPT-5.6 Sol for the cross-vendor lane, the `implementer` agent (or an Opus pin) for the in-house lane, the `fable-advisor` agent for judgment. No pending file, no runner.
+- **No receipts, no receipt gate.** The report returns in-band as the dispatch result, and a failed or unavailable dispatch fails loudly in-band too. Acceptance runs entirely on the Verification tiers below — which were always the real judge; the receipt gate only ever policed out-of-band CLI runs, and Cursor has none.
+- **Re-routing.** A dispatch that fails because the model is unavailable on the user's plan re-routes to the other cross-vendor lane, disclosed explicitly — the same rule as the CLI lanes. The dispatch-not-probes rule has no object here: there is no CLI auth state to be tempted to probe.
+- **Effort is pinned to the slug.** An ad-hoc model pin carries a fixed effort tier — the codex lane's `effort` knob does not exist on a bare dispatch. Bracket parameters (`gpt-5.6-sol[effort=high]`) are available only in a custom agent definition file; add one deliberately when a task genuinely needs escalated effort, not by default.
+- **Economics unchanged.** Each vendor's models draw on their own quota pool in Cursor, so the price gradient between lanes — and the whole cost discipline above — applies as written.
+
 ## The handoff lane — user-mediated, no mechanical gate
 
 Every other lane requires this session to be able to invoke the producer. The handoff lane trades that away: the user carries the work to a harness of their own choosing (a fixed subscription whose marginal cost is ≈ 0) and brings the result back. What the architect produces is a file, not a process. The flow:
@@ -131,7 +144,7 @@ Sweet spot: large-grained, spec fully settled, no time pressure, and the user ha
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, a pick-the-stronger-diff race — both CLI runners as background Bash on the same spec content (two distinct pending files, so receipts don't collide), architect judges — buys three-vendor confidence for one extra lane's cost.
+Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, a pick-the-stronger-diff race — both CLI runners as background Bash on the same spec content (two distinct pending files, so receipts don't collide), architect judges — buys three-vendor confidence for one extra lane's cost. In Cursor, the same race is two pinned dispatches in a single message — no pending files to keep distinct.
 
 ## Commitment boundaries
 
