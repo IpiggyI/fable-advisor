@@ -120,11 +120,12 @@ function normalizeSpec(value) {
   };
 }
 
-function renderPrompt(spec) {
+function renderPrompt(spec, slug) {
   const files = spec.files.map((file) => `- ${file}`).join("\n");
   const verification = spec.verification.join("\n");
 
   return [
+    `[fable-advisor] ${slug}`,
     "# Objective",
     spec.objective,
     "# Files",
@@ -268,8 +269,8 @@ async function executeGrok(spec, cwd, promptPath) {
   };
   const args = [
     "--prompt-file", promptPath,
-    "-m", spec.model,
-    "--permission-mode", "acceptEdits",
+    ...(spec.model !== null ? ["-m", spec.model] : []),
+    "--permission-mode", "bypassPermissions",
     "--cwd", cwd,
     "--output-format", "streaming-json",
     "--session-id", sessionId,
@@ -310,7 +311,9 @@ async function executeGrok(spec, cwd, promptPath) {
   clearWallTimer();
   clearPreparationTimer();
 
-  if (failure === null && (result.spawnError || result.code !== 0)) {
+  if (failure === null && result.spawnError?.code === "ENOENT") {
+    failure = "grok_unavailable";
+  } else if (failure === null && (result.spawnError || result.code !== 0)) {
     failure = "grok_failed";
   } else if (failure === null && !state.eventObserved) {
     failure = "preparation_stalled";
@@ -484,32 +487,36 @@ async function main() {
   }
 
   const catalogResult = await captureProcess("grok", ["models"]);
-  if (catalogResult.error || catalogResult.code !== 0) {
+  const catalogReadable = !catalogResult.error
+    && catalogResult.code === 0;
+  const { availableModels, defaultModel } = catalogReadable
+    ? parseModelCatalog(catalogResult.stdout)
+    : { availableModels: new Set(), defaultModel: undefined };
+
+  if (!catalogReadable || availableModels.size === 0) {
     const detail = catalogResult.error
       ? errorMessage(catalogResult.error)
-      : catalogResult.stderr.trim() || `exit status ${catalogResult.code}`;
-    diagnostic(`grok models failed: ${detail}`);
-    state.errorClass = "grok_unavailable";
-    return emitReceipt(state);
+      : catalogResult.code !== 0
+        ? (catalogResult.stderr.trim() || `exit status ${catalogResult.code}`)
+        : "empty or unparseable output";
+    diagnostic(
+      `grok model catalog unavailable (${detail}) — skipping model validation; availability is decided by the real run`,
+    );
+    state.model = spec.model;
+  } else {
+    if (spec.model !== null && !availableModels.has(spec.model)) {
+      diagnostic(`invalid spec: model must be one of: ${[...availableModels].join(", ")}`);
+      state.errorClass = "spec_invalid";
+      return emitReceipt(state);
+    }
+    spec.model = spec.model ?? defaultModel;
+    state.model = spec.model;
   }
 
-  const { availableModels, defaultModel } = parseModelCatalog(catalogResult.stdout);
-  if (availableModels.size === 0) {
-    diagnostic("grok model catalog was unparseable");
-    state.errorClass = "grok_unavailable";
-    return emitReceipt(state);
-  }
-  if (spec.model !== null && !availableModels.has(spec.model)) {
-    diagnostic(`invalid spec: model must be one of: ${[...availableModels].join(", ")}`);
-    state.errorClass = "spec_invalid";
-    return emitReceipt(state);
-  }
-  spec.model = spec.model ?? defaultModel;
-  state.model = spec.model;
-
+  const slug = path.basename(parsedArguments.specPath, ".json");
   let promptPath;
   try {
-    const prompt = renderPrompt(spec);
+    const prompt = renderPrompt(spec, slug);
     promptPath = await writePromptFile(prompt);
     const grokResult = await executeGrok(spec, state.cwd, promptPath);
     state.grokSessionId = grokResult.grokSessionId;

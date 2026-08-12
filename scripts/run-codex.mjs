@@ -13,6 +13,7 @@ const DEFAULT_TIMEOUT_SEC = 600;
 const SESSION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const IS_WINDOWS = process.platform === "win32";
 const VALID_MODELS = new Set(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
 const VALID_EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
 const VALID_SERVICE_TIERS = new Set(["fast"]);
@@ -144,11 +145,12 @@ function normalizeSpec(value) {
   };
 }
 
-function renderPrompt(spec) {
+function renderPrompt(spec, slug) {
   const files = spec.files.map((file) => `- ${file}`).join("\n");
   const verification = spec.verification.join("\n");
 
   return [
+    `[fable-advisor] ${slug}`,
     "# Objective",
     spec.objective,
     "# Files",
@@ -234,8 +236,13 @@ function captureProcess(command, args, options = {}) {
   });
 }
 
+// shell:true on Windows concatenates args without escaping, so quoting is manual.
+function quoteForShell(argument) {
+  return /[\s"^&|<>()%!]/u.test(argument) ? `"${argument.replace(/"/gu, '""')}"` : argument;
+}
+
 async function codexIsAvailable() {
-  const result = await captureProcess("codex", ["--version"]);
+  const result = await captureProcess("codex", ["--version"], { shell: IS_WINDOWS });
   return result.error === null;
 }
 
@@ -305,8 +312,9 @@ async function executeCodex(spec, cwd, promptContents) {
   if (spec.service_tier !== null) {
     args.push("-c", `service_tier=${spec.service_tier}`);
   }
-  const child = spawn("codex", args, {
+  const child = spawn("codex", IS_WINDOWS ? args.map(quoteForShell) : args, {
     detached: process.platform !== "win32",
+    shell: IS_WINDOWS,
     stdio: ["pipe", "pipe", "pipe"],
   });
 
@@ -525,7 +533,8 @@ async function main() {
 
   let promptPath;
   try {
-    const prompt = renderPrompt(spec);
+    const slug = path.basename(parsedArguments.specPath, ".json");
+    const prompt = renderPrompt(spec, slug);
     promptPath = await writePromptFile(prompt);
     const promptContents = await readFile(promptPath);
     const codexResult = await executeCodex(spec, state.cwd, promptContents);

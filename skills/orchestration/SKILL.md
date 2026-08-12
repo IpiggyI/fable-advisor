@@ -37,6 +37,8 @@ Grok vs codex is not a capability ranking — it's a failure-distribution questi
 
 If a lane returns `unavailable` or `timeout`, re-route the same spec to the other lane and say so explicitly in your report — never quietly absorb the substitution. If both CLI lanes are unavailable, route to the `implementer` agent (the in-house lane) and state the downgrade plainly — it shares the architect's family, so you lose cross-vendor review; that's the cost of the CLIs being down.
 
+Availability is decided by dispatch, not probes. Never pre-probe a CLI's auth state (a `grok models` login snapshot or the like): the grok CLI refreshes its login only during a real run, and a user-side provider config can bypass auth entirely, so a logged-out snapshot is not evidence that the lane is down. The most a pre-flight may check is installation (`which grok`). Route the spec and let the runner's receipt decide — `*_unavailable` triggers the re-route rule above.
+
 ## User routing profile
 
 Stage 2 runs on inputs the architect cannot probe: remaining quota on a CLI, delivery pressure, and the user's own sense of which family is better at what are user-owned facts. They enter routing only as declarations, in two layers.
@@ -108,7 +110,7 @@ Add `.fable-advisor/` to the target repo's `.gitignore` — receipts embed comma
 **The grok runner.** `scripts/run-grok.mjs` — same CLI contract (`--spec`, `--cwd`), same pending/receipt flow, same receipt gate. Deltas:
 
 - Spec keys: the five parts plus optional `model` and `timeout_sec` only — no `effort`/`service_tier` (the grok CLI has no such knobs).
-- `model` is validated against the live `grok models` catalog and defaults to the CLI's own default, so a newly shipped grok generation is usable the day the CLI lists it. A model not in the catalog is `spec_invalid`; an unreadable catalog is `grok_unavailable` — never silent passthrough.
+- `model` is validated against the live `grok models` catalog when the catalog is readable, and defaults to the CLI's own default. A model not in the catalog is `spec_invalid`. An unreadable catalog is no longer `grok_unavailable`: the runner logs a diagnostic, skips validation (`model` passes through; if unset, no `-m` flag is sent and the CLI uses its own default), and the real run decides availability — see the dispatch-not-probes rule above.
 - Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`). The receipt additionally records `usage` and `total_cost_usd` from grok's end event, and `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
 
 ```bash

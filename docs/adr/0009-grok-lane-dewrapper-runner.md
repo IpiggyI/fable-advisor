@@ -48,3 +48,11 @@ ADR 0002 给 codex 去 wrapper 时记录了 grok 车道的同法路线，触发�
 - 探测证据：插件 v1.0.5 解剖由只读 scout 完成，承重结论（无 verification 执行、SessionEnd 杀删 job、approval hardcoded `never`）经 file:line 抽查。
 - 实施经 codex 车道 dogfood：spec 见 `.fable-advisor/pending/grok-lane-runner.json`。
 - 成本口径更正存档：探测调用 usage 里的 ~19k input 是 grok 会话 xAI 侧系统提示基线（迁移前后不变），本决策省的是 Claude 侧 wrapper 启动基线（ADR 0002 记 ~25k）。
+
+## 追记（2026-08-12）— 目录预检降级为提示性校验
+
+前提证伪：`grok models` 打印的登录态快照不可靠——grok CLI 仅在真实运行时刷新登录，且用户侧自定义供应商配置（config.toml 式）可完全绕过 auth。未认证快照曾同时误导架构师侧预探测与本 runner 的 preflight，把可用车道误判为 `grok_unavailable`。
+
+决策修订：目录不可读（进程错误、非零退出或输出不可解析）时不再判 `grok_unavailable`，改为记 diagnostic 并跳过白名单校验——`spec.model` 透传，未指定则不传 `-m` 由 CLI 用自身默认；可用性由实跑裁决。目录可读时行为不变（不在目录内仍为 `spec_invalid`）。代价：目录不可读时模型 typo 推迟到实跑才失败（`grok_failed`），换取不误杀可用车道。SKILL.md 同步新增「派发裁决可用性、禁 auth 快照预探测」条款。
+
+同批第二处前提证伪：`--permission-mode acceptEdits` 仅自动放行文件编辑工具；无头（`--prompt-file`）会话中任何终端命令都触发 permission prompt 且无人应答，整会话按 `permission_cancelled` 取消——lane 因此无法运行验证/构建命令（实测两次派工均死于首个终端命令，见会话事件 `cancellation_category: permission_cancelled`）。修订：executeGrok 改用 `--permission-mode bypassPermissions`。grok CLI 无 codex `workspace-write` 式 OS 沙箱，此为无头可用的最小修法；风险由验收分级（diff 判读 + 回执）兜底，且不超出用户交互侧 `always-approve` 的既定姿态。另：预检降级后二进制缺失曾会落为 `grok_failed`，现于 executeGrok 将 spawn ENOENT 映射回 `grok_unavailable`，保住 SKILL `*_unavailable` 改道触发器。

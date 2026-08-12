@@ -53,3 +53,10 @@ receipt gate 与 PreToolUse spawn 护栏针对的是**两类不同威胁**，容
 - **receipt gate**（`hooks/receipt-gate.py`，fail open）针对**主会话自己**——排了 spec 却不跑、或把非-complete receipt 当完成。去 wrapper 之后它是唯一还在盯主会话的机制。
 
 "现在是主会话直派 Codex lane" 不是 gate 过时的理由，恰恰是它的适用场景。
+
+## 追记（2026-08-12）— Windows spawn 修复与会话标题
+
+- Windows 下两处 `spawn("codex", …)` 无 shell 恒失败：PATH 里只有 npm shim（无 `codex.exe`），直接 spawn 得 ENOENT；显式 spawn `.cmd` 被 Node 20.12+（CVE-2024-27980）拒为 EINVAL。修复：仅 win32 下 `codexIsAvailable()` 与 `executeCodex()` 带 `shell: true`，参数经 `quoteForShell` 手工加引号（`shell:true` 在 Windows 上原样拼接、不做转义）。`killProcessTree` 的 `taskkill /T` 分支不变，恰好收掉 cmd.exe 整树。2026-08-09 已在 Windows 端到端实测（见 `docs/handoff-fable-advisor-codex-windows-2026-08-09.md`）。
+- `codex resume` 列表以会话首条用户消息为显示名；runner 的 prompt 以 `# Objective` 开头，lane 会话名因此不可辨。`renderPrompt` 现于首行加 `[fable-advisor] <spec slug>`（slug 取 spec 文件名去 `.json`；`codex exec` 0.147 无命名 flag，prompt 首行是唯一可控点）。`run-grok.mjs` 同步同款标题行（镜像维护，ADR 0009）。
+- 补充实测（2026-08-12，codex 0.147）：`codex exec --json` 不再向 `~/.codex/sessions/` 落盘 rollout（未传 `--ephemeral` 亦然），lane 会话因此不进 `codex resume` 列表；标题行对仍落盘的 codex 版本/调用形态生效，e2e 以假 codex 捕获 stdin 验证 prompt 首行。
+- 版本 3.8.0（同批含 grok 目录预检降级，见 ADR 0009 追记）。
