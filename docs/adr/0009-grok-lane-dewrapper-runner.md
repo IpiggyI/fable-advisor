@@ -56,3 +56,9 @@ ADR 0002 给 codex 去 wrapper 时记录了 grok 车道的同法路线，触发�
 决策修订：目录不可读（进程错误、非零退出或输出不可解析）时不再判 `grok_unavailable`，改为记 diagnostic 并跳过白名单校验——`spec.model` 透传，未指定则不传 `-m` 由 CLI 用自身默认；可用性由实跑裁决。目录可读时行为不变（不在目录内仍为 `spec_invalid`）。代价：目录不可读时模型 typo 推迟到实跑才失败（`grok_failed`），换取不误杀可用车道。SKILL.md 同步新增「派发裁决可用性、禁 auth 快照预探测」条款。
 
 同批第二处前提证伪：`--permission-mode acceptEdits` 仅自动放行文件编辑工具；无头（`--prompt-file`）会话中任何终端命令都触发 permission prompt 且无人应答，整会话按 `permission_cancelled` 取消——lane 因此无法运行验证/构建命令（实测两次派工均死于首个终端命令，见会话事件 `cancellation_category: permission_cancelled`）。修订：executeGrok 改用 `--permission-mode bypassPermissions`。grok CLI 无 codex `workspace-write` 式 OS 沙箱，此为无头可用的最小修法；风险由验收分级（diff 判读 + 回执）兜底，且不超出用户交互侧 `always-approve` 的既定姿态。另：预检降级后二进制缺失曾会落为 `grok_failed`，现于 executeGrok 将 spawn ENOENT 映射回 `grok_unavailable`，保住 SKILL `*_unavailable` 改道触发器。
+
+## 追记（2026-08-13）— 目录解析漏掉非默认行
+
+前提证伪：`grok models` 的目录输出仅当前默认模型行以 `*` 标注，其余模型行以 `-` 开头（grok-4.6 换代后实测：`* grok-4.6 (default)` / `- grok-4.5` / `- grok-s2a`）。parseModelCatalog 的正则只匹配 `*` 行，白名单因此只剩默认模型——spec 指定目录内非默认模型（如自定义供应商渠道需显式传 model 才能选中的 grok-s2a）被误判 `spec_invalid`，违背本 ADR「白名单与默认模型取自现场目录」的决策本意。
+
+修订：解析器同时接受 `*` 与 `-` 行（`/^\s*[-*]\s+(\S+)/gm`），默认模型仍取 `Default model:` 行。行为面：默认模型解析不变，目录内非默认模型恢复合法，目录外 typo 仍 fail-loud（`spec_invalid`）。同批将 SKILL.md 的 grok 车道条款改为「默认省略 model」：CLI 自身默认随目录换代走，spec 零改动跟进换代；仅刻意选非默认目录项（如自定义渠道模型）时才写 model。Cursor 侧不受影响——子代理派发始终显式钉模型。

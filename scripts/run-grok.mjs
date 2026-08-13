@@ -142,7 +142,7 @@ function renderPrompt(spec, slug) {
 
 function parseModelCatalog(stdout) {
   const availableModels = new Set(
-    [...stdout.matchAll(/^\s*\*\s+(\S+)/gm)].map((match) => match[1]),
+    [...stdout.matchAll(/^\s*[-*]\s+(\S+)/gm)].map((match) => match[1]),
   );
   const defaultMatch = /^Default model:\s+(\S+)/m.exec(stdout);
   const defaultModel = defaultMatch?.[1] ?? availableModels.values().next().value;
