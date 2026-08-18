@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "python3 /REPLACE_ME/.cursor/hooks/fable-lane-family-gate.py",
+        "matcher": "Task",
+        "timeout": 10
+      }
+    ]
+  }
+}

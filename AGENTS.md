@@ -19,3 +19,7 @@ Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. `docs/adr/` is th
 ### Plugin release & local update
 
 Version bump (two files) → push to `origin` → per-side `claude plugin` update on WSL and Windows. See `docs/agents/plugin-release.md`.
+
+### Cursor lane family gate
+
+Canonical copy of the user-level Cursor `preToolUse` gate lives under `cursor-hooks/` (not `plugin/hooks/`). See `docs/agents/cursor-lane-gate.md`.
