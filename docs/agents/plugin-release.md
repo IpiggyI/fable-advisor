@@ -45,7 +45,7 @@ ls ~/.claude/plugins/cache/fable-advisor/fable-advisor/   # new version dir pres
 test ! -d ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/docs
 test ! -d ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/.scratch
 test ! -d ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/.agent-discuss
-grep -c "The lanes in Cursor" ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/skills/orchestration/SKILL.md
+grep -c "pinned subagents" ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/skills/orchestration/lanes-cursor.md
 ```
 
 (Adapt the grep to whatever the release changed.)

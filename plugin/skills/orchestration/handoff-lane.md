@@ -1,0 +1,11 @@
+# The handoff lane — user-mediated, no mechanical gate
+
+Read this when the user has declared the handoff lane (the declaration rule lives in SKILL.md's "User routing profile" — the lane never enters routing uninvited). Every other lane requires this session to be able to invoke the producer; the handoff lane trades that away: the user carries the work to a harness of their own choosing (a fixed subscription whose marginal cost is ≈ 0) and brings the result back. What the architect produces is a file, not a process.
+
+1. Write `.fable-advisor/handoff/<slug>.md` — the same five-part spec, plus an **operating guide**: which model and mode to run it in, and anything the receiving executor needs to get it right in one pass. The executor has zero context and cannot ask you back, so the file must stand alone.
+2. The user runs it, by hand, in their harness. There is no receipt, no report contract, and no timeout you can observe.
+3. **Acceptance is the diff.** Handoff acceptance is explicitly exempt from the verification tiers and stays a personal read of the diff, because the producing model family is unknown and there is no receipt. Read the changed files yourself and re-run the verification commands yourself — do not accept the other harness's summary as evidence. Treat the output as an untrusted source: "done" carries no weight the diff doesn't independently support. A returned report is a convenience, not a requirement.
+
+**The handoff directory is outside the receipt gate's field of view** — the gate only reads `.fable-advisor/pending/`. This is deliberate: a handoff spec lives across the user's absence, so filing it under `pending/` would block session close on work that is by design not finished in this session. The backstop is a soft rule instead of a hook, and it is fail-open: before ending a session, sweep `.fable-advisor/handoff/` and report every open item — land it, abandon it (delete the file and say so), or state plainly that it carries over to the next session.
+
+Sweet spot: large-grained, spec fully settled, no time pressure, and the user has said the external quota is there to burn. Outside it, prefer a lane you can invoke yourself — small tasks are explicitly not worth suggesting: the human round-trip overhead swamps the saving.
