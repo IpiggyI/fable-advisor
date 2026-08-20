@@ -1,0 +1,13 @@
+> 中文对照版，不参与部署，以英文版为准。权威版本：plugin/skills/orchestration/handoff-lane.md
+
+# Handoff lane（交接车道）—— 用户中介，无机械门禁（The handoff lane — user-mediated, no mechanical gate）
+
+当用户已声明 Handoff lane 时阅读本文（声明规则在 SKILL.md 的「用户路由 profile」——该 lane 从不未经邀请进入路由）。其他每条 lane 都要求本会话能够调用生产者；Handoff lane 放弃这一点：用户把工作带到自选的 harness（一份边际成本 ≈ 0 的固定订阅）并把结果带回来。架构师产出的是一个文件，不是一个进程。
+
+1. 撰写 `.fable-advisor/handoff/<slug>.md` —— 同一份五部 spec，外加一份 **操作指南**：在哪种模型与模式下运行，以及接收方执行者一次性做对所需的任何信息。执行者零上下文且无法回头问你，因此该文件必须能独立成立。
+2. 用户亲手在其 harness 中运行。没有 receipt、没有报告契约，也没有你能观察的超时。
+3. **验收即 diff。** Handoff 验收显式豁免于核验层，并保持为亲自阅读 diff，因为生产模型家族未知且没有 receipt。亲自阅读变更文件，亲自重跑核验命令——不要把另一 harness 的摘要当证据。把产出当作不可信来源：「完成」没有任何超出 diff 所能独立支撑的分量。回传报告是便利，不是要求。
+
+**handoff 目录在 receipt gate 的视野之外** —— gate 只读 `.fable-advisor/pending/`。这是有意的：handoff spec 会在用户不在场期间继续存在，因此若把它放到 `pending/` 下，会因为一份按设计不会在本会话内完成的工作而阻塞会话关闭。后盾是软规则而非 hook，且 fail open：结束会话前，扫一遍 `.fable-advisor/handoff/` 并报告每一项未决——落地它、放弃它（删除文件并说明），或清楚说明它带到下一会话。
+
+甜点：粒度大、spec 已完全敲定、没有时间压力，且用户已表示外部额度可烧掉。在此之外，优先走你能自己调用的 lane——小任务明确不值得建议：人工往返开销会淹没节省。
