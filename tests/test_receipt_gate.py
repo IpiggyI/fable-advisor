@@ -9,7 +9,7 @@ import tempfile
 
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HOOK = os.path.join(REPO_ROOT, "hooks", "receipt-gate.py")
+HOOK = os.path.join(REPO_ROOT, "plugin", "hooks", "receipt-gate.py")
 
 
 def run_hook(cwd, stdin_payload):

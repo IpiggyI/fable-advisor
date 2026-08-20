@@ -36,7 +36,7 @@ Then start your session as the architect on a flagship-tier model (Fable or Opus
 /model fable
 ```
 
-**Lite mode — one file, 30 seconds.** Don't want the full pattern? Copy [`agents/fable-advisor.md`](agents/fable-advisor.md) into `~/.claude/agents/` and keep your session on Sonnet. You get advisor consults at commitment boundaries without the orchestration layer (see "Advisor-only mode" below).
+**Lite mode — one file, 30 seconds.** Don't want the full pattern? Copy [`plugin/agents/fable-advisor.md`](plugin/agents/fable-advisor.md) into `~/.claude/agents/` and keep your session on Sonnet. You get advisor consults at commitment boundaries without the orchestration layer (see "Advisor-only mode" below).
 
 ## Requirements
 

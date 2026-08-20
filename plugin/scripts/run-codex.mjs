@@ -305,7 +305,8 @@ async function executeCodex(spec, cwd, promptContents) {
     "--json",
     "--model", spec.model,
     "-c", `model_reasoning_effort=${spec.effort}`,
-    "--sandbox", "workspace-write",
+    // workspace-write on Windows raises Win32 1312 (no logon session for the restricted token).
+    "--sandbox", IS_WINDOWS ? "danger-full-access" : "workspace-write",
     "--skip-git-repo-check",
     "--cd", cwd,
   ];
