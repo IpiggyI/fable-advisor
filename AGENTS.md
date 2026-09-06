@@ -22,4 +22,4 @@ Version bump (two files) → push to `origin` → per-side `claude plugin` updat
 
 ### Cursor lane family gate
 
-Canonical copy of the user-level Cursor `preToolUse` gate lives under `cursor-hooks/` (not `plugin/hooks/`). See `docs/agents/cursor-lane-gate.md`.
+Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule live under `cursor-hooks/` (not `plugin/hooks/`). See `docs/agents/cursor-lane-gate.md`.

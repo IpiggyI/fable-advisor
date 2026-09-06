@@ -6,7 +6,8 @@ Python defaults to GBK text. Cursor 3.16.17 has prefixed hook stdin with
 UTF-8 BOM, and has split `cursor-grok-4.6-*` slugs so `4.6` is a JSON number
 (`"cursor-grok-"4.6"-medium"`). Empty stdin is deny. JSON that still cannot
 be parsed is deny with the decoder error, not a BOM message.
-Explore/generalPurpose inherit is allowed when tool_input is visible. Resume
+Explore/generalPurpose inherit is allowed when tool_input is visible.
+fable-advisor inherit is allowed (2026-08-31, Fable 5 quota). Resume
 skips the model check.
 
 First-party: Cursor 3.16.17, 2026-08-18 Windows leak — hook ran, logged INPUT
@@ -56,7 +57,25 @@ def decide(tool_input: dict) -> tuple[str, str | None, str | None]:
         return "allow", None, None
 
     model = tool_input.get("model")
-    if not isinstance(model, str) or not model.strip() or model.strip().lower() == "inherit":
+    inherit = (
+        not isinstance(model, str)
+        or not model.strip()
+        or model.strip().lower() == "inherit"
+    )
+    # 2026-08-31: fable-advisor inherits the parent (Fable 5 quota).
+    # Any explicit pin is deny so a Fable slug cannot sneak through.
+    # Restore: delete this block; inherit then falls through to omit-deny.
+    if agent == "fable-advisor":
+        if inherit:
+            return "allow", None, None
+        agent_msg = (
+            "Cursor Task for fable-advisor must inherit the parent (omit model). "
+            "Fable pin paused 2026-08-31 (quota). Retry with no model / inherit."
+        )
+        user_msg = "fable-advisor 暂用会话默认模型，请省略 model 后重试。不要钉 Fable slug。"
+        return "deny", agent_msg, user_msg
+
+    if inherit:
         agent_msg = (
             f"Cursor Task for {agent} omitted model (inherit parent). "
             f"Pin a {tokens[0]}-family slug from this turn's Task allowlist and retry. "
@@ -294,10 +313,10 @@ def _self_test() -> int:
     decide_cases = [
         ({"subagent_type": "explore"}, "allow"),
         ({"subagent_type": "generalPurpose"}, "allow"),
-        ({"subagent_type": "fable-advisor"}, "deny"),
-        ({"subagent_type": "fable-advisor", "model": "inherit"}, "deny"),
+        ({"subagent_type": "fable-advisor"}, "allow"),
+        ({"subagent_type": "fable-advisor", "model": "inherit"}, "allow"),
         ({"subagent_type": "fable-advisor", "model": "cursor-grok-4.6-xhigh"}, "deny"),
-        ({"subagent_type": "fable-advisor", "model": "claude-fable-5-thinking-xhigh"}, "allow"),
+        ({"subagent_type": "fable-advisor", "model": "claude-fable-5-thinking-xhigh"}, "deny"),
         ({"subagent_type": "implementer"}, "deny"),
         ({"subagent_type": "implementer", "model": "claude-opus-5-thinking-high"}, "allow"),
         ({"subagent_type": "fable-advisor", "resume": "abc"}, "allow"),
@@ -353,7 +372,7 @@ def _self_test() -> int:
                 },
                 ensure_ascii=False,
             ).encode("utf-8"),
-            "deny",
+            "allow",
         ),
         (
             json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "explore"}}).encode(),
@@ -369,7 +388,7 @@ def _self_test() -> int:
                     },
                 }
             ).encode(),
-            "allow",
+            "deny",
         ),
         (
             b"\xef\xbb\xbf"
@@ -382,7 +401,7 @@ def _self_test() -> int:
                     },
                 }
             ).encode("utf-8"),
-            "allow",
+            "deny",
         ),
         (
             b"\xef\xbb\xbf"
@@ -395,7 +414,7 @@ def _self_test() -> int:
                     },
                 }
             ).encode("utf-8"),
-            "deny",
+            "allow",
         ),
         (
             json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor", "resume": "abc"}}).encode(),
@@ -411,7 +430,7 @@ def _self_test() -> int:
         ),
         (
             b'{"tool_name":"Task","tool_input":{"prompt":"use `cwd` and "quotes"","model":"claude-fable-5-thinking-low","subagent_type":"fable-advisor"}}',
-            "allow",
+            "deny",
         ),
     ]
     for raw, expected in eval_cases:

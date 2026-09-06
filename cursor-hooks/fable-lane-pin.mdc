@@ -1,0 +1,12 @@
+---
+description: Pin Cursor Task model for named lanes; fable-advisor inherits parent while Fable quota is paused
+alwaysApply: true
+---
+
+# Cursor Task pin
+
+Omitting Task `model` inherits the parent session. Plugin frontmatter `model:` is ignored.
+
+- `fable-advisor` (2026-08-31): omit `model` (inherit parent). Do not pin a Fable slug — Fable 5 quota is exhausted. The preToolUse hook allows inherit and denies any explicit pin, including Fable. After a deny, retry with no `model`; do not pin Fable. Resume the Fable pin when the user asks.
+- In-house / Grok / GPT: this Cursor Task enum has no `implementer`. Claim those lanes with `generalPurpose` or `explore` plus an explicit `model`. Omitting `model` is a same-model scout, not a vendor lane.
+- Use the live allowlist slug, not a skill example that may be absent.

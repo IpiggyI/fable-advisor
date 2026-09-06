@@ -12,7 +12,7 @@ _Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与历史�
 
 **lane family gate**:
 Cursor 用户级 `preToolUse` 门：`Task` 派发 `fable-advisor` / `implementer` 时必须钉对家族模型。
-_Avoid_: 与 receipt gate 混称；称作插件 hook 或本仓 project hook。
+_Avoid_: 与 receipt gate 混称；称作插件 hook 或本仓 project hook；把用户级 Task pin 规则当成另一套门禁。
 
 ### 实现车道
 
