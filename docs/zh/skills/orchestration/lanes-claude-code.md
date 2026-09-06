@@ -1,12 +1,12 @@
 # Claude Code 中的 CLI lane —— runner，而非 agent
 
-在 Claude Code 中派发 lane 之前阅读本文。两条 CLI lane 都没有 wrapper agent：架构师通过确定性 runner 直接驱动两个生产者——没有 subagent 启动成本，也没有可能悄悄自行实现的 wrapper。Routine lane 需要 [Grok CLI](https://x.ai/cli)；Cross-vendor lane 需要 codex CLI 与 Node。In-house lane 是 `implementer` agent——一次普通的 subagent 派发，无 runner——从而在两条 CLI 都缺失时保持插件自包含。
+在 Claude Code 中派发 lane 之前阅读本文。架构师通过确定性 runner 直接驱动两个 CLI 生产者：没有 subagent 启动成本，架构师与 CLI 之间也没有任何可能悄悄自行实现的东西。Routine lane 需要 [Grok CLI](https://x.ai/cli)；Cross-vendor lane 需要 codex CLI 与 Node。In-house lane 是 `implementer` agent——一次普通的 subagent 派发，无 runner——从而在两条 CLI 都缺失时保持插件自包含。
 
 两条 CLI lane 流程相同；以 codex 演练为典范，grok 的差异紧随其后。
 
 ## 0. 前言到达每一条 lane
 
-两条 runner 都读取 `<plugin-root>/skills/orchestration/lane-preamble.md`（相对它们自己的目录 `<plugin-root>/scripts/` 解析），并将其原文前置到 lane 提示，排在五个部分之前。前言缺失会使 runner 在拉起任何东西之前以非零退出——执行侧契约从不被静默丢掉。不要把前言粘进 spec；spec 只携带契约。
+两条 runner 都读取 `<plugin-root>/skills/orchestration/lane-preamble.md`（相对它们自己的目录 `<plugin-root>/scripts/` 解析），并将其原文前置到 lane 提示，排在五个部分之前。前言缺失会使 runner 在拉起任何东西之前以非零退出——执行侧契约从不被静默丢掉。
 
 ## 1. 撰写 spec
 

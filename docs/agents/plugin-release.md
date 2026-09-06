@@ -7,9 +7,9 @@ How a change in this repo reaches the installed plugin on this machine (WSL + Wi
 - `plugin/.claude-plugin/plugin.json` → `version`
 - `.claude-plugin/marketplace.json` → `plugins[0].version`
 
-Both must move together. The marketplace version drives update discovery; leaving it stale means `claude plugin update` sees nothing new (this drift actually happened: marketplace sat at 3.7.0 while plugin.json said 3.8.0). Minor bump for semantic changes, per the ADR precedents.
+Both must move together. The marketplace version drives update discovery; leaving it stale means `claude plugin update` sees nothing new. Minor bump for semantic changes, per the ADR precedents.
 
-Runtime lives under `plugin/`; `marketplace.json` sets `"source": "./plugin"`. Claude Code copies that directory wholesale into the versioned cache (it does not honor `.pluginignore` or `export-ignore`). Anything outside `plugin/` is repo-only and does not ship — `docs/`, `.scratch/`, `.agent-discuss/`, `tests/`, `cursor-hooks/`, and the root instruction files (`AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, `README.md`, `LICENSE`). Do not point `source` back at `./`.
+Runtime lives under `plugin/`; `marketplace.json` sets `"source": "./plugin"`. Claude Code copies that directory wholesale into the versioned cache (it does not honor `.pluginignore` or `export-ignore`). Anything outside `plugin/` is repo-only and does not ship — `docs/`, `.scratch/`, `.agent-discuss/`, `tests/`, `cursor-hooks/`, and the root instruction files (`AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, `README.md`, `LICENSE`). `source` stays `./plugin`.
 
 ## 1b. Sync the Chinese mirror
 

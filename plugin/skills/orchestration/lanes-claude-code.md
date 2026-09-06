@@ -1,12 +1,12 @@
 # The CLI lanes in Claude Code — runners, not agents
 
-Read this before dispatching a lane in Claude Code. Neither CLI lane has a wrapper agent: the architect drives both producers directly through deterministic runners — no subagent startup cost, no wrapper that could silently self-implement. The routine lane requires the [Grok CLI](https://x.ai/cli); the cross-vendor lane requires the codex CLI and Node. The in-house lane is the `implementer` agent — a plain subagent dispatch, no runner — which keeps the plugin self-contained when both CLIs are missing.
+Read this before dispatching a lane in Claude Code. The architect drives both CLI producers directly through deterministic runners: no subagent startup cost, and nothing between the architect and the CLI that could silently self-implement. The routine lane requires the [Grok CLI](https://x.ai/cli); the cross-vendor lane requires the codex CLI and Node. The in-house lane is the `implementer` agent — a plain subagent dispatch, no runner — which keeps the plugin self-contained when both CLIs are missing.
 
 Same flow for both CLI lanes; the codex walkthrough is canonical, the grok deltas follow it.
 
 ## 0. The preamble reaches every lane
 
-Both runners read `<plugin-root>/skills/orchestration/lane-preamble.md` (resolved relative to their own directory, `<plugin-root>/scripts/`) and prepend it verbatim to the lane prompt, ahead of the five parts. A missing preamble makes the runner exit non-zero before spawning anything — the executor-side contract is never silently dropped. Do not paste the preamble into the spec; the spec carries only the contract.
+Both runners read `<plugin-root>/skills/orchestration/lane-preamble.md` (resolved relative to their own directory, `<plugin-root>/scripts/`) and prepend it verbatim to the lane prompt, ahead of the five parts. A missing preamble makes the runner exit non-zero before spawning anything — the executor-side contract is never silently dropped.
 
 ## 1. Write the spec
 

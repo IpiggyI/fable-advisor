@@ -21,5 +21,3 @@ Status: ready-for-agent
 ```
 
 One role per issue. Changing triage state means editing that line, not adding a second one.
-
-Edit the right-hand column to match whatever vocabulary you actually use.

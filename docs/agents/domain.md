@@ -31,9 +31,9 @@ If either doesn't exist, **proceed silently**. Don't flag their absence; don't s
 
 `docs/adr/` is the **only** decision store, and it is tracked in git.
 
-Decisions previously lived in `.memory/decisions/` (the `mem` skill's surface, gitignored). That directory was migrated to `docs/adr/` on 2026-07-25 and no longer exists — see [ADR 0004](../adr/0004-adr-store-in-repo.md). If you find a reference to `.memory/decisions/` anywhere, it is stale; the decision it points at is in `docs/adr/` under the same slug.
+The `mem` skill's default decision surface, `.memory/decisions/`, is not used in this repo: record a decision as an ADR under `docs/adr/` instead — see [ADR 0004](../adr/0004-adr-store-in-repo.md).
 
-`.memory/tasks/` is unaffected and still holds the retrospective task archive.
+`.memory/tasks/` holds the retrospective task archive.
 
 ## Use the glossary's vocabulary
 

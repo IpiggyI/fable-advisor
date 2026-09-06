@@ -1,6 +1,6 @@
 # The handoff lane — user-mediated, no mechanical gate
 
-Read this when the user has declared the handoff lane (the declaration rule lives in SKILL.md's "User routing profile" — the lane never enters routing uninvited). Every other lane requires this session to be able to invoke the producer; the handoff lane trades that away: the user carries the work to a harness of their own choosing (a fixed subscription whose marginal cost is ≈ 0) and brings the result back. What the architect produces is a file, not a process.
+Read this when the user has declared the handoff lane (the declaration rule lives in SKILL.md's "User routing profile"). Every other lane requires this session to be able to invoke the producer; the handoff lane trades that away: the user carries the work to a harness of their own choosing (a fixed subscription whose marginal cost is ≈ 0) and brings the result back. What the architect produces is a file, not a process.
 
 1. Write `.fable-advisor/handoff/<slug>.md` — the same five-part spec, plus an **operating guide**: which model and mode to run it in, and anything the receiving executor needs to get it right in one pass. The executor has zero context and cannot ask you back, so the file must stand alone.
 2. The user runs it, by hand, in their harness. There is no receipt, no report contract, and no timeout you can observe.

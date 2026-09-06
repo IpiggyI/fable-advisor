@@ -26,7 +26,7 @@ Whether the architect may edit a file depends on what the file is, never on how 
 
 The repo's path mapping lives in its agent instructions (AGENTS.md or equivalent). An unclear class is a deliverable.
 
-**Same-model dispatch** is a dial of the in-house lane, not a fifth lane: the model is pinned to the session model instead of the default alias. It serves one artifact class, doctrine prose shipped with the plugin (its own skill and agent text), for consistency with the architect's judgment; the class triggers it, not how central the text feels. In Cursor: `generalPurpose` with no `model` (inherit). In Claude Code it degrades to the Opus in-house lane, disclosed, until a per-dispatch model override is confirmed.
+**Same-model dispatch** is a dial of the in-house lane, not a fifth lane: the model is pinned to the session model instead of the default alias. It serves one artifact class, doctrine prose shipped with the plugin (its own skill and agent text), for consistency with the architect's judgment; the class triggers it, not how central the text feels. In Cursor: `generalPurpose` with no `model` (inherit). In Claude Code it runs as the Opus in-house lane, disclosed.
 
 ## The lanes
 
@@ -36,7 +36,7 @@ Lane semantics are harness-independent; only the invocation differs.
 |---|---|---|
 | Routine | Grok, at the grok CLI's catalog default (currently grok-4.6, 2026-09) | The contract fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits. **Default lane.** |
 | Cross-vendor | GPT family, from the codex lane's current catalog (model and effort selectable) | Correctness or completeness warrants a second implementation, or the grok lane is unavailable. |
-| In-house | Claude via the `opus` alias (chosen 2026-07 over Sonnet; re-evaluate if swapped back) | On purpose: a profile-marked specialty, a small-but-complex task worth isolating from the architect's context, a declared quota or deadline constraint, same-model dispatch of doctrine prose; also the fallback when both CLI runners are unavailable. Disclose three costs per route: same family (no cross-vendor review), shared Anthropic quota, highest unit price. |
+| In-house | Claude via the `opus` alias | On purpose: a profile-marked specialty, a small-but-complex task worth isolating from the architect's context, a declared quota or deadline constraint, same-model dispatch of doctrine prose; also the fallback when both CLI runners are unavailable. Disclose three costs per route: same family (no cross-vendor review), shared Anthropic quota, highest unit price. |
 | Handoff | Any harness, driven by the user by hand | Only after an explicit user declaration; see [handoff-lane.md](handoff-lane.md). |
 | Judgment | Fable series (`fable-advisor` agent) | Not an implementation lane; see "Commitment boundaries". |
 
@@ -65,7 +65,7 @@ Stage 2 runs on inputs the architect cannot probe: quota headroom, delivery pres
 
 **Volatile state** (quota balance, deadline pressure) is declared verbally when the work starts, holds for that session only, and is never written to disk.
 
-**The handoff declaration.** Declared the same way, per task or per session. **The handoff lane never enters stage 2 uninvited — it becomes selectable only after an explicit user declaration; the architect may suggest it for a large, fully-specified, non-urgent task, but a suggestion never routes.** Unasked, it produces stalled work.
+**The handoff declaration.** Declared the same way, per task or per session; the declaration is what makes the handoff lane selectable in stage 2. The architect may suggest it for a large, fully-specified, non-urgent task, but a suggestion never routes: unasked, it produces stalled work.
 
 **The low-confidence escape hatch.** Ask the user before routing in exactly two cases, offering at least two options with reasons: declared constraints conflict on the deciding dimension; or the task is high-risk (correctness-critical or hard to reverse) and the profile is silent on it. It does not fire for a mechanical task, the mere absence of declarations (the documented default), or an unavailable lane (re-route and disclose). For a parallel fan-out, ask at most once per batch.
 
