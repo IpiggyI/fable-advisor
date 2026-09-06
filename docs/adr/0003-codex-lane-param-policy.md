@@ -54,3 +54,17 @@ runner 三个入参(`effort`/`model`/`service_tier`)全部 fail-loud 校验:越�
 - 事实核验环境:codex-cli 0.144.4;`effort=max` 真实调用 session `019f6538-…`。
 - 遗留(非本次范围):`hooks/block-named-cli-lane.py` 的 `GUARDED` 仍含 `"codex-implementer"`(v3.2 已删该 agent)——死引用;当前会话 agent 列表仍显示 `fable-advisor:codex-implementer`,说明已安装插件版本落后仓库 HEAD。（该死引用已于提交 `a89231f` 清理。）
 - 实施经由 codex 车道自身完成(dogfood):spec 见 `.fable-advisor/pending/codex-param-policy.json`。
+
+## 追记（2026-09-06）— 模型白名单换代为 Astra / Luna，按模型给默认 effort，会话未建立时单跳回退
+
+触发条件命中：OpenAI 目录换代（GPT-6 Astra 发布；Sol / Terra 退出用户的使用集合）。与 [ADR 0013](./0013-delivery-contract-not-build-instructions.md) 同批落地，版本 4.0.0。
+
+修订：
+
+1. **model 白名单** 改为 `{gpt-6-astra, gpt-5.6-luna}`，默认 `gpt-6-astra`。`gpt-5.6-sol` / `gpt-5.6-terra` 移出：写入即 `spec_invalid`（破坏性变更，故打 major）。
+2. **effort 枚举不变**（`{low,medium,high,xhigh,max}`，仍 fail-loud 校验），但默认值改为按模型：astra → `medium`，luna → `max`。用户对两组档位的判断（astra 用 medium / high；luna 只值得 max）**不**作为白名单硬约束——用户裁定（2026-09-06）：硬约束会在模型不可用时把任务卡死，且档位偏好属使用判断，进 doctrine 文字而非校验。
+3. **单跳回退** astra → luna：仅当会话从未建立即失败（`preparation_stalled`，或拿到 session id 之前的 `codex_failed`）；会话建立后不回退，避免重做半成品。直接请求 luna 不回退。回退后 effort 取 luna 默认值。luna 也失败 → 走 SKILL.md 既有的跨车道改道规则。
+4. **receipt 新增** `model_requested` / `model_used` / `fallback_reason`（无回退时为 null）；既有 `model` 字段含义保持「实际使用」。架构师验收时必须复述降级，回退不是静默替换——receipt 即披露。
+5. **验证口径**：本 ADR 原则是每个 (model, effort) 组合经真实 `codex exec` 验证后入白名单。本次用户明确豁免（2026-09-06）：「之前已跑过完整验证，本次仅改模型名不值得，出现问题后单独修」。此处如实记为**二手声明、用户承担风险**，不记为一手核验。运行时行为（回退触发、字段、schema）以不联网的自动化检查覆盖。
+
+复盘条件追加：Astra 拒绝 medium / high，或 Luna 拒绝 max → 复核默认 effort 与 doctrine 文字；出现第三个可用 GPT 模型 → 白名单加一行并决定其在回退链中的位置；Cursor Task 枚举出现 Astra / Luna → 核对 `lanes-cursor.md` 家族措辞。

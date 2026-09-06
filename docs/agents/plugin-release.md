@@ -11,6 +11,10 @@ Both must move together. The marketplace version drives update discovery; leavin
 
 Runtime lives under `plugin/`; `marketplace.json` sets `"source": "./plugin"`. Claude Code copies that directory wholesale into the versioned cache (it does not honor `.pluginignore` or `export-ignore`). Anything outside `plugin/` is repo-only and does not ship — `docs/`, `.scratch/`, `.agent-discuss/`, `tests/`, `cursor-hooks/`, and the root instruction files (`AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, `README.md`, `LICENSE`). Do not point `source` back at `./`.
 
+## 1b. Sync the Chinese mirror
+
+Every `plugin/**/*.md` touched by the release has a twin at the same relative path under `docs/zh/` (see `AGENTS.md`, "Chinese mirror of runtime docs"). Update the twins in the same commit and run `python3 tests/test_zh_mirror.py`.
+
 ## 2. Commit and push
 
 ```bash

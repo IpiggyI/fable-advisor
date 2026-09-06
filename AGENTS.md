@@ -23,3 +23,14 @@ Version bump (two files) → push to `origin` → per-side `claude plugin` updat
 ### Cursor lane family gate
 
 Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule live under `cursor-hooks/` (not `plugin/hooks/`). See `docs/agents/cursor-lane-gate.md`.
+
+### Delegation boundary by artifact class
+
+Per [ADR 0013](docs/adr/0013-delivery-contract-not-build-instructions.md) the architect never edits deliverables, whatever the size; coordination artifacts it writes directly. In this repo:
+
+- Deliverables (lane only): `plugin/**`, `tests/**`, `cursor-hooks/**`, `README.md`, `docs/zh/**`.
+- Coordination artifacts (architect may write): `.scratch/**`, `docs/adr/**`, `CONTEXT.md`, `AGENTS.md`, `docs/agents/**`, `.fable-advisor/**`, and the two version fields named in `docs/agents/plugin-release.md`.
+
+### Chinese mirror of runtime docs
+
+Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship.

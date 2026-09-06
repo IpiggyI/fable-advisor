@@ -6,11 +6,19 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 
 const DEFAULT_TIMEOUT_SEC = 600;
 const PREPARATION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const PREAMBLE_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "skills",
+  "orchestration",
+  "lane-preamble.md",
+);
 const SPEC_KEYS = new Set([
   "objective",
   "files",
@@ -19,6 +27,7 @@ const SPEC_KEYS = new Set([
   "verification",
   "model",
   "timeout_sec",
+  "resume_session_id",
 ]);
 
 function diagnostic(message) {
@@ -108,6 +117,9 @@ function normalizeSpec(value) {
   ) {
     throw new Error("timeout_sec must be a positive number");
   }
+  if (value.resume_session_id !== undefined) {
+    requireString(value.resume_session_id, "resume_session_id", { nonEmpty: true });
+  }
 
   return {
     objective: value.objective,
@@ -117,6 +129,7 @@ function normalizeSpec(value) {
     verification: value.verification,
     model: value.model ?? null,
     timeout_sec: value.timeout_sec ?? DEFAULT_TIMEOUT_SEC,
+    resume_session_id: value.resume_session_id ?? null,
   };
 }
 
@@ -236,6 +249,7 @@ function observeGrokEvents(child, state, onEvent) {
       state.grokFinalMessage += event.data;
     }
     if (event.type === "end") {
+      state.terminalEventAt = Date.now();
       state.stopReason = typeof event.stopReason === "string" ? event.stopReason : null;
       state.usage = event.usage !== null
         && typeof event.usage === "object"
@@ -251,14 +265,16 @@ function observeGrokEvents(child, state, onEvent) {
             `session id mismatch: injected ${state.grokSessionId}, event reported ${event.sessionId}`,
           );
         }
-        state.grokSessionId = event.sessionId;
+        if (!state.resumed) {
+          state.grokSessionId = event.sessionId;
+        }
       }
     }
   });
 }
 
 async function executeGrok(spec, cwd, promptPath) {
-  const sessionId = randomUUID();
+  const sessionId = spec.resume_session_id ?? randomUUID();
   const state = {
     grokSessionId: sessionId,
     stopReason: null,
@@ -266,6 +282,8 @@ async function executeGrok(spec, cwd, promptPath) {
     totalCostUsd: null,
     grokFinalMessage: "",
     eventObserved: false,
+    terminalEventAt: null,
+    resumed: spec.resume_session_id !== null,
   };
   const args = [
     "--prompt-file", promptPath,
@@ -273,7 +291,9 @@ async function executeGrok(spec, cwd, promptPath) {
     "--permission-mode", "bypassPermissions",
     "--cwd", cwd,
     "--output-format", "streaming-json",
-    "--session-id", sessionId,
+    ...(spec.resume_session_id === null
+      ? ["--session-id", sessionId]
+      : ["--resume", sessionId]),
   ];
   const child = spawn("grok", args, {
     detached: process.platform !== "win32",
@@ -310,6 +330,9 @@ async function executeGrok(spec, cwd, promptPath) {
   exited = true;
   clearWallTimer();
   clearPreparationTimer();
+  const endToCloseMs = state.terminalEventAt === null
+    ? null
+    : Math.max(0, Date.now() - state.terminalEventAt);
 
   if (failure === null && result.spawnError?.code === "ENOENT") {
     failure = "grok_unavailable";
@@ -319,7 +342,12 @@ async function executeGrok(spec, cwd, promptPath) {
     failure = "preparation_stalled";
   }
 
-  return { ...state, childExitCode: result.code, errorClass: failure };
+  return {
+    ...state,
+    childExitCode: result.code,
+    errorClass: failure,
+    endToCloseMs,
+  };
 }
 
 function parseChangedFiles(output) {
@@ -341,9 +369,9 @@ async function collectChangedFiles(cwd) {
   const result = await captureProcess("git", ["-C", cwd, "status", "--porcelain"]);
   if (result.error || result.code !== 0) {
     diagnostic(`git status unavailable: ${errorMessage(result.error ?? result.stderr.trim())}`);
-    return [];
+    return { files: [], failed: true };
   }
-  return parseChangedFiles(result.stdout);
+  return { files: parseChangedFiles(result.stdout), failed: false };
 }
 
 function appendTail(current, chunk) {
@@ -390,7 +418,12 @@ function initialState(startedAt) {
     specHash: null,
     cwd: process.cwd(),
     model: null,
+    modelRequested: null,
+    modelUsed: null,
+    fallbackReason: null,
     grokSessionId: null,
+    resumedFrom: null,
+    endToCloseMs: null,
     stopReason: null,
     usage: null,
     totalCostUsd: null,
@@ -411,7 +444,12 @@ function buildReceipt(state) {
     cwd: state.cwd,
     producer: "grok",
     model: state.model,
+    model_requested: state.modelRequested,
+    model_used: state.modelUsed,
+    fallback_reason: state.fallbackReason,
     grok_session_id: state.grokSessionId,
+    resumed_from: state.resumedFrom,
+    end_to_close_ms: state.endToCloseMs,
     stop_reason: state.stopReason,
     usage: state.usage,
     total_cost_usd: state.totalCostUsd,
@@ -480,18 +518,31 @@ async function main() {
   let spec;
   try {
     spec = await loadSpec(parsedArguments.specPath, state);
+    state.model = spec.model;
+    state.modelRequested = spec.model;
+    state.modelUsed = spec.model;
+    state.grokSessionId = spec.resume_session_id;
+    state.resumedFrom = spec.resume_session_id;
   } catch (error) {
     diagnostic(`invalid spec: ${errorMessage(error)}`);
     state.errorClass = "spec_invalid";
     return emitReceipt(state);
   }
 
+  let preamble;
+  try {
+    preamble = await readFile(PREAMBLE_PATH, "utf8");
+  } catch (error) {
+    diagnostic(`could not read lane preamble ${PREAMBLE_PATH}: ${errorMessage(error)}`);
+    return 1;
+  }
+
   const catalogResult = await captureProcess("grok", ["models"]);
   const catalogReadable = !catalogResult.error
     && catalogResult.code === 0;
-  const { availableModels, defaultModel } = catalogReadable
+  const { availableModels } = catalogReadable
     ? parseModelCatalog(catalogResult.stdout)
-    : { availableModels: new Set(), defaultModel: undefined };
+    : { availableModels: new Set() };
 
   if (!catalogReadable || availableModels.size === 0) {
     const detail = catalogResult.error
@@ -509,14 +560,13 @@ async function main() {
       state.errorClass = "spec_invalid";
       return emitReceipt(state);
     }
-    spec.model = spec.model ?? defaultModel;
     state.model = spec.model;
   }
 
   const slug = path.basename(parsedArguments.specPath, ".json");
   let promptPath;
   try {
-    const prompt = renderPrompt(spec, slug);
+    const prompt = `${preamble}\n\n${renderPrompt(spec, slug)}`;
     promptPath = await writePromptFile(prompt);
     const grokResult = await executeGrok(spec, state.cwd, promptPath);
     state.grokSessionId = grokResult.grokSessionId;
@@ -526,6 +576,7 @@ async function main() {
     state.grokFinalMessage = grokResult.grokFinalMessage;
     state.childExitCode = grokResult.childExitCode;
     state.errorClass = grokResult.errorClass;
+    state.endToCloseMs = grokResult.endToCloseMs;
   } catch (error) {
     diagnostic(`grok execution failed: ${errorMessage(error)}`);
     state.errorClass = "grok_failed";
@@ -535,13 +586,20 @@ async function main() {
     }
   }
 
-  state.changedFiles = await collectChangedFiles(state.cwd);
+  const changedFilesResult = await collectChangedFiles(state.cwd);
+  state.changedFiles = changedFilesResult.files;
   if (state.errorClass !== "preparation_stalled" && state.errorClass !== "timeout") {
     state.verification = await runVerification(spec.verification, state.cwd);
     if (state.errorClass === null) {
-      state.errorClass = state.verification.every((result) => result.exit_code === 0)
-        ? "complete"
-        : "verification_failed";
+      if (!state.verification.every((result) => result.exit_code === 0)) {
+        state.errorClass = "verification_failed";
+      } else if (changedFilesResult.failed) {
+        state.errorClass = "git_status_failed";
+      } else if (spec.files.length > 0 && state.changedFiles.length === 0) {
+        state.errorClass = "no_diff";
+      } else {
+        state.errorClass = "complete";
+      }
     }
   }
 

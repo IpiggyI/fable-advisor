@@ -62,3 +62,17 @@ ADR 0002 给 codex 去 wrapper 时记录了 grok 车道的同法路线，触发�
 前提证伪：`grok models` 的目录输出仅当前默认模型行以 `*` 标注，其余模型行以 `-` 开头（grok-4.6 换代后实测：`* grok-4.6 (default)` / `- grok-4.5` / `- grok-s2a`）。parseModelCatalog 的正则只匹配 `*` 行，白名单因此只剩默认模型——spec 指定目录内非默认模型（如自定义供应商渠道需显式传 model 才能选中的 grok-s2a）被误判 `spec_invalid`，违背本 ADR「白名单与默认模型取自现场目录」的决策本意。
 
 修订：解析器同时接受 `*` 与 `-` 行（`/^\s*[-*]\s+(\S+)/gm`），默认模型仍取 `Default model:` 行。行为面：默认模型解析不变，目录内非默认模型恢复合法，目录外 typo 仍 fail-loud（`spec_invalid`）。同批将 SKILL.md 的 grok 车道条款改为「默认省略 model」：CLI 自身默认随目录换代走，spec 零改动跟进换代；仅刻意选非默认目录项（如自定义渠道模型）时才写 model。Cursor 侧不受影响——子代理派发始终显式钉模型。
+
+## 追记（2026-09-06）— 等待协议入技能、`end_to_close_ms` 诊断、空 diff 不得 complete
+
+与 [ADR 0013](./0013-delivery-contract-not-build-instructions.md) 同批落地，两条 runner 同改（镜像维护，本 ADR 既有代价）。
+
+**等待协议（doctrine，`lanes-claude-code.md`）。** 一手证据：2026-09-05 Claude Code 会话 `82ef694a`（cc-usage 仓库）把 `run-grok.mjs` 后台化后以 `sleep 780; sleep 420` 等待，grok 约 15 分钟写完、主会话约 21 分钟才继续。已核实的原因是架构师的固定睡眠，不是 runner。协议：CLI 车道的完成点是 **runner 进程退出**，不是流里的 `end` 事件，也不是睡眠到期；等待方式二选一——前台跑 runner 让 Bash 在退出时返回，或已后台化时对该任务 `TaskOutput(block=true)`；禁止 `sleep N` 再 `ls .fable-advisor/pending/` 充当等待；pending 消失或 receipt 出现是完成证据；`timeout_sec` 只用于杀卡住的进程。并行多车道时逐条 block，或同一条消息里前台并行。此前该规则只存在于机器本地 `.memory/conventions/cli-lane-wait.md`（trial），随本次晋升入技能后删除。
+
+**`end_to_close_ms` 诊断（两条 runner）。** memory 文件里另有一条假设：grok 吐出 `end` 后进程不退出、要等到 `timeout_sec` 才 SIGKILL。未证实，本次不改行为，只加诊断：receipt 新增 `end_to_close_ms` = 终止事件（grok `{"type":"end"}`；codex 取其流中等价的终止事件）到子进程 `close` 的毫秒数，未见终止事件时为 null。数据显示常态滞留时再做行为修复（ADR 0013 复盘条件）。
+
+**空 diff 不得 complete（两条 runner）。** 来源：上游 `ad2bdc3`，经 `docs/upstream-sync/2026-09-05-digest.md` 评估后以 fork 形状吸收。一手核实：`run-codex.mjs:555-561` / `run-grok.mjs:538-545` 在验证全 0 时标 `complete`，不看 `changed_files`；`collectChangedFiles` 在 `git status` 失败时返回 `[]`（`:379-384` / `:340-345`）；`receipt-gate.py:48` 只认 `complete`，runner 随后删 pending——静默空跑会被当成做完。修订：`spec.files.length > 0` 且 `changed_files` 为空 → 新 `error_class: no_diff`（不删 pending）；`git status` 失败 → 新 `error_class: git_status_failed`，不再假 `complete`。`files: []` 仍合法（只读 / 报告型任务）。返工票里车道判定「缺陷不复现、无需改动」同样得到 `no_diff`——这是想要的：架构师读报告后删 pending 并说明。已知边界：`changed_files` 取整个工作目录的 `git status --porcelain`，脏树下永远非空，`no_diff` 在脏树上失效；派 runner 前工作树必须干净（写入 `lanes-claude-code.md`）。
+
+**`resume_session_id`（两条 runner）** 属 ADR 0013 决策 7，此处只交叉引用：codex `codex exec resume <id>`、grok `--resume <id>`，receipt 记 `resumed_from`。
+
+复盘条件追加：`end_to_close_ms` 常态显著大于 0 → runner 在终止事件后短超时收工；`no_diff` 误报（车道确有改动但 `git status` 未捕获，如 `.gitignore` 内路径）→ 改为基于基线 commit 的精确差分。

@@ -6,17 +6,28 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 
-const DEFAULT_MODEL = "gpt-5.6-sol";
-const DEFAULT_EFFORT = "high";
+const DEFAULT_MODEL = "gpt-6-astra";
+const DEFAULT_EFFORTS = new Map([
+  ["gpt-6-astra", "medium"],
+  ["gpt-5.6-luna", "max"],
+]);
 const DEFAULT_TIMEOUT_SEC = 600;
 const SESSION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
 const IS_WINDOWS = process.platform === "win32";
-const VALID_MODELS = new Set(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
+const VALID_MODELS = new Set(DEFAULT_EFFORTS.keys());
 const VALID_EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
 const VALID_SERVICE_TIERS = new Set(["fast"]);
+const PREAMBLE_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "skills",
+  "orchestration",
+  "lane-preamble.md",
+);
 const SPEC_KEYS = new Set([
   "objective",
   "files",
@@ -27,6 +38,7 @@ const SPEC_KEYS = new Set([
   "effort",
   "service_tier",
   "timeout_sec",
+  "resume_session_id",
 ]);
 
 function diagnostic(message) {
@@ -131,6 +143,11 @@ function normalizeSpec(value) {
   ) {
     throw new Error("timeout_sec must be a positive number");
   }
+  if (value.resume_session_id !== undefined) {
+    requireString(value.resume_session_id, "resume_session_id", { nonEmpty: true });
+  }
+
+  const model = value.model ?? DEFAULT_MODEL;
 
   return {
     objective: value.objective,
@@ -138,10 +155,11 @@ function normalizeSpec(value) {
     interfaces: value.interfaces,
     constraints: value.constraints,
     verification: value.verification,
-    model: value.model ?? DEFAULT_MODEL,
-    effort: value.effort ?? DEFAULT_EFFORT,
+    model,
+    effort: value.effort ?? DEFAULT_EFFORTS.get(model),
     service_tier: value.service_tier ?? null,
     timeout_sec: value.timeout_sec ?? DEFAULT_TIMEOUT_SEC,
+    resume_session_id: value.resume_session_id ?? null,
   };
 }
 
@@ -295,25 +313,45 @@ function observeCodexEvents(child, state, onSession) {
         state.codexFinalMessage = event.item.text;
       }
     }
+    if (event.type === "turn.completed") {
+      state.terminalEventAt = Date.now();
+    }
   });
 }
 
 async function executeCodex(spec, cwd, promptContents) {
-  const state = { codexSessionId: null, codexFinalMessage: null };
-  const args = [
-    "exec",
-    "--json",
-    "--model", spec.model,
-    "-c", `model_reasoning_effort=${spec.effort}`,
-    // workspace-write on Windows raises Win32 1312 (no logon session for the restricted token).
-    "--sandbox", IS_WINDOWS ? "danger-full-access" : "workspace-write",
-    "--skip-git-repo-check",
-    "--cd", cwd,
-  ];
+  const state = {
+    codexSessionId: spec.resume_session_id,
+    codexFinalMessage: null,
+    terminalEventAt: null,
+  };
+  const args = spec.resume_session_id === null
+    ? [
+      "exec",
+      "--json",
+      "--model", spec.model,
+      "-c", `model_reasoning_effort=${spec.effort}`,
+      // workspace-write on Windows raises Win32 1312 (no logon session for the restricted token).
+      "--sandbox", IS_WINDOWS ? "danger-full-access" : "workspace-write",
+      "--skip-git-repo-check",
+      "--cd", cwd,
+    ]
+    : [
+      "exec",
+      "resume",
+      "--json",
+      "--model", spec.model,
+      "-c", `model_reasoning_effort=${spec.effort}`,
+      "--skip-git-repo-check",
+    ];
   if (spec.service_tier !== null) {
     args.push("-c", `service_tier=${spec.service_tier}`);
   }
+  if (spec.resume_session_id !== null) {
+    args.push(spec.resume_session_id, "-");
+  }
   const child = spawn("codex", IS_WINDOWS ? args.map(quoteForShell) : args, {
+    cwd,
     detached: process.platform !== "win32",
     shell: IS_WINDOWS,
     stdio: ["pipe", "pipe", "pipe"],
@@ -351,6 +389,9 @@ async function executeCodex(spec, cwd, promptContents) {
   exited = true;
   clearWallTimer();
   clearSessionTimer();
+  const endToCloseMs = state.terminalEventAt === null
+    ? null
+    : Math.max(0, Date.now() - state.terminalEventAt);
 
   if (failure === null && (result.spawnError || result.code !== 0)) {
     failure = "codex_failed";
@@ -358,7 +399,12 @@ async function executeCodex(spec, cwd, promptContents) {
     failure = "preparation_stalled";
   }
 
-  return { ...state, childExitCode: result.code, errorClass: failure };
+  return {
+    ...state,
+    childExitCode: result.code,
+    errorClass: failure,
+    endToCloseMs,
+  };
 }
 
 function parseChangedFiles(output) {
@@ -380,9 +426,9 @@ async function collectChangedFiles(cwd) {
   const result = await captureProcess("git", ["-C", cwd, "status", "--porcelain"]);
   if (result.error || result.code !== 0) {
     diagnostic(`git status unavailable: ${errorMessage(result.error ?? result.stderr.trim())}`);
-    return [];
+    return { files: [], failed: true };
   }
-  return parseChangedFiles(result.stdout);
+  return { files: parseChangedFiles(result.stdout), failed: false };
 }
 
 function appendTail(current, chunk) {
@@ -429,9 +475,14 @@ function initialState(startedAt) {
     specHash: null,
     cwd: process.cwd(),
     model: DEFAULT_MODEL,
-    effort: DEFAULT_EFFORT,
+    modelRequested: DEFAULT_MODEL,
+    modelUsed: DEFAULT_MODEL,
+    fallbackReason: null,
+    effort: DEFAULT_EFFORTS.get(DEFAULT_MODEL),
     service_tier: null,
     codexSessionId: null,
+    resumedFrom: null,
+    endToCloseMs: null,
     childExitCode: null,
     startedAt,
     errorClass: null,
@@ -449,9 +500,14 @@ function buildReceipt(state) {
     cwd: state.cwd,
     producer: "codex",
     model: state.model,
+    model_requested: state.modelRequested,
+    model_used: state.modelUsed,
+    fallback_reason: state.fallbackReason,
     effort: state.effort,
     service_tier: state.service_tier,
     codex_session_id: state.codexSessionId,
+    resumed_from: state.resumedFrom,
+    end_to_close_ms: state.endToCloseMs,
     started_at: state.startedAt,
     finished_at: new Date().toISOString(),
     exit_status: exitStatus,
@@ -518,12 +574,24 @@ async function main() {
   try {
     spec = await loadSpec(parsedArguments.specPath, state);
     state.model = spec.model;
+    state.modelRequested = spec.model;
+    state.modelUsed = spec.model;
     state.effort = spec.effort;
     state.service_tier = spec.service_tier;
+    state.codexSessionId = spec.resume_session_id;
+    state.resumedFrom = spec.resume_session_id;
   } catch (error) {
     diagnostic(`invalid spec: ${errorMessage(error)}`);
     state.errorClass = "spec_invalid";
     return emitReceipt(state);
+  }
+
+  let preamble;
+  try {
+    preamble = await readFile(PREAMBLE_PATH, "utf8");
+  } catch (error) {
+    diagnostic(`could not read lane preamble ${PREAMBLE_PATH}: ${errorMessage(error)}`);
+    return 1;
   }
 
   if (!(await codexIsAvailable())) {
@@ -535,14 +603,33 @@ async function main() {
   let promptPath;
   try {
     const slug = path.basename(parsedArguments.specPath, ".json");
-    const prompt = renderPrompt(spec, slug);
+    const prompt = `${preamble}\n\n${renderPrompt(spec, slug)}`;
     promptPath = await writePromptFile(prompt);
     const promptContents = await readFile(promptPath);
-    const codexResult = await executeCodex(spec, state.cwd, promptContents);
+    let attemptSpec = spec;
+    let codexResult = await executeCodex(attemptSpec, state.cwd, promptContents);
+    const shouldFallback = spec.resume_session_id === null
+      && spec.model === DEFAULT_MODEL
+      && (codexResult.errorClass === "preparation_stalled"
+        || (codexResult.errorClass === "codex_failed"
+          && codexResult.codexSessionId === null));
+    if (shouldFallback) {
+      state.fallbackReason = codexResult.errorClass;
+      attemptSpec = {
+        ...spec,
+        model: "gpt-5.6-luna",
+        effort: DEFAULT_EFFORTS.get("gpt-5.6-luna"),
+      };
+      codexResult = await executeCodex(attemptSpec, state.cwd, promptContents);
+    }
+    state.model = attemptSpec.model;
+    state.modelUsed = attemptSpec.model;
+    state.effort = attemptSpec.effort;
     state.codexSessionId = codexResult.codexSessionId;
     state.codexFinalMessage = codexResult.codexFinalMessage;
     state.childExitCode = codexResult.childExitCode;
     state.errorClass = codexResult.errorClass;
+    state.endToCloseMs = codexResult.endToCloseMs;
   } catch (error) {
     diagnostic(`codex execution failed: ${errorMessage(error)}`);
     state.errorClass = "codex_failed";
@@ -552,13 +639,20 @@ async function main() {
     }
   }
 
-  state.changedFiles = await collectChangedFiles(state.cwd);
+  const changedFilesResult = await collectChangedFiles(state.cwd);
+  state.changedFiles = changedFilesResult.files;
   if (state.errorClass !== "preparation_stalled" && state.errorClass !== "timeout") {
     state.verification = await runVerification(spec.verification, state.cwd);
     if (state.errorClass === null) {
-      state.errorClass = state.verification.every((result) => result.exit_code === 0)
-        ? "complete"
-        : "verification_failed";
+      if (!state.verification.every((result) => result.exit_code === 0)) {
+        state.errorClass = "verification_failed";
+      } else if (changedFilesResult.failed) {
+        state.errorClass = "git_status_failed";
+      } else if (spec.files.length > 0 && state.changedFiles.length === 0) {
+        state.errorClass = "no_diff";
+      } else {
+        state.errorClass = "complete";
+      }
     }
   }
 
