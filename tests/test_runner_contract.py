@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Offline process-boundary tests for the Codex and Grok runners."""
+import hashlib
 import json
 import os
 import shutil
+import signal
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -227,6 +230,7 @@ def case_unavailable_receipt_fields():
             assert receipt["fallback_reason"] is None
             assert receipt["resumed_from"] is None
             assert receipt["end_to_close_ms"] is None
+            assert receipt["max_idle_ms"] is None
 
 
 def case_no_diff_and_git_status_failed():
@@ -407,6 +411,178 @@ def case_codex_fallback_boundaries():
         )
 
 
+def fake_stream(directory, binary):
+    write_executable(
+        directory,
+        binary,
+        """#!/usr/bin/env python3
+import json, os, subprocess, sys, time
+from pathlib import Path
+args = sys.argv[1:]
+if args == ["--version"]:
+    raise SystemExit(0)
+if args == ["models"]:
+    print("Default model: grok-test")
+    print("* grok-test (default)")
+    raise SystemExit(0)
+if "exec" in args:
+    sys.stdin.read()
+mode = os.environ["STREAM_MODE"]
+codex = "exec" in args
+session = {"type": "thread.started", "thread_id": "stream-session"} if codex else {
+    "type": "end", "sessionId": "stream-session", "stopReason": "done"}
+terminal = {"type": "turn.completed"} if codex else session
+if mode == "no_events":
+    print("not json", flush=True)
+    time.sleep(0.1)
+    raise SystemExit(1)
+if mode.startswith("interrupt"):
+    descendant = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    if mode != "interrupt_no_events":
+        print(json.dumps(session), flush=True)
+    Path(os.environ["READY"]).write_text(json.dumps([os.getpid(), descendant.pid]))
+    time.sleep(60)
+    raise SystemExit(0)
+time.sleep(0.5 if mode == "initial_gap" else 0.1)
+print(json.dumps(session), flush=True)
+for delay in ([0.02, 0.02] if mode == "initial_gap" else [0.2, 0.5]):
+    time.sleep(delay)
+    print(json.dumps({"type": "progress"}), flush=True)
+time.sleep(0.2)
+print(json.dumps(terminal), flush=True)
+time.sleep(0.9)
+""",
+    )
+
+
+def case_idle_diagnostic():
+    for binary in ("codex", "grok"):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_stream(bin_dir, binary)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            for mode in ("initial_gap", "event_gap", "no_events"):
+                result, receipt = run_runner(
+                    runner, cwd,
+                    base_spec(**({"model": "gpt-5.6-luna"} if binary == "codex" else {})),
+                    bin_dir, {"STREAM_MODE": mode},
+                )
+                assert receipt["receipt_version"] == 1
+                if mode == "no_events":
+                    assert receipt["max_idle_ms"] is None
+                    assert result.returncode != 0
+                else:
+                    assert result.returncode == 0
+                    assert receipt["error_class"] == "complete"
+                    assert type(receipt["max_idle_ms"]) is int
+                    assert 450 <= receipt["max_idle_ms"] < 800, receipt
+                    assert receipt["end_to_close_ms"] >= 850, receipt
+                print("ASSERT idle: runner=%s mode=%s max_idle_ms=%s" % (
+                    binary, mode, receipt["max_idle_ms"],
+                ))
+
+
+def process_is_running(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    status = Path("/proc/%d/stat" % pid)
+    if status.exists():
+        try:
+            return status.read_text().rsplit(")", 1)[1].split()[0] != "Z"
+        except FileNotFoundError:
+            return False
+    return True
+
+
+def case_interrupted_receipt_and_process_tree():
+    for binary in ("codex", "grok"):
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            for mode in ("interrupt", "interrupt_no_events", "interrupt_resume"):
+                with tempfile.TemporaryDirectory() as tmp:
+                    bin_dir = Path(tmp) / "bin"
+                    bin_dir.mkdir()
+                    fake_stream(bin_dir, binary)
+                    fake_git(bin_dir)
+                    runner = copy_runner(tmp, "run-%s.mjs" % binary)
+                    cwd = Path(tmp) / "work"
+                    cwd.mkdir()
+                    ready = Path(tmp) / "ready"
+                    marker = cwd / "verified"
+                    spec = base_spec(verification=["echo ran > verified"])
+                    if mode == "interrupt_resume":
+                        spec["resume_session_id"] = "resume-123"
+                    spec_path = cwd / ".fable-advisor" / "pending" / "job.json"
+                    spec_path.parent.mkdir(parents=True)
+                    raw = json.dumps(spec).encode()
+                    spec_path.write_bytes(raw)
+                    env = os.environ.copy()
+                    env.update({
+                        "PATH": os.pathsep.join((str(bin_dir), str(Path(sys.executable).parent))),
+                        "STREAM_MODE": mode,
+                        "READY": str(ready),
+                    })
+                    process = subprocess.Popen(
+                        [NODE, str(runner), "--spec", str(spec_path), "--cwd", str(cwd)],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                        env=env, start_new_session=True,
+                    )
+                    pids = []
+                    try:
+                        deadline = time.monotonic() + 5
+                        while not ready.exists() and time.monotonic() < deadline:
+                            assert process.poll() is None, "runner exited before ready"
+                            time.sleep(0.01)
+                        assert ready.exists(), "CLI did not become ready"
+                        time.sleep(0.15)
+                        pids = json.loads(ready.read_text())
+                        os.killpg(process.pid, signum)
+                        stdout, stderr = process.communicate(timeout=5)
+                        assert process.returncode != 0, stderr
+                        receipt = json.loads(stdout)
+                        receipt_path = cwd / ".fable-advisor" / "receipts" / (
+                            hashlib.sha256(raw).hexdigest() + ".json"
+                        )
+                        assert json.loads(receipt_path.read_text()) == receipt
+                        assert receipt["error_class"] == "interrupted", receipt
+                        assert receipt["verification"] == []
+                        assert not marker.exists()
+                        assert spec_path.read_bytes() == raw
+                        assert receipt["fallback_reason"] is None
+                        session = receipt[binary + "_session_id"]
+                        if mode == "interrupt_resume":
+                            assert session == "resume-123"
+                        elif mode == "interrupt":
+                            assert session == "stream-session"
+                        elif binary == "codex":
+                            assert session is None
+                        else:
+                            assert isinstance(session, str) and session
+                        if mode == "interrupt_no_events":
+                            assert receipt["max_idle_ms"] is None
+                        else:
+                            assert type(receipt["max_idle_ms"]) is int
+                        deadline = time.monotonic() + 2
+                        while any(process_is_running(pid) for pid in pids) and time.monotonic() < deadline:
+                            time.sleep(0.01)
+                        assert not any(process_is_running(pid) for pid in pids), pids
+                    finally:
+                        if process.poll() is None:
+                            process.kill()
+                            process.communicate(timeout=5)
+                        for pid in pids:
+                            if process_is_running(pid):
+                                os.kill(pid, signal.SIGKILL)
+                    print("ASSERT interrupted: runner=%s signal=%s mode=%s tree=dead receipt=disk" % (
+                        binary, signum.name, mode,
+                    ))
+
+
 def case_last_terminal_event_drives_timing():
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(tmp, base_spec(), "multi_terminal")
@@ -428,6 +604,8 @@ CASES = [
     ("codex single-hop fallback", case_codex_single_hop_fallback),
     ("codex fallback boundaries", case_codex_fallback_boundaries),
     ("last terminal event drives timing", case_last_terminal_event_drives_timing),
+    ("idle diagnostic", case_idle_diagnostic),
+    ("interrupted receipt and process tree", case_interrupted_receipt_and_process_tree),
 ]
 
 

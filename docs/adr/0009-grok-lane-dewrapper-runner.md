@@ -76,3 +76,26 @@ ADR 0002 给 codex 去 wrapper 时记录了 grok 车道的同法路线，触发�
 **`resume_session_id`（两条 runner）** 属 ADR 0013 决策 7，此处只交叉引用：codex `codex exec resume <id>`、grok `--resume <id>`，receipt 记 `resumed_from`。
 
 复盘条件追加：`end_to_close_ms` 常态显著大于 0 → runner 在终止事件后短超时收工；`no_diff` 误报（车道确有改动但 `git status` 未捕获，如 `.gitignore` 内路径）→ 改为基于基线 commit 的精确差分。
+
+## 追记（2026-09-07）— 三个时钟、`max_idle_ms` 诊断、中断可回执
+
+**滞留假设证伪，该条复盘条件关闭。** rustpad 仓库 11 份 `complete` 回执的 `end_to_close_ms` 全部落在 776–930 毫秒。终止事件到进程退出没有常态滞留，不做「终止事件后短超时收工」的行为修复。
+
+**提前终止的真实来源是三个互相独立、默认值均不超过 600 秒的时钟。** 一手证据：rustpad receipt `96f6675b` 的 `started_at`/`finished_at` 相隔 600.0 秒、`error_class: timeout`、`verification: []`——车道当时已写完实现，被 runner 自己的墙钟砍掉，回执因此不带任何验证证据，验收退化为架构师手工核对工作区。
+
+1. runner 的 `timeout_sec`（默认 600 秒）：杀 CLI 子进程，跳过验证，回执 `timeout`。
+2. harness 的 Bash `timeout` 参数（默认 600000 毫秒，上限 3600000）：砍掉前台派遣调用本身，runner 来不及写任何东西，**没有回执**，pending 留存。其默认值与 runner 默认值重合，只调大 `timeout_sec` 无效。
+3. `TaskOutput` 的 `timeout`（默认 30000 毫秒，上限 600000）：不杀进程，但单次 block 会在车道仍在跑时返回。超过十分钟的等待只能靠反复 block；这也是唯一没有绝对上限的等待路径，单次前台调用永远不超过 60 分钟。
+
+**孤儿进程探针（2026-09-07 本机实测）。** CLI 子进程以 `detached` 启动，自成进程组，父进程按进程组 SIGKILL 后子进程原样存活。第 2 个时钟触发时，CLI 会继续改仓库而主会话已认定派遣结束。
+
+**决策：本轮只加测量与中断兜底，不改超时语义。** 两条 runner 同改，`receipt_version` 仍为 1（两处均为增量字段）。
+
+1. receipt 新增 `max_idle_ms` = 事件流上相邻两个事件的最大间隔毫秒数，首个事件之前的间隔自子进程 spawn 起算；无事件为 null。纯诊断，不参与 `error_class`，不派生任何截止。
+2. runner 接管 `SIGTERM`/`SIGINT`：杀子进程树 → 写并打印 `error_class: interrupted` 回执（保留已知 session id、跳过验证、保留 pending）→ 非零退出。孤儿与「无回执」两个洞一起补上。
+3. 把总墙钟换成静默截止（最后一个事件之后 N 秒才算卡死）推迟到 `max_idle_ms` 有真实分布之后再定 N。现在定值等于拿默认值换另一个拍脑袋的默认值。
+4. `lanes-claude-code.md` 记三个时钟的取值口径，以及 `timeout` 回执的恢复路径：回执带 session id 而不带验证证据，正解是带 `resume_session_id` 的返工票让车道自己跑完验证，不是架构师手工验收。
+
+已知边界：信号在 `runVerification` 期间到达时 runner 不中断验证，回执按验证结果落定——此时 CLI 子进程已退出，没有孤儿风险；对 runner 直接 SIGKILL 仍会留下孤儿；Windows 侧进程树清理未实测。
+
+复盘条件追加：`max_idle_ms` 分布可用后 → 以其高分位加余量设静默截止，`timeout_sec` 降级为可选的绝对上限；若观察到 CLI 在长命令期间完全不吐事件（`max_idle_ms` 接近整轮时长）→ 静默截止不成立，改找别的活性信号。

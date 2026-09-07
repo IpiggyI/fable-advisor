@@ -4,11 +4,13 @@ import { spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { performance } from "node:perf_hooks";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_TIMEOUT_SEC = 600;
+const interruption = new AbortController();
 const PREPARATION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
@@ -238,6 +240,13 @@ function observeGrokEvents(child, state, onEvent) {
       return;
     }
 
+    const observedAt = performance.now();
+    state.maxIdleMs = Math.max(
+      state.maxIdleMs ?? 0,
+      Math.floor(observedAt - state.lastEventAt),
+    );
+    state.lastEventAt = observedAt;
+
     if (!state.eventObserved) {
       state.eventObserved = true;
       onEvent();
@@ -283,6 +292,8 @@ async function executeGrok(spec, cwd, promptPath) {
     grokFinalMessage: "",
     eventObserved: false,
     terminalEventAt: null,
+    maxIdleMs: null,
+    lastEventAt: null,
     resumed: spec.resume_session_id !== null,
   };
   const args = [
@@ -295,6 +306,10 @@ async function executeGrok(spec, cwd, promptPath) {
       ? ["--session-id", sessionId]
       : ["--resume", sessionId]),
   ];
+  if (interruption.signal.aborted) {
+    return { ...state, childExitCode: null, errorClass: "interrupted", endToCloseMs: null };
+  }
+  state.lastEventAt = performance.now();
   const child = spawn("grok", args, {
     detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
@@ -302,12 +317,15 @@ async function executeGrok(spec, cwd, promptPath) {
 
   let failure = null;
   let exited = false;
+  let termination = Promise.resolve();
   let clearPreparationTimer = () => {};
   const failAndKill = (errorClass) => {
     if (failure !== null || exited) return;
     failure = errorClass;
-    void killProcessTree(child);
+    termination = killProcessTree(child);
   };
+  const onInterrupt = () => failAndKill("interrupted");
+  interruption.signal.addEventListener("abort", onInterrupt, { once: true });
   const clearWallTimer = createDeadlineTimer(
     spec.timeout_sec * 1_000,
     () => failAndKill("timeout"),
@@ -328,11 +346,13 @@ async function executeGrok(spec, cwd, promptPath) {
     child.once("close", (code, signal) => resolve({ code, signal, spawnError }));
   });
   exited = true;
+  interruption.signal.removeEventListener("abort", onInterrupt);
   clearWallTimer();
   clearPreparationTimer();
   const endToCloseMs = state.terminalEventAt === null
     ? null
     : Math.max(0, Date.now() - state.terminalEventAt);
+  await termination;
 
   if (failure === null && result.spawnError?.code === "ENOENT") {
     failure = "grok_unavailable";
@@ -424,6 +444,7 @@ function initialState(startedAt) {
     grokSessionId: null,
     resumedFrom: null,
     endToCloseMs: null,
+    maxIdleMs: null,
     stopReason: null,
     usage: null,
     totalCostUsd: null,
@@ -450,6 +471,7 @@ function buildReceipt(state) {
     grok_session_id: state.grokSessionId,
     resumed_from: state.resumedFrom,
     end_to_close_ms: state.endToCloseMs,
+    max_idle_ms: state.maxIdleMs,
     stop_reason: state.stopReason,
     usage: state.usage,
     total_cost_usd: state.totalCostUsd,
@@ -577,6 +599,7 @@ async function main() {
     state.childExitCode = grokResult.childExitCode;
     state.errorClass = grokResult.errorClass;
     state.endToCloseMs = grokResult.endToCloseMs;
+    state.maxIdleMs = grokResult.maxIdleMs;
   } catch (error) {
     diagnostic(`grok execution failed: ${errorMessage(error)}`);
     state.errorClass = "grok_failed";
@@ -588,7 +611,10 @@ async function main() {
 
   const changedFilesResult = await collectChangedFiles(state.cwd);
   state.changedFiles = changedFilesResult.files;
-  if (state.errorClass !== "preparation_stalled" && state.errorClass !== "timeout") {
+  if (interruption.signal.aborted) state.errorClass = "interrupted";
+  if (state.errorClass !== "preparation_stalled"
+    && state.errorClass !== "timeout"
+    && state.errorClass !== "interrupted") {
     state.verification = await runVerification(spec.verification, state.cwd);
     if (state.errorClass === null) {
       if (!state.verification.every((result) => result.exit_code === 0)) {
@@ -624,5 +650,12 @@ async function main() {
   return exitCode;
 }
 
-const exitCode = await main();
-process.exitCode = exitCode;
+const onInterrupt = () => interruption.abort();
+process.on("SIGTERM", onInterrupt);
+process.on("SIGINT", onInterrupt);
+try {
+  process.exitCode = await main();
+} finally {
+  process.removeListener("SIGTERM", onInterrupt);
+  process.removeListener("SIGINT", onInterrupt);
+}

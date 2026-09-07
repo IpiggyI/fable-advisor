@@ -27,7 +27,7 @@ The tuning fields are optional and fail-loud — an out-of-range value or unknow
 - `model` — `gpt-6-astra` (default) or `gpt-5.6-luna`; the codex catalog is a static whitelist, so a retired name is `spec_invalid`.
 - `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. The default follows the model: astra → `medium`, luna → `max`. Recommended use (doctrine, not enforced): astra at `medium` or `high`; luna only at `max`.
 - `service_tier` — omit for Codex's own default; `"fast"` only when trading quality for speed.
-- `timeout_sec` — wall clock for killing a stuck process; not a waiting strategy.
+- `timeout_sec` — wall clock for killing a stuck process; not a waiting strategy. Size it to the ticket: 600 seconds is a default, not a budget, and a ticket whose lane runs its own test suite routinely needs more. The timeout path skips verification, so a productive lane cut by the default loses its verification evidence entirely.
 - `resume_session_id` — a prior codex session id; see "Rework tickets" below.
 
 Dial the codex lane quality-first: choosing *which* lane is cost-first (grok is the default, and the lane-level comparison prices codex at its default dial, astra at `medium`), but once a task is worth the codex lane, a quality bump inside it is affordable. Escalate to `high` for unusually hard tasks. Luna is not a cheaper way into the codex lane: request it only on a user declaration, or when the task is simple and the GPT family is wanted anyway.
@@ -49,18 +49,28 @@ The lane is done when the **runner process exits** — not when the event stream
 - Run the runner in the foreground and let Bash return on exit.
 - If it was backgrounded, call `TaskOutput(task_id, block=true)` on that Bash task.
 
-Completion evidence is the pending file disappearing or the receipt appearing under `.fable-advisor/receipts/`. Never `sleep N` and then `ls .fable-advisor/pending/` as a wait — a fixed sleep keeps burning the full interval after the runner has already exited. `timeout_sec` only kills a stuck process; a Bash `timeout` only caps a foreground block. For parallel lanes, block on each background task in turn, or run the runners in the foreground in one message.
+Completion evidence is the pending file disappearing or the receipt appearing under `.fable-advisor/receipts/`. Never `sleep N` and then `ls .fable-advisor/pending/` as a wait — a fixed sleep keeps burning the full interval after the runner has already exited. For parallel lanes, block on each background task in turn, or run the runners in the foreground in one message.
+
+Three independent clocks run over a dispatch, and each one can end it:
+
+- **The runner's `timeout_sec`** (default 600 s) kills the CLI child, skips verification, and leaves a `timeout` receipt.
+- **The harness Bash tool's `timeout`** (default 600000 ms, maximum 3600000 ms) kills the foreground call. The runner never gets to write anything, so there is no receipt at all and the pending spec stays behind. A foreground dispatch must therefore pass an explicit Bash `timeout` at least as large as the runner's `timeout_sec`; the default 600000 ms coincides exactly with the runner's own default, so raising `timeout_sec` alone buys nothing.
+- **`TaskOutput`'s `timeout`** (default 30000 ms, maximum 600000 ms) kills nothing, but one call is not a wait — it returns with the lane still running. Waiting past ten minutes means re-blocking until the completion evidence appears. This is the only path with no upper bound; a single foreground call can never exceed 60 minutes.
+
+Letting the runner finish is always cheaper than killing it. The CLI child is spawned detached, in its own process group, so it survives a signal aimed at the runner's process group. The runner traps SIGTERM and SIGINT, kills the child tree and writes an `interrupted` receipt — but a SIGKILL of the runner still leaves the CLI running and editing the repo, with no receipt at all.
 
 ## 4. Judge the receipt
 
 The runner prints the receipt to stdout and writes it to `.fable-advisor/receipts/<spec_hash>.json`:
 
-- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | timeout | codex_failed | verification_failed | no_diff | git_status_failed`.
+- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | timeout | interrupted | codex_failed | verification_failed | no_diff | git_status_failed`.
 - `codex_session_id` — bound to the spawned process's event stream, immune to concurrent-session mix-ups; on a resumed run it equals the resumed id.
-- `model_requested`, `model_used`, `fallback_reason` (null when none), `resumed_from` (null when none), `end_to_close_ms` (terminal event to process close; null when the terminal event was not seen — a diagnostic, not a gate).
+- `model_requested`, `model_used`, `fallback_reason` (null when none), `resumed_from` (null when none), `end_to_close_ms` (terminal event to process close; null when the terminal event was not seen — a diagnostic, not a gate), `max_idle_ms` (the longest gap between consecutive events on the CLI's stream, measured from child spawn to the last event; null when no event was observed — a diagnostic for sizing a future idle-based deadline, not a gate).
 - `changed_files`, plus the verification commands' actual exit codes and output tails.
 
 `no_diff` means `files` was non-empty and nothing changed; the pending file stays. On an ordinary spec that is a silent no-op — investigate. On a rework ticket it is the expected answer when the lane finds the defect does not reproduce: read the report, delete the pending file, and say so. `git_status_failed` means the runner could not determine what changed; it is not `complete`.
+
+`timeout` means a clock cut the lane, not that its work is wrong — and because that path skips verification, the receipt carries no verification evidence to judge. The clean recovery is a rework ticket carrying that receipt's session id in `resume_session_id`: the lane resumes and finishes its own verification. Hand-verifying a timed-out lane's working tree yourself is not the recovery path.
 
 CLI-lane acceptance = `error_class: complete`, a non-null session id, verification output you can spot-check against the working tree, **and** the diff passes the tiered acceptance in [SKILL.md](SKILL.md). A missing or non-complete receipt is not done.
 
@@ -84,7 +94,7 @@ node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.j
 
 - Spec keys: the five parts plus optional `model`, `timeout_sec`, and `resume_session_id` only — no `effort`/`service_tier` (the grok CLI has no such knobs).
 - `model` — omit by default: unset sends no `-m` flag, so the CLI runs its own default and tracks the live catalog (currently grok-4.6, 2026-09) with zero spec edits on a generation swap. Set it only to deliberately pick a non-default catalog entry surfaced by `grok models`. When the catalog is readable, `model` is validated against every listed entry — a model not in the catalog is `spec_invalid`. An unreadable catalog is not `grok_unavailable`: the runner logs a diagnostic, skips validation, and the real run decides availability.
-- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff` and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
+- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff` and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
 
 ## Dispatch, not probes
 

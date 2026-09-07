@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { performance } from "node:perf_hooks";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,7 @@ const DEFAULT_EFFORTS = new Map([
   ["gpt-5.6-luna", "max"],
 ]);
 const DEFAULT_TIMEOUT_SEC = 600;
+const interruption = new AbortController();
 const SESSION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
@@ -301,6 +303,13 @@ function observeCodexEvents(child, state, onSession) {
       return;
     }
 
+    const observedAt = performance.now();
+    state.maxIdleMs = Math.max(
+      state.maxIdleMs ?? 0,
+      Math.floor(observedAt - state.lastEventAt),
+    );
+    state.lastEventAt = observedAt;
+
     if (state.codexSessionId === null) {
       const sessionId = extractSessionId(event);
       if (sessionId !== null) {
@@ -324,6 +333,8 @@ async function executeCodex(spec, cwd, promptContents) {
     codexSessionId: spec.resume_session_id,
     codexFinalMessage: null,
     terminalEventAt: null,
+    maxIdleMs: null,
+    lastEventAt: null,
   };
   const args = spec.resume_session_id === null
     ? [
@@ -350,6 +361,10 @@ async function executeCodex(spec, cwd, promptContents) {
   if (spec.resume_session_id !== null) {
     args.push(spec.resume_session_id, "-");
   }
+  if (interruption.signal.aborted) {
+    return { ...state, childExitCode: null, errorClass: "interrupted", endToCloseMs: null };
+  }
+  state.lastEventAt = performance.now();
   const child = spawn("codex", IS_WINDOWS ? args.map(quoteForShell) : args, {
     cwd,
     detached: process.platform !== "win32",
@@ -359,12 +374,15 @@ async function executeCodex(spec, cwd, promptContents) {
 
   let failure = null;
   let exited = false;
+  let termination = Promise.resolve();
   let clearSessionTimer = () => {};
   const failAndKill = (errorClass) => {
     if (failure !== null || exited) return;
     failure = errorClass;
-    void killProcessTree(child);
+    termination = killProcessTree(child);
   };
+  const onInterrupt = () => failAndKill("interrupted");
+  interruption.signal.addEventListener("abort", onInterrupt, { once: true });
   const clearWallTimer = createDeadlineTimer(
     spec.timeout_sec * 1_000,
     () => failAndKill("timeout"),
@@ -387,11 +405,13 @@ async function executeCodex(spec, cwd, promptContents) {
     child.once("close", (code, signal) => resolve({ code, signal, spawnError }));
   });
   exited = true;
+  interruption.signal.removeEventListener("abort", onInterrupt);
   clearWallTimer();
   clearSessionTimer();
   const endToCloseMs = state.terminalEventAt === null
     ? null
     : Math.max(0, Date.now() - state.terminalEventAt);
+  await termination;
 
   if (failure === null && (result.spawnError || result.code !== 0)) {
     failure = "codex_failed";
@@ -483,6 +503,7 @@ function initialState(startedAt) {
     codexSessionId: null,
     resumedFrom: null,
     endToCloseMs: null,
+    maxIdleMs: null,
     childExitCode: null,
     startedAt,
     errorClass: null,
@@ -508,6 +529,7 @@ function buildReceipt(state) {
     codex_session_id: state.codexSessionId,
     resumed_from: state.resumedFrom,
     end_to_close_ms: state.endToCloseMs,
+    max_idle_ms: state.maxIdleMs,
     started_at: state.startedAt,
     finished_at: new Date().toISOString(),
     exit_status: exitStatus,
@@ -630,6 +652,7 @@ async function main() {
     state.childExitCode = codexResult.childExitCode;
     state.errorClass = codexResult.errorClass;
     state.endToCloseMs = codexResult.endToCloseMs;
+    state.maxIdleMs = codexResult.maxIdleMs;
   } catch (error) {
     diagnostic(`codex execution failed: ${errorMessage(error)}`);
     state.errorClass = "codex_failed";
@@ -641,7 +664,10 @@ async function main() {
 
   const changedFilesResult = await collectChangedFiles(state.cwd);
   state.changedFiles = changedFilesResult.files;
-  if (state.errorClass !== "preparation_stalled" && state.errorClass !== "timeout") {
+  if (interruption.signal.aborted) state.errorClass = "interrupted";
+  if (state.errorClass !== "preparation_stalled"
+    && state.errorClass !== "timeout"
+    && state.errorClass !== "interrupted") {
     state.verification = await runVerification(spec.verification, state.cwd);
     if (state.errorClass === null) {
       if (!state.verification.every((result) => result.exit_code === 0)) {
@@ -677,5 +703,12 @@ async function main() {
   return exitCode;
 }
 
-const exitCode = await main();
-process.exitCode = exitCode;
+const onInterrupt = () => interruption.abort();
+process.on("SIGTERM", onInterrupt);
+process.on("SIGINT", onInterrupt);
+try {
+  process.exitCode = await main();
+} finally {
+  process.removeListener("SIGTERM", onInterrupt);
+  process.removeListener("SIGINT", onInterrupt);
+}
