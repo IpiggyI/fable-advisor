@@ -48,7 +48,7 @@ def write_executable(directory, name, contents):
     return path
 
 
-def run_runner(runner, cwd, spec, path_dir, env_extra=None, *, pending=False):
+def run_runner(runner, cwd, spec, path_dir, env_extra=None, *, pending=False, timeout=None):
     spec_path = (
         Path(cwd) / ".fable-advisor" / "pending" / "job.json"
         if pending
@@ -65,6 +65,7 @@ def run_runner(runner, cwd, spec, path_dir, env_extra=None, *, pending=False):
         capture_output=True,
         text=True,
         env=env,
+        timeout=timeout,
     )
     receipt = None
     if result.stdout.strip():
@@ -184,9 +185,23 @@ def case_schema_defaults_and_validation():
             grok, cwd, base_spec(resume_session_id=[]), bin_dir,
         )
         assert bad_grok_resume["error_class"] == "spec_invalid"
+
+        for runner in (codex, grok):
+            _, bad_idle = run_runner(
+                runner, cwd, base_spec(idle_timeout_sec=0), bin_dir,
+            )
+            assert bad_idle["error_class"] == "spec_invalid"
+            _, bad_idle_neg = run_runner(
+                runner, cwd, base_spec(idle_timeout_sec=-1), bin_dir,
+            )
+            assert bad_idle_neg["error_class"] == "spec_invalid"
+            _, bad_timeout = run_runner(
+                runner, cwd, base_spec(timeout_sec=0), bin_dir,
+            )
+            assert bad_timeout["error_class"] == "spec_invalid"
         print(
             "ASSERT schema: terra=spec_invalid unknown_key=spec_invalid "
-            "empty_resume=spec_invalid"
+            "empty_resume=spec_invalid idle_timeout_sec=spec_invalid"
         )
 
 
@@ -583,6 +598,228 @@ def case_interrupted_receipt_and_process_tree():
                     ))
 
 
+def fake_deadline(directory, binary):
+    write_executable(
+        directory,
+        binary,
+        """#!/usr/bin/env python3
+import json, os, sys, time
+args = sys.argv[1:]
+if args == ["--version"]:
+    raise SystemExit(0)
+if args == ["models"]:
+    print("Default model: grok-test")
+    print("* grok-test (default)")
+    raise SystemExit(0)
+if "exec" in args:
+    sys.stdin.read()
+codex = "exec" in args
+first = {"type": "thread.started", "thread_id": "stream-session"} if codex else {
+    "type": "text", "data": "x"}
+progress = {"type": "progress"}
+terminal = {"type": "turn.completed"} if codex else {
+    "type": "end", "sessionId": "stream-session", "stopReason": "done"}
+mode = os.environ["DEADLINE_MODE"]
+interval = float(os.environ.get("DEADLINE_INTERVAL", "0.08"))
+count = int(os.environ.get("DEADLINE_COUNT", "12"))
+hang = float(os.environ.get("DEADLINE_HANG", "60"))
+
+def emit(payload):
+    print(json.dumps(payload), flush=True)
+
+if mode == "no_events":
+    time.sleep(hang)
+    raise SystemExit(0)
+emit(first)
+if mode == "silence_after":
+    emit(progress)
+    time.sleep(hang)
+    raise SystemExit(0)
+if mode == "forever":
+    while True:
+        time.sleep(interval)
+        emit(progress)
+for _ in range(count):
+    time.sleep(interval)
+    emit(progress)
+emit(terminal)
+""",
+    )
+
+
+def run_deadline(binary, spec, env_extra, *, pending=True, timeout=8, dirty=False):
+    with tempfile.TemporaryDirectory() as tmp:
+        bin_dir = Path(tmp) / "bin"
+        bin_dir.mkdir()
+        fake_deadline(bin_dir, binary)
+        if dirty:
+            write_executable(
+                bin_dir,
+                "git",
+                "#!/bin/sh\necho '?? owned.txt'\nexit 0\n",
+            )
+        else:
+            fake_git(bin_dir)
+        runner = copy_runner(tmp, "run-%s.mjs" % binary)
+        cwd = Path(tmp) / "work"
+        cwd.mkdir()
+        started = time.monotonic()
+        result, receipt = run_runner(
+            runner, cwd, spec, bin_dir, env_extra, pending=pending, timeout=timeout,
+        )
+        elapsed = time.monotonic() - started
+        pending_kept = (cwd / ".fable-advisor" / "pending" / "job.json").is_file()
+        verified = (cwd / "verified").exists()
+        return result, receipt, elapsed, pending_kept, verified
+
+
+def case_idle_and_wall_deadlines():
+    idle = 0.5
+    for binary in ("codex", "grok"):
+        spec_model = {"model": "gpt-5.6-luna"} if binary == "codex" else {}
+        live_env = {
+            "DEADLINE_MODE": "live",
+            "DEADLINE_INTERVAL": "0.08",
+            "DEADLINE_COUNT": "12",
+        }
+
+        result, receipt, elapsed, pending_kept, _ = run_deadline(
+            binary,
+            base_spec(idle_timeout_sec=idle, **spec_model),
+            live_env,
+        )
+        assert result.returncode == 0, result.stderr
+        assert receipt["error_class"] == "complete", receipt
+        assert receipt["idle_timeout_sec"] == idle
+        assert receipt["timeout_sec"] is None
+        assert elapsed > idle
+        assert not pending_kept
+        print("ASSERT live-past-idle: runner=%s elapsed=%.2f complete" % (
+            binary, elapsed,
+        ))
+
+        result, receipt, elapsed, pending_kept, verified = run_deadline(
+            binary,
+            base_spec(
+                idle_timeout_sec=idle,
+                verification=["echo ran > verified"],
+                **spec_model,
+            ),
+            {"DEADLINE_MODE": "silence_after", "DEADLINE_HANG": "60"},
+        )
+        assert result.returncode != 0, result.stderr
+        assert receipt["error_class"] == "idle_timeout", receipt
+        assert receipt["verification"] == []
+        assert receipt["idle_timeout_sec"] == idle
+        assert receipt["timeout_sec"] is None
+        assert pending_kept
+        assert not verified
+        assert elapsed < 4, elapsed
+        print("ASSERT idle-kill: runner=%s elapsed=%.2f idle_timeout pending=kept" % (
+            binary, elapsed,
+        ))
+
+        result, receipt, elapsed, pending_kept, verified = run_deadline(
+            binary,
+            base_spec(
+                idle_timeout_sec=5,
+                timeout_sec=idle,
+                verification=["echo ran > verified"],
+                **spec_model,
+            ),
+            {"DEADLINE_MODE": "forever", "DEADLINE_INTERVAL": "0.08"},
+        )
+        assert result.returncode != 0, result.stderr
+        assert receipt["error_class"] == "timeout", receipt
+        assert receipt["verification"] == []
+        assert receipt["timeout_sec"] == idle
+        assert receipt["idle_timeout_sec"] == 5
+        assert pending_kept
+        assert not verified
+        assert elapsed < 4, elapsed
+        print("ASSERT wall-timeout: runner=%s elapsed=%.2f timeout pending=kept" % (
+            binary, elapsed,
+        ))
+
+        # No timeout_sec means no absolute ceiling: keep emitting past idle
+        # (the scaled stand-in for the old 600s wall default) and still complete.
+        result, receipt, elapsed, pending_kept, _ = run_deadline(
+            binary,
+            base_spec(idle_timeout_sec=idle, **spec_model),
+            live_env,
+        )
+        assert result.returncode == 0, result.stderr
+        assert receipt["error_class"] == "complete", receipt
+        assert "timeout_sec" in receipt and receipt["timeout_sec"] is None
+        assert elapsed > idle
+        assert not pending_kept
+        print("ASSERT no-wall-default: runner=%s elapsed=%.2f timeout_sec=null" % (
+            binary, elapsed,
+        ))
+
+        result, receipt, elapsed, pending_kept, verified = run_deadline(
+            binary,
+            base_spec(
+                idle_timeout_sec=idle,
+                resume_session_id="resume-123",
+                verification=["echo ran > verified"],
+                **spec_model,
+            ),
+            {"DEADLINE_MODE": "no_events", "DEADLINE_HANG": "60"},
+        )
+        assert result.returncode != 0, result.stderr
+        assert receipt["error_class"] == "idle_timeout", receipt
+        assert receipt["error_class"] != "preparation_stalled"
+        assert receipt["verification"] == []
+        assert pending_kept
+        assert not verified
+        assert elapsed < 4, elapsed
+        print("ASSERT resume-first-event: runner=%s elapsed=%.2f idle_timeout" % (
+            binary, elapsed,
+        ))
+
+        result, receipt, elapsed, pending_kept, verified = run_deadline(
+            binary,
+            base_spec(
+                idle_timeout_sec=idle,
+                verification=["echo ran > verified"],
+                **spec_model,
+            ),
+            {"DEADLINE_MODE": "no_events", "DEADLINE_HANG": "1.2"},
+        )
+        assert result.returncode != 0, result.stderr
+        assert receipt["error_class"] == "preparation_stalled", receipt
+        assert receipt["verification"] == []
+        assert pending_kept
+        assert not verified
+        assert elapsed < 5, elapsed
+        print("ASSERT non-resume-silent: runner=%s elapsed=%.2f preparation_stalled" % (
+            binary, elapsed,
+        ))
+
+        result, receipt, elapsed, pending_kept, verified = run_deadline(
+            binary,
+            base_spec(
+                idle_timeout_sec=5,
+                resume_session_id="resume-123",
+                files=["owned.txt"],
+                verification=["echo ran > verified"],
+                **spec_model,
+            ),
+            {"DEADLINE_MODE": "no_events", "DEADLINE_HANG": "0.05"},
+            dirty=True,
+        )
+        assert result.returncode != 0, result.stderr
+        assert receipt["error_class"] == "preparation_stalled", receipt
+        assert receipt["verification"] == []
+        assert pending_kept
+        assert not verified
+        assert elapsed < 2, elapsed
+        print("ASSERT resume-silent-exit: runner=%s elapsed=%.2f preparation_stalled" % (
+            binary, elapsed,
+        ))
+
+
 def case_last_terminal_event_drives_timing():
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(tmp, base_spec(), "multi_terminal")
@@ -606,6 +843,7 @@ CASES = [
     ("last terminal event drives timing", case_last_terminal_event_drives_timing),
     ("idle diagnostic", case_idle_diagnostic),
     ("interrupted receipt and process tree", case_interrupted_receipt_and_process_tree),
+    ("idle and wall deadlines", case_idle_and_wall_deadlines),
 ]
 
 

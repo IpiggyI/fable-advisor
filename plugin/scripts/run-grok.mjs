@@ -9,7 +9,7 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_TIMEOUT_SEC = 600;
+const DEFAULT_IDLE_TIMEOUT_SEC = 600;
 const interruption = new AbortController();
 const PREPARATION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
@@ -29,6 +29,7 @@ const SPEC_KEYS = new Set([
   "verification",
   "model",
   "timeout_sec",
+  "idle_timeout_sec",
   "resume_session_id",
 ]);
 
@@ -89,6 +90,12 @@ function requireStringArray(value, name, { nonEmptyItems = false, minLength = 0 
   }
 }
 
+function requirePositiveNumber(value, name) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be a positive number`);
+  }
+}
+
 function normalizeSpec(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("spec must be a JSON object");
@@ -111,13 +118,11 @@ function normalizeSpec(value) {
   if (value.model !== undefined) {
     requireString(value.model, "model");
   }
-  if (
-    value.timeout_sec !== undefined
-    && (typeof value.timeout_sec !== "number"
-      || !Number.isFinite(value.timeout_sec)
-      || value.timeout_sec <= 0)
-  ) {
-    throw new Error("timeout_sec must be a positive number");
+  if (value.timeout_sec !== undefined) {
+    requirePositiveNumber(value.timeout_sec, "timeout_sec");
+  }
+  if (value.idle_timeout_sec !== undefined) {
+    requirePositiveNumber(value.idle_timeout_sec, "idle_timeout_sec");
   }
   if (value.resume_session_id !== undefined) {
     requireString(value.resume_session_id, "resume_session_id", { nonEmpty: true });
@@ -130,7 +135,8 @@ function normalizeSpec(value) {
     constraints: value.constraints,
     verification: value.verification,
     model: value.model ?? null,
-    timeout_sec: value.timeout_sec ?? DEFAULT_TIMEOUT_SEC,
+    timeout_sec: value.timeout_sec ?? null,
+    idle_timeout_sec: value.idle_timeout_sec ?? DEFAULT_IDLE_TIMEOUT_SEC,
     resume_session_id: value.resume_session_id ?? null,
   };
 }
@@ -247,10 +253,8 @@ function observeGrokEvents(child, state, onEvent) {
     );
     state.lastEventAt = observedAt;
 
-    if (!state.eventObserved) {
-      state.eventObserved = true;
-      onEvent();
-    }
+    state.eventObserved = true;
+    onEvent();
     if (event === null || typeof event !== "object" || Array.isArray(event)) {
       return;
     }
@@ -318,26 +322,44 @@ async function executeGrok(spec, cwd, promptPath) {
   let failure = null;
   let exited = false;
   let termination = Promise.resolve();
+  let clearIdleTimer = () => {};
   let clearPreparationTimer = () => {};
   const failAndKill = (errorClass) => {
     if (failure !== null || exited) return;
     failure = errorClass;
     termination = killProcessTree(child);
   };
+  const armIdleTimer = () => {
+    if (failure !== null || exited) return;
+    clearIdleTimer();
+    clearIdleTimer = createDeadlineTimer(
+      spec.idle_timeout_sec * 1_000,
+      () => failAndKill("idle_timeout"),
+    );
+  };
   const onInterrupt = () => failAndKill("interrupted");
   interruption.signal.addEventListener("abort", onInterrupt, { once: true });
-  const clearWallTimer = createDeadlineTimer(
-    spec.timeout_sec * 1_000,
-    () => failAndKill("timeout"),
-  );
-  clearPreparationTimer = createDeadlineTimer(
-    PREPARATION_TIMEOUT_MS,
-    () => {
-      if (!state.eventObserved) failAndKill("preparation_stalled");
-    },
-  );
+  const clearWallTimer = spec.timeout_sec === null
+    ? () => {}
+    : createDeadlineTimer(
+      spec.timeout_sec * 1_000,
+      () => failAndKill("timeout"),
+    );
+  if (state.resumed) {
+    armIdleTimer();
+  } else {
+    clearPreparationTimer = createDeadlineTimer(
+      PREPARATION_TIMEOUT_MS,
+      () => {
+        if (!state.eventObserved) failAndKill("preparation_stalled");
+      },
+    );
+  }
 
-  observeGrokEvents(child, state, () => clearPreparationTimer());
+  observeGrokEvents(child, state, () => {
+    clearPreparationTimer();
+    armIdleTimer();
+  });
   child.stderr.pipe(process.stderr);
 
   const result = await new Promise((resolve) => {
@@ -348,6 +370,7 @@ async function executeGrok(spec, cwd, promptPath) {
   exited = true;
   interruption.signal.removeEventListener("abort", onInterrupt);
   clearWallTimer();
+  clearIdleTimer();
   clearPreparationTimer();
   const endToCloseMs = state.terminalEventAt === null
     ? null
@@ -445,6 +468,8 @@ function initialState(startedAt) {
     resumedFrom: null,
     endToCloseMs: null,
     maxIdleMs: null,
+    idleTimeoutSec: null,
+    timeoutSec: null,
     stopReason: null,
     usage: null,
     totalCostUsd: null,
@@ -472,6 +497,8 @@ function buildReceipt(state) {
     resumed_from: state.resumedFrom,
     end_to_close_ms: state.endToCloseMs,
     max_idle_ms: state.maxIdleMs,
+    idle_timeout_sec: state.idleTimeoutSec,
+    timeout_sec: state.timeoutSec,
     stop_reason: state.stopReason,
     usage: state.usage,
     total_cost_usd: state.totalCostUsd,
@@ -545,6 +572,8 @@ async function main() {
     state.modelUsed = spec.model;
     state.grokSessionId = spec.resume_session_id;
     state.resumedFrom = spec.resume_session_id;
+    state.idleTimeoutSec = spec.idle_timeout_sec;
+    state.timeoutSec = spec.timeout_sec;
   } catch (error) {
     diagnostic(`invalid spec: ${errorMessage(error)}`);
     state.errorClass = "spec_invalid";
@@ -614,6 +643,7 @@ async function main() {
   if (interruption.signal.aborted) state.errorClass = "interrupted";
   if (state.errorClass !== "preparation_stalled"
     && state.errorClass !== "timeout"
+    && state.errorClass !== "idle_timeout"
     && state.errorClass !== "interrupted") {
     state.verification = await runVerification(spec.verification, state.cwd);
     if (state.errorClass === null) {

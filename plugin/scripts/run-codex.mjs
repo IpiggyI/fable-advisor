@@ -14,7 +14,7 @@ const DEFAULT_EFFORTS = new Map([
   ["gpt-6-astra", "medium"],
   ["gpt-5.6-luna", "max"],
 ]);
-const DEFAULT_TIMEOUT_SEC = 600;
+const DEFAULT_IDLE_TIMEOUT_SEC = 600;
 const interruption = new AbortController();
 const SESSION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
@@ -40,6 +40,7 @@ const SPEC_KEYS = new Set([
   "effort",
   "service_tier",
   "timeout_sec",
+  "idle_timeout_sec",
   "resume_session_id",
 ]);
 
@@ -100,6 +101,12 @@ function requireStringArray(value, name, { nonEmptyItems = false, minLength = 0 
   }
 }
 
+function requirePositiveNumber(value, name) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be a positive number`);
+  }
+}
+
 function normalizeSpec(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("spec must be a JSON object");
@@ -137,13 +144,11 @@ function normalizeSpec(value) {
       throw new Error(`service_tier must be one of: ${[...VALID_SERVICE_TIERS].join(", ")}`);
     }
   }
-  if (
-    value.timeout_sec !== undefined
-    && (typeof value.timeout_sec !== "number"
-      || !Number.isFinite(value.timeout_sec)
-      || value.timeout_sec <= 0)
-  ) {
-    throw new Error("timeout_sec must be a positive number");
+  if (value.timeout_sec !== undefined) {
+    requirePositiveNumber(value.timeout_sec, "timeout_sec");
+  }
+  if (value.idle_timeout_sec !== undefined) {
+    requirePositiveNumber(value.idle_timeout_sec, "idle_timeout_sec");
   }
   if (value.resume_session_id !== undefined) {
     requireString(value.resume_session_id, "resume_session_id", { nonEmpty: true });
@@ -160,7 +165,8 @@ function normalizeSpec(value) {
     model,
     effort: value.effort ?? DEFAULT_EFFORTS.get(model),
     service_tier: value.service_tier ?? null,
-    timeout_sec: value.timeout_sec ?? DEFAULT_TIMEOUT_SEC,
+    timeout_sec: value.timeout_sec ?? null,
+    idle_timeout_sec: value.idle_timeout_sec ?? DEFAULT_IDLE_TIMEOUT_SEC,
     resume_session_id: value.resume_session_id ?? null,
   };
 }
@@ -293,7 +299,7 @@ async function killProcessTree(child) {
   }
 }
 
-function observeCodexEvents(child, state, onSession) {
+function observeCodexEvents(child, state, onEvent) {
   const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
   lines.on("line", (line) => {
     let event;
@@ -309,12 +315,13 @@ function observeCodexEvents(child, state, onSession) {
       Math.floor(observedAt - state.lastEventAt),
     );
     state.lastEventAt = observedAt;
+    state.eventObserved = true;
+    onEvent();
 
     if (state.codexSessionId === null) {
       const sessionId = extractSessionId(event);
       if (sessionId !== null) {
         state.codexSessionId = sessionId;
-        onSession();
       }
     }
     if (event.type === "item.completed" && event.item?.type === "agent_message") {
@@ -335,6 +342,8 @@ async function executeCodex(spec, cwd, promptContents) {
     terminalEventAt: null,
     maxIdleMs: null,
     lastEventAt: null,
+    eventObserved: false,
+    resumed: spec.resume_session_id !== null,
   };
   const args = spec.resume_session_id === null
     ? [
@@ -375,26 +384,44 @@ async function executeCodex(spec, cwd, promptContents) {
   let failure = null;
   let exited = false;
   let termination = Promise.resolve();
+  let clearIdleTimer = () => {};
   let clearSessionTimer = () => {};
   const failAndKill = (errorClass) => {
     if (failure !== null || exited) return;
     failure = errorClass;
     termination = killProcessTree(child);
   };
+  const armIdleTimer = () => {
+    if (failure !== null || exited) return;
+    clearIdleTimer();
+    clearIdleTimer = createDeadlineTimer(
+      spec.idle_timeout_sec * 1_000,
+      () => failAndKill("idle_timeout"),
+    );
+  };
   const onInterrupt = () => failAndKill("interrupted");
   interruption.signal.addEventListener("abort", onInterrupt, { once: true });
-  const clearWallTimer = createDeadlineTimer(
-    spec.timeout_sec * 1_000,
-    () => failAndKill("timeout"),
-  );
-  clearSessionTimer = createDeadlineTimer(
-    SESSION_TIMEOUT_MS,
-    () => {
-      if (state.codexSessionId === null) failAndKill("preparation_stalled");
-    },
-  );
+  const clearWallTimer = spec.timeout_sec === null
+    ? () => {}
+    : createDeadlineTimer(
+      spec.timeout_sec * 1_000,
+      () => failAndKill("timeout"),
+    );
+  if (state.resumed) {
+    armIdleTimer();
+  } else {
+    clearSessionTimer = createDeadlineTimer(
+      SESSION_TIMEOUT_MS,
+      () => {
+        if (!state.eventObserved) failAndKill("preparation_stalled");
+      },
+    );
+  }
 
-  observeCodexEvents(child, state, () => clearSessionTimer());
+  observeCodexEvents(child, state, () => {
+    clearSessionTimer();
+    armIdleTimer();
+  });
   child.stderr.pipe(process.stderr);
   child.stdin.on("error", (error) => diagnostic(`codex stdin failed: ${errorMessage(error)}`));
   child.stdin.end(promptContents);
@@ -407,6 +434,7 @@ async function executeCodex(spec, cwd, promptContents) {
   exited = true;
   interruption.signal.removeEventListener("abort", onInterrupt);
   clearWallTimer();
+  clearIdleTimer();
   clearSessionTimer();
   const endToCloseMs = state.terminalEventAt === null
     ? null
@@ -415,7 +443,7 @@ async function executeCodex(spec, cwd, promptContents) {
 
   if (failure === null && (result.spawnError || result.code !== 0)) {
     failure = "codex_failed";
-  } else if (failure === null && state.codexSessionId === null) {
+  } else if (failure === null && !state.eventObserved) {
     failure = "preparation_stalled";
   }
 
@@ -504,6 +532,8 @@ function initialState(startedAt) {
     resumedFrom: null,
     endToCloseMs: null,
     maxIdleMs: null,
+    idleTimeoutSec: null,
+    timeoutSec: null,
     childExitCode: null,
     startedAt,
     errorClass: null,
@@ -530,6 +560,8 @@ function buildReceipt(state) {
     resumed_from: state.resumedFrom,
     end_to_close_ms: state.endToCloseMs,
     max_idle_ms: state.maxIdleMs,
+    idle_timeout_sec: state.idleTimeoutSec,
+    timeout_sec: state.timeoutSec,
     started_at: state.startedAt,
     finished_at: new Date().toISOString(),
     exit_status: exitStatus,
@@ -602,6 +634,8 @@ async function main() {
     state.service_tier = spec.service_tier;
     state.codexSessionId = spec.resume_session_id;
     state.resumedFrom = spec.resume_session_id;
+    state.idleTimeoutSec = spec.idle_timeout_sec;
+    state.timeoutSec = spec.timeout_sec;
   } catch (error) {
     diagnostic(`invalid spec: ${errorMessage(error)}`);
     state.errorClass = "spec_invalid";
@@ -667,6 +701,7 @@ async function main() {
   if (interruption.signal.aborted) state.errorClass = "interrupted";
   if (state.errorClass !== "preparation_stalled"
     && state.errorClass !== "timeout"
+    && state.errorClass !== "idle_timeout"
     && state.errorClass !== "interrupted") {
     state.verification = await runVerification(spec.verification, state.cwd);
     if (state.errorClass === null) {
