@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Run your session on a flagship-tier Claude model as a full-time architect that writes delivery contracts and verdicts, while a Grok-family lane (via the Grok CLI) and a GPT-family lane (via Codex; currently GPT-6 Astra by default) own the implementation within them, plus an in-house Opus lane the architect routes to deliberately, which also keeps it working without the CLIs.",
   "author": {
     "name": "Dan McAteer",

@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "fable-advisor",
-      "version": "4.1.0",
+      "version": "4.2.0",
       "source": "./plugin",
       "description": "Architect-as-orchestrator: your session runs a flagship-tier Claude model that writes delivery contracts and verdicts, while a Grok-family lane (Grok CLI) and a GPT-family lane (Codex; currently GPT-6 Astra) own the implementation within them — with an in-house Claude lane when neither CLI is installed, and a commitment-boundary advisor."
     }
