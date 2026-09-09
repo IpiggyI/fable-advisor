@@ -66,7 +66,7 @@ runner 把 receipt 打印到 stdout，并写入 `.fable-advisor/receipts/<spec_h
 
 - `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | git_status_failed`。
 - `codex_session_id` — 绑定到所拉起进程的事件流，不受并发会话串扰；在恢复运行上它等于被恢复的 id。
-- `model_requested`、`model_used`、`fallback_reason`（无回退时为 null）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程 close；未见终止事件时为 null——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是为 `idle_timeout_sec` 定尺寸的诊断，不是门禁）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。
+- `model_requested`、`model_used`、`fallback_reason`（无回退时为 null）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程 close；未见终止事件时为 null——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是诊断，不是门禁：一次 `idle_timeout` 之后它说明静默截止是不是定得太紧，正常跑完的运行上它显示还剩多少余量）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。
 - `changed_files`，外加核验命令的实际退出码与输出尾部。
 
 `no_diff` 意味着 `files` 非空且没有任何变更；pending 文件保留。在普通 spec 上这是一次静默空跑——去查。在返工票上，当 lane 发现缺陷无法复现时，这是预期答案：读报告、删除 pending 文件，并说明。`git_status_failed` 意味着 runner 无法判定改了什么；它不是 `complete`。
