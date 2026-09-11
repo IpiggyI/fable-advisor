@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
   "version": "4.2.0",
-  "description": "Run your session on a flagship-tier Claude model as a full-time architect that writes delivery contracts and verdicts, while a Grok-family lane (via the Grok CLI) and a GPT-family lane (via Codex; currently GPT-6 Astra by default) own the implementation within them, plus an in-house Opus lane the architect routes to deliberately, which also keeps it working without the CLIs.",
+  "description": "A role pool: any model can be the main agent; two postures (orchestrating: deliverables only through a worker; implementing: the main agent may edit directly); explorer, worker, and advisor at light, standard, and senior tiers; grok, codex, claude, and handoff lanes named by mechanism; a user-side fill table maps (role, tier) to models. The advisor has decision and acceptance shapes; escalation is one failed rework ticket plus attribution.",
   "author": {
     "name": "Dan McAteer",
     "url": "https://github.com/DannyMac180"

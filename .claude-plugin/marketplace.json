@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
   "metadata": {
-    "description": "Model-routing patterns for Claude Code: an architect that writes delivery contracts and verdicts, Grok-family and GPT-family implementation lanes that own the work within them (plus an in-house Claude lane), and a Fable-series commitment-boundary advisor."
+    "description": "Role pool for Claude Code and Cursor: any model as the main agent, orchestrating or implementing posture, explorer / worker / advisor at light / standard / senior, grok / codex / claude / handoff lanes, and a user-side fill table."
   },
   "owner": {
     "name": "Dan McAteer",
@@ -12,7 +12,7 @@
       "name": "fable-advisor",
       "version": "4.2.0",
       "source": "./plugin",
-      "description": "Architect-as-orchestrator: your session runs a flagship-tier Claude model that writes delivery contracts and verdicts, while a Grok-family lane (Grok CLI) and a GPT-family lane (Codex; currently GPT-6 Astra) own the implementation within them — with an in-house Claude lane when neither CLI is installed, and a commitment-boundary advisor."
+      "description": "Role pool: any model can be the main agent; two postures (orchestrating: deliverables only through a worker; implementing: the main agent may edit directly); explorer, worker, and advisor at light, standard, and senior; grok, codex, claude, and handoff lanes. User-side fill table maps (role, tier) to models; GPT family via the codex runner (currently GPT-6 Astra default)."
     }
   ]
 }
