@@ -31,6 +31,7 @@ const PREAMBLE_PATH = path.resolve(
   "lane-preamble.md",
 );
 const SPEC_KEYS = new Set([
+  "mode",
   "objective",
   "files",
   "interfaces",
@@ -117,13 +118,20 @@ function normalizeSpec(value) {
     throw new Error(`unknown top-level key(s): ${unknownKeys.join(", ")}`);
   }
 
+  if (value.mode !== undefined) {
+    requireString(value.mode, "mode");
+    if (!["implement", "report"].includes(value.mode)) {
+      throw new Error("mode must be one of: implement, report");
+    }
+  }
+  const mode = value.mode ?? "implement";
   requireString(value.objective, "objective", { nonEmpty: true });
   requireStringArray(value.files, "files");
   requireString(value.interfaces, "interfaces");
   requireString(value.constraints, "constraints");
   requireStringArray(value.verification, "verification", {
     nonEmptyItems: true,
-    minLength: 1,
+    minLength: mode === "report" ? 0 : 1,
   });
 
   if (value.model !== undefined) {
@@ -158,6 +166,7 @@ function normalizeSpec(value) {
 
   return {
     objective: value.objective,
+    mode,
     files: value.files,
     interfaces: value.interfaces,
     constraints: value.constraints,
@@ -177,6 +186,11 @@ function renderPrompt(spec, slug) {
 
   return [
     `[fable-advisor] ${slug}`,
+    ...(spec.mode === "report" ? [
+      "# Mode",
+      "Report mode: act as a read-only explorer or advisor. Files defines the read scope, "
+        + "not write ownership. Do not modify files. Return your findings as the final message.",
+    ] : []),
     "# Objective",
     spec.objective,
     "# Files",
@@ -352,12 +366,15 @@ async function executeCodex(spec, cwd, promptContents) {
       "--model", spec.model,
       "-c", `model_reasoning_effort=${spec.effort}`,
       // workspace-write on Windows raises Win32 1312 (no logon session for the restricted token).
-      "--sandbox", IS_WINDOWS ? "danger-full-access" : "workspace-write",
+      "--sandbox", spec.mode === "report"
+        ? "read-only"
+        : IS_WINDOWS ? "danger-full-access" : "workspace-write",
       "--skip-git-repo-check",
       "--cd", cwd,
     ]
     : [
       "exec",
+      ...(spec.mode === "report" ? ["--sandbox", "read-only"] : []),
       "resume",
       "--json",
       "--model", spec.model,
@@ -521,6 +538,7 @@ async function runVerification(commands, cwd) {
 function initialState(startedAt) {
   return {
     specHash: null,
+    mode: "implement",
     cwd: process.cwd(),
     model: DEFAULT_MODEL,
     modelRequested: DEFAULT_MODEL,
@@ -547,6 +565,8 @@ function buildReceipt(state) {
   const exitStatus = state.childExitCode ?? null;
   return {
     receipt_version: 1,
+    mode: state.mode,
+    report: state.mode === "report" ? (state.codexFinalMessage ?? "") : null,
     spec_hash: state.specHash,
     cwd: state.cwd,
     producer: "codex",
@@ -627,6 +647,7 @@ async function main() {
   let spec;
   try {
     spec = await loadSpec(parsedArguments.specPath, state);
+    state.mode = spec.mode;
     state.model = spec.model;
     state.modelRequested = spec.model;
     state.modelUsed = spec.model;
@@ -696,7 +717,7 @@ async function main() {
     }
   }
 
-  const changedFilesResult = await collectChangedFiles(state.cwd);
+  let changedFilesResult = await collectChangedFiles(state.cwd);
   state.changedFiles = changedFilesResult.files;
   if (interruption.signal.aborted) state.errorClass = "interrupted";
   if (state.errorClass !== "preparation_stalled"
@@ -704,12 +725,20 @@ async function main() {
     && state.errorClass !== "idle_timeout"
     && state.errorClass !== "interrupted") {
     state.verification = await runVerification(spec.verification, state.cwd);
+    if (spec.mode === "report" && spec.verification.length > 0) {
+      changedFilesResult = await collectChangedFiles(state.cwd);
+      state.changedFiles = changedFilesResult.files;
+    }
+    if (spec.mode === "report" && state.changedFiles.length > 0) {
+      state.errorClass = "unexpected_diff";
+    }
     if (state.errorClass === null) {
       if (!state.verification.every((result) => result.exit_code === 0)) {
         state.errorClass = "verification_failed";
       } else if (changedFilesResult.failed) {
         state.errorClass = "git_status_failed";
-      } else if (spec.files.length > 0 && state.changedFiles.length === 0) {
+      } else if (spec.mode === "implement"
+        && spec.files.length > 0 && state.changedFiles.length === 0) {
         state.errorClass = "no_diff";
       } else {
         state.errorClass = "complete";

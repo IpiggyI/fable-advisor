@@ -144,6 +144,153 @@ print(json.dumps({"type": "end", "sessionId": reported_id, "stopReason": "done"}
     )
 
 
+def fake_report_cli(directory, binary):
+    write_executable(
+        directory, binary,
+        """#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+with open(os.environ["CALL_LOG"], "a") as handle:
+    handle.write(json.dumps(args) + "\\n")
+if args == ["--version"]:
+    raise SystemExit(0)
+if args == ["models"]:
+    print("* grok-test (default)")
+    raise SystemExit(0)
+codex = "exec" in args
+if codex and os.environ.get("REPORT_FALLBACK") and args[args.index("--model") + 1] == "gpt-6-astra":
+    raise SystemExit(1)
+prompt = sys.stdin.read() if codex else Path(args[args.index("--prompt-file") + 1]).read_text()
+Path(os.environ["PROMPT_LOG"]).write_text(prompt)
+if codex:
+    print(json.dumps({"type": "thread.started", "thread_id": "report-session"}))
+    for text in ("intermediate message", "Report findings."):
+        print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": text}}))
+    print(json.dumps({"type": "turn.completed"}))
+else:
+    for text in ("Report ", "findings."):
+        print(json.dumps({"type": "text", "data": text}))
+    session_flag = "--resume" if "--resume" in args else "--session-id"
+    print(json.dumps({"type": "end", "sessionId": args[args.index(session_flag) + 1]}))
+""",
+    )
+
+
+def case_mode_validation():
+    for binary in ("codex", "grok"):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            call_log = Path(tmp) / "calls"
+            invalid_specs = [
+                base_spec(mode=mode) for mode in ("", "REPORT", "other", None, 7, True, [], {})
+            ] + [
+                base_spec(**mode, verification=[]) for mode in ({}, {"mode": "implement"})
+            ] + [
+                base_spec(mode="report", **fields)
+                for fields in ({"files": None}, {"verification": None}, {"verification": [""]})
+            ]
+            for spec in invalid_specs:
+                result, receipt = run_runner(
+                    runner, cwd, spec, bin_dir, {"CALL_LOG": str(call_log)},
+                )
+                assert result.returncode != 0 and receipt["error_class"] == "spec_invalid", receipt
+                assert not call_log.exists(), "invalid mode/spec spawned CLI"
+                assert receipt["mode"] in ("implement", "report")
+    print("ASSERT mode validation: both runners invalid=spawn-free implement verification=unchanged")
+
+
+def case_report_and_implement_modes():
+    scenarios = [
+        ("report", [], 0, False, False, "complete"),
+        ("report", ["scope.txt"], 0, False, False, "complete"),
+        ("report", [], 0, True, False, "complete"),
+        ("report", [], 0, False, True, "complete"),
+        ("report", [], 0, False, False, "unexpected_diff"),
+        ("report", [], 1, False, False, "git_status_failed"),
+        ("report", [], 0, False, False, "verification_failed"),
+        ("report", [], 0, False, False, "verification_diff"),
+        ("implement", [], 0, False, False, "complete"),
+        (None, [], 0, False, False, "complete"),
+        ("implement", ["owned.txt"], 0, False, False, "no_diff"),
+        (None, ["owned.txt"], 0, False, False, "no_diff"),
+    ]
+    for binary in ("codex", "grok"):
+        for mode, files, git_exit, resume, fallback, expected in scenarios:
+            with tempfile.TemporaryDirectory() as tmp:
+                bin_dir = Path(tmp) / "bin"
+                bin_dir.mkdir()
+                fake_report_cli(bin_dir, binary)
+                fake_git(bin_dir, git_exit)
+                if expected == "unexpected_diff":
+                    write_executable(bin_dir, "git", "#!/bin/sh\necho ' M scope.txt'\n")
+                elif expected == "verification_diff":
+                    write_executable(bin_dir, "git", '#!/bin/sh\nif [ -f "$2/changed" ]; then echo "?? changed"; fi\nexit 0\n')
+                runner = copy_runner(tmp, "run-%s.mjs" % binary)
+                cwd = Path(tmp) / "work"
+                cwd.mkdir()
+                call_log, prompt_log = Path(tmp) / "calls", Path(tmp) / "prompt"
+                spec = base_spec(files=files)
+                if mode is not None:
+                    spec["mode"] = mode
+                if mode == "report":
+                    spec["verification"] = []
+                if expected == "verification_failed":
+                    spec["verification"] = ["false"]
+                elif expected == "verification_diff":
+                    spec["verification"] = ["echo changed > changed"]
+                    expected = "unexpected_diff"
+                if resume:
+                    spec["resume_session_id"] = "resume-123"
+                result, receipt = run_runner(
+                    runner, cwd, spec, bin_dir,
+                    {"CALL_LOG": str(call_log), "PROMPT_LOG": str(prompt_log),
+                     "REPORT_FALLBACK": "1" if fallback else ""},
+                    pending=True,
+                )
+                assert receipt["error_class"] == expected, receipt
+                assert (result.returncode == 0) == (expected == "complete"), result.stderr
+                assert receipt["mode"] == (mode or "implement")
+                assert receipt["report"] == ("Report findings." if mode == "report" else None)
+                assert receipt[binary + "_final_message"] == "Report findings."
+                assert (cwd / ".fable-advisor" / "pending" / "job.json").exists() == (expected != "complete")
+                receipt_path = cwd / ".fable-advisor" / "receipts" / (receipt["spec_hash"] + ".json")
+                assert json.loads(receipt_path.read_text()) == receipt
+                calls = [json.loads(line) for line in call_log.read_text().splitlines()]
+                attempts = calls[1:]
+                assert len(attempts) == (2 if binary == "codex" and fallback else 1), calls
+                prompt = prompt_log.read_text()
+                assert prompt.startswith("STUB LANE PREAMBLE\n\n[fable-advisor]")
+                assert ("Files defines the read scope" in prompt) == (mode == "report")
+                for args in attempts:
+                    if mode == "report" and binary == "codex":
+                        assert args.count("--sandbox") == 1
+                        assert args[args.index("--sandbox") + 1] == "read-only"
+                        assert "--dangerously-bypass-approvals-and-sandbox" not in args
+                        if resume:
+                            assert args.index("--sandbox") < args.index("resume")
+                    elif mode == "report":
+                        assert args[args.index("--tools") + 1] == "read_file,grep,list_dir"
+                        assert args[args.index("--disallowed-tools") + 1] == "search_tool,use_tool,Agent"
+                    elif binary == "grok":
+                        assert "--tools" not in args and "--disallowed-tools" not in args
+                    else:
+                        assert args[args.index("--sandbox") + 1] == (
+                            "danger-full-access" if os.name == "nt" else "workspace-write"
+                        )
+                if fallback and binary == "codex":
+                    assert receipt["model_used"] == "gpt-5.6-luna"
+                    assert receipt["effort"] == "max"
+                    assert receipt["fallback_reason"] == "codex_failed"
+    print("ASSERT report: both runners readonly argv, text, clean/dirty, empty scope/checks, resume, fallback, pending")
+    print("ASSERT implement: explicit/omitted defaults and no_diff unchanged")
+
+
 def case_schema_defaults_and_validation():
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir = Path(tmp) / "bin"
@@ -879,6 +1026,8 @@ def case_last_terminal_event_drives_timing():
 
 
 CASES = [
+    ("mode validation", case_mode_validation),
+    ("report and implement modes", case_report_and_implement_modes),
     ("schema defaults and validation", case_schema_defaults_and_validation),
     ("grok effort", case_grok_effort),
     ("missing preamble is spawn-free", case_preamble_missing_is_spawn_free),
