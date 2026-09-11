@@ -1,8 +1,8 @@
 # The CLI lanes in Claude Code — runners, not agents
 
-Read this before dispatching a lane in Claude Code. The architect drives both CLI producers directly through deterministic runners: no subagent startup cost, and nothing between the architect and the CLI that could silently self-implement. The routine lane requires the [Grok CLI](https://x.ai/cli); the cross-vendor lane requires the codex CLI and Node. The in-house lane is the `implementer` agent — a plain subagent dispatch, no runner — which keeps the plugin self-contained when both CLIs are missing.
+Read this before dispatching a lane in Claude Code. The main agent drives both CLI producers directly through deterministic runners: no subagent startup cost, and nothing between the main agent and the CLI that could silently self-implement. The grok lane requires the [Grok CLI](https://x.ai/cli); the codex lane requires the codex CLI and Node. The claude lane is a plain subagent dispatch, no runner: the `worker` agent for the worker role (its per-dispatch `model` sets the tier; pinned to the session model it is same-model dispatch), `fable-advisor` for the advisor, the built-in explorer for the explorer. It keeps the plugin self-contained when both CLIs are missing.
 
-Same flow for both CLI lanes; the codex walkthrough is canonical, the grok deltas follow it.
+Same flow for both CLI lanes; the codex walkthrough is canonical, the grok deltas follow it. Both runners serve the worker role by default and the read-only roles in report mode (see "Report mode" below).
 
 ## 0. The preamble reaches every lane
 
@@ -30,8 +30,9 @@ The tuning fields are optional and fail-loud — an out-of-range value or unknow
 - `idle_timeout_sec` — the silence deadline (default 600 s): how long after the *last* event a stalled CLI child is killed. A lane that keeps emitting events runs as long as it takes; only silence is cut, and that path skips verification, so a lane cut here loses its verification evidence entirely.
 - `timeout_sec` — an optional absolute cap on the whole run; no default, so omitting it leaves the run uncapped.
 - `resume_session_id` — a prior codex session id; see "Rework tickets" below.
+- `mode` — `implement` (default) or `report`; see "Report mode" below.
 
-Dial the codex lane quality-first: choosing *which* lane is cost-first (grok is the default, and the lane-level comparison prices codex at its default dial, astra at `medium`), but once a task is worth the codex lane, a quality bump inside it is affordable. Escalate to `high` for unusually hard tasks. Luna is not a cheaper way into the codex lane: request it only on a user declaration, or when the task is simple and the GPT family is wanted anyway.
+Dial the codex lane quality-first: choosing *which* lane is cost-first (the lane-level comparison prices codex at its default dial, astra at `medium`), but once a task is worth the codex lane, a quality bump inside it is affordable. Escalate to `high` for unusually hard tasks. Luna is not a cheaper way into the codex lane: request it only on a user declaration, or when the task is simple and the GPT family is wanted anyway.
 
 **Fallback.** If astra fails before a session is established (`preparation_stalled`, or `codex_failed` with no session id yet), the runner retries once on luna at luna's default effort; the receipt shows `model_requested: gpt-6-astra`, `model_used: gpt-5.6-luna`, and a non-null `fallback_reason`. Once a session exists there is no fallback — a half-finished run is not redone on another model. A direct luna request never falls back. When accepting a fallen-back run, restate the downgrade in your own words; the receipt discloses, you acknowledge.
 
@@ -64,18 +65,16 @@ Letting the runner finish is always cheaper than killing it. The CLI child is sp
 
 The runner prints the receipt to stdout and writes it to `.fable-advisor/receipts/<spec_hash>.json`:
 
-- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | git_status_failed`.
+- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | unexpected_diff | git_status_failed`.
 - `codex_session_id` — bound to the spawned process's event stream, immune to concurrent-session mix-ups; on a resumed run it equals the resumed id.
 - `model_requested`, `model_used`, `fallback_reason` (null when none), `resumed_from` (null when none), `end_to_close_ms` (terminal event to process close; null when the terminal event was not seen — a diagnostic, not a gate), `max_idle_ms` (the longest gap between consecutive events on the CLI's stream, measured from child spawn to the last event; null when no event was observed — a diagnostic, not a gate: after an `idle_timeout` it says whether the idle deadline was too tight, on a clean run how much headroom was left), `idle_timeout_sec` and `timeout_sec` (the values actually in force; `timeout_sec` null when the run was uncapped).
 - `changed_files`, plus the verification commands' actual exit codes and output tails.
 
-`no_diff` means `files` was non-empty and nothing changed; the pending file stays. On an ordinary spec that is a silent no-op — investigate. On a rework ticket it is the expected answer when the lane finds the defect does not reproduce: read the report, delete the pending file, and say so. `git_status_failed` means the runner could not determine what changed; it is not `complete`.
+`no_diff` means `files` was non-empty and nothing changed in implement mode; the pending file stays. On an ordinary spec that is a silent no-op — investigate. On a rework ticket it is the expected answer when the lane finds the defect does not reproduce: read the report, delete the pending file, and say so. `git_status_failed` means the runner could not determine what changed; it is not `complete`.
 
 `idle_timeout` and `timeout` mean a clock cut the lane, not that its work is wrong — and because both paths skip verification, the receipt carries no verification evidence to judge. The cut session's data is intact on disk, so the clean recovery is a rework ticket carrying that receipt's session id in `resume_session_id`: the lane resumes and finishes its own verification. Hand-verifying a cut lane's working tree yourself is not the recovery path.
 
-CLI-lane acceptance = `error_class: complete`, a non-null session id, verification output you can spot-check against the working tree, **and** the diff passes the tiered acceptance in [SKILL.md](SKILL.md). A missing or non-complete receipt is not done.
-
-For Tier 3 review, the OpenAI Codex plugin's `/codex:adversarial-review` (schema-backed verdict, read-only sandbox) is a ready-made context-clean reviewer.
+CLI-lane acceptance = `error_class: complete`, a non-null session id, verification output you can spot-check against the working tree, **and** the diff passes the tiered acceptance in [SKILL.md](SKILL.md). A missing or non-complete receipt is not done. Tier 3 is the advisor's acceptance shape; which fill answers it is the fill table's row for the advisor.
 
 The receipt is mechanically enforced: a plugin Stop hook (the **receipt gate**) blocks finishing while any spec under `.fable-advisor/pending/` lacks a `complete` receipt. On `complete` the runner deletes the pending spec itself. If you abandon or re-route a pending task, delete its pending file and say so explicitly — never let the gate be the only one who knows. The gate enforces the receipt's existence; you still judge its content.
 
@@ -83,19 +82,31 @@ Add `.fable-advisor/` to the target repo's `.gitignore` — receipts embed comma
 
 ## Rework tickets
 
-A rework ticket is a new five-part pending file that carries `resume_session_id` — the `codex_session_id` (or `grok_session_id`) from the run being reworked. The runner invokes `codex exec resume <id>` (grok: `--resume <id>`), so the lane keeps the context it already paid for; the receipt records `resumed_from` and its session id equals the resumed one. Objective = the defect, Files = the original scope, Verification = the check that failed — no fix inside (shape in [SKILL.md](SKILL.md)). After two failed rounds the task goes back through stage 1 in a fresh session: omit `resume_session_id`.
+A rework ticket is a new five-part pending file that carries `resume_session_id` — the `codex_session_id` (or `grok_session_id`) from the run being reworked. The runner invokes `codex exec resume <id>` (grok: `--resume <id>`), so the lane keeps the context it already paid for; the receipt records `resumed_from` and its session id equals the resumed one. Objective = the defect, Files = the original scope, Verification = the check that failed — no fix inside (shape in [SKILL.md](SKILL.md)). When the rework ticket also fails, attribution decides (SKILL.md "Escalation"): a contract gap keeps `resume_session_id` under a corrected contract; a capability failure goes to a higher-tier worker in a fresh session — omit `resume_session_id` and give the takeover contract the original contract, the prior lane's report, and its receipt.
+
+## Report mode
+
+`mode` is an optional key on both runners: `implement` (the default, the semantics described above) or `report`. Report mode dispatches the read-only roles — an explorer or an advisor — to the Grok or GPT family without expecting a diff:
+
+- The CLI runs with a read-only tool set; `files` is the read scope and may be empty; `verification` may be empty.
+- An unchanged working tree is the normal outcome and is `complete`; the receipt additionally carries `mode` and `report` (the CLI's final message, which is the lane's answer).
+- A changed working tree is the error class `unexpected_diff`, never `complete`: a read-only role that wrote is a failure, not a bonus.
+- The receipt gate applies as usual: a report-mode pending spec without a `complete` receipt blocks the session like any other.
+
+An unknown `mode` value is `spec_invalid`. The pending/receipt flow, the wait protocol, and `resume_session_id` are unchanged.
 
 ## Grok deltas
 
-`scripts/run-grok.mjs` — same CLI contract (`--spec`, `--cwd`), same preamble, same pending/receipt flow, same receipt gate, same wait protocol.
+`scripts/run-grok.mjs` — same CLI contract (`--spec`, `--cwd`), same preamble, same pending/receipt flow, same receipt gate, same wait protocol, same `mode` values.
 
 ```bash
 node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
 ```
 
-- Spec keys: the five parts plus optional `model`, `idle_timeout_sec`, `timeout_sec`, and `resume_session_id` only — no `effort`/`service_tier` (the grok CLI has no such knobs).
+- Spec keys: the five parts plus optional `model`, `effort`, `mode`, `idle_timeout_sec`, `timeout_sec`, and `resume_session_id` only — no `service_tier`.
+- `effort` — optional, whitelist `low | medium | high | xhigh`; a value outside it is `spec_invalid`. Omitted sends no effort flag, so the CLI's own default applies; the receipt records the value actually used. This is how a grok worker's tier is dialled without changing lane.
 - `model` — omit by default: unset sends no `-m` flag, so the CLI runs its own default and tracks the live catalog (currently grok-4.6, 2026-09) with zero spec edits on a generation swap. Set it only to deliberately pick a non-default catalog entry surfaced by `grok models`. When the catalog is readable, `model` is validated against every listed entry — a model not in the catalog is `spec_invalid`. An unreadable catalog is not `grok_unavailable`: the runner logs a diagnostic, skips validation, and the real run decides availability.
-- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff` and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
+- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff`, `unexpected_diff`, and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
 
 ## Dispatch, not probes
 

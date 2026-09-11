@@ -16,3 +16,9 @@
 - [ ] `mode: "implement"` 与省略 `mode` 的全部既有用例零回归；`no_diff` 语义在 implement 模式下不变
 - [ ] `tests/test_runner_contract.py` 覆盖以上各态，两条 runner 都跑；`python3 tests/test_runner_contract.py` 全绿
 - [ ] `tests/test_receipt_gate.py` 保持绿（可加一例：报告模式 pending 无 complete receipt 仍拦）
+
+## Comments
+
+2026-09-11 — 首轮已实现（codex lane 复用 01 会话，gpt-6-astra[high]，receipt `complete`，契约测试 14/14、receipt gate 8/8，diff +228）。只读工具集：grok `--tools read_file,grep,list_dir --disallowed-tools search_tool,use_tool,Agent`（架构师真机单轮探针：模型报告可用工具恰为 `read_file, list_dir, grep`）；codex `--sandbox read-only`（`codex exec --sandbox read-only resume --help` 解析通过，flag 属 exec 级、置于 `resume` 之前正确）。
+
+advisor 验收形状（Fable，读 worktree 代码）：ACCEPT。两处非阻塞标记：codex 报告模式 resume 路径的 `--sandbox` 位置（已由上条探针补验）；报告模式脏树会覆盖已置位的 `*_failed` 分类（`child_exit_code` 仍可审计，记作已知）。一处契约空白：`complete` 不要求 `report` 非空——已开修正契约 02b（新错误类 `empty_report`，同会话续跑）。
