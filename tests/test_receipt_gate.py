@@ -120,6 +120,18 @@ def case_7_invalid_json_fail_open():
         )
 
 
+def case_8_report_pending_blocks():
+    """Report pending specs require a complete receipt."""
+    for error_class in (None, "unexpected_diff"):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, spec_bytes = write_pending_spec(tmp, "report.json", b'{"mode":"report"}')
+            if error_class is not None:
+                write_receipt(tmp, spec_bytes, {"mode": "report", "error_class": error_class})
+            r = run_hook(tmp, {"cwd": tmp})
+            assert r.returncode == 2, r.stderr
+            assert "report.json" in r.stderr, r.stderr
+
+
 CASES = [
     ("1: no pending dir → exit 0", case_1_no_pending_dir),
     ("2: complete receipt → exit 0", case_2_complete_receipt),
@@ -128,6 +140,7 @@ CASES = [
     ("5: stop_hook_active true → exit 0", case_5_active_bypasses),
     ("6: timeout receipt → exit 2 + stderr has timeout", case_6_timeout_receipt_blocks),
     ("7: invalid JSON → exit 0 (fail-open)", case_7_invalid_json_fail_open),
+    ("8: report pending without complete receipt → exit 2", case_8_report_pending_blocks),
 ]
 
 
