@@ -28,6 +28,7 @@ const SPEC_KEYS = new Set([
   "constraints",
   "verification",
   "model",
+  "effort",
   "timeout_sec",
   "idle_timeout_sec",
   "resume_session_id",
@@ -118,6 +119,12 @@ function normalizeSpec(value) {
   if (value.model !== undefined) {
     requireString(value.model, "model");
   }
+  if (value.effort !== undefined) {
+    requireString(value.effort, "effort");
+    if (!["low", "medium", "high", "xhigh"].includes(value.effort)) {
+      throw new Error("effort must be one of: low, medium, high, xhigh");
+    }
+  }
   if (value.timeout_sec !== undefined) {
     requirePositiveNumber(value.timeout_sec, "timeout_sec");
   }
@@ -135,6 +142,7 @@ function normalizeSpec(value) {
     constraints: value.constraints,
     verification: value.verification,
     model: value.model ?? null,
+    effort: value.effort ?? null,
     timeout_sec: value.timeout_sec ?? null,
     idle_timeout_sec: value.idle_timeout_sec ?? DEFAULT_IDLE_TIMEOUT_SEC,
     resume_session_id: value.resume_session_id ?? null,
@@ -303,6 +311,7 @@ async function executeGrok(spec, cwd, promptPath) {
   const args = [
     "--prompt-file", promptPath,
     ...(spec.model !== null ? ["-m", spec.model] : []),
+    ...(spec.effort !== null ? ["--effort", spec.effort] : []),
     "--permission-mode", "bypassPermissions",
     "--cwd", cwd,
     "--output-format", "streaming-json",
@@ -461,6 +470,7 @@ function initialState(startedAt) {
     specHash: null,
     cwd: process.cwd(),
     model: null,
+    effort: null,
     modelRequested: null,
     modelUsed: null,
     fallbackReason: null,
@@ -490,6 +500,7 @@ function buildReceipt(state) {
     cwd: state.cwd,
     producer: "grok",
     model: state.model,
+    effort: state.effort,
     model_requested: state.modelRequested,
     model_used: state.modelUsed,
     fallback_reason: state.fallbackReason,
@@ -568,6 +579,7 @@ async function main() {
   try {
     spec = await loadSpec(parsedArguments.specPath, state);
     state.model = spec.model;
+    state.effort = spec.effort;
     state.modelRequested = spec.model;
     state.modelUsed = spec.model;
     state.grokSessionId = spec.resume_session_id;

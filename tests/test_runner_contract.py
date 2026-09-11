@@ -205,6 +205,52 @@ def case_schema_defaults_and_validation():
         )
 
 
+def case_grok_effort():
+    valid_efforts = ("low", "medium", "high", "xhigh")
+    invalid_efforts = ("max", "none", "HIGH", " high ", "", None, 7, True, [], {})
+    for overrides in (
+        *(dict(effort=value) for value in valid_efforts),
+        *(dict(effort=value) for value in invalid_efforts),
+        {},
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_grok(bin_dir)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-grok.mjs")
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            call_log = Path(tmp) / "calls"
+            result, receipt = run_runner(
+                runner, cwd, base_spec(**overrides), bin_dir,
+                {"CALL_LOG": str(call_log), "PROMPT_LOG": str(Path(tmp) / "prompt")},
+            )
+            effort = overrides.get("effort")
+            if overrides and effort not in valid_efforts:
+                assert result.returncode != 0, result.stderr
+                assert receipt["error_class"] == "spec_invalid", receipt
+                assert receipt["effort"] is None
+                assert not call_log.exists(), "invalid effort spawned grok"
+                continue
+            assert result.returncode == 0, result.stderr
+            assert receipt["error_class"] == "complete", receipt
+            assert receipt["effort"] == effort
+            calls = [json.loads(line) for line in call_log.read_text().splitlines()]
+            assert len(calls) == 2 and calls[0] == ["models"], calls
+            execution = calls[1]
+            if overrides:
+                assert execution.count("--effort") == 1, execution
+                assert execution[execution.index("--effort") + 1] == effort
+            else:
+                assert "--effort" not in execution, execution
+            receipt_path = cwd / ".fable-advisor" / "receipts" / (
+                receipt["spec_hash"] + ".json"
+            )
+            assert json.loads(receipt_path.read_text()) == receipt
+    print("ASSERT grok effort: valid=low,medium,high,xhigh invalid=spawn-free omitted=null,no-flag")
+
+
 def case_preamble_missing_is_spawn_free():
     for name, binary in (("run-codex.mjs", "codex"), ("run-grok.mjs", "grok")):
         with tempfile.TemporaryDirectory() as tmp:
@@ -834,6 +880,7 @@ def case_last_terminal_event_drives_timing():
 
 CASES = [
     ("schema defaults and validation", case_schema_defaults_and_validation),
+    ("grok effort", case_grok_effort),
     ("missing preamble is spawn-free", case_preamble_missing_is_spawn_free),
     ("unavailable receipt fields", case_unavailable_receipt_fields),
     ("no_diff and git_status_failed", case_no_diff_and_git_status_failed),
