@@ -1,16 +1,16 @@
-# Claude Code 中的 CLI lane —— runner，而非 agent
+# Claude Code 中的 CLI 车道 —— runner，而非 agent
 
-在 Claude Code 中派发 lane 之前阅读本文。架构师通过确定性 runner 直接驱动两个 CLI 生产者：没有 subagent 启动成本，架构师与 CLI 之间也没有任何可能悄悄自行实现的东西。Routine lane 需要 [Grok CLI](https://x.ai/cli)；Cross-vendor lane 需要 codex CLI 与 Node。In-house lane 是 `implementer` agent——一次普通的 subagent 派发，无 runner——从而在两条 CLI 都缺失时保持插件自包含。
+在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者：没有 subagent 启动成本，主代理与 CLI 之间也没有任何可能悄悄自行实现的东西。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner：`worker` 角色用 `worker` agent（每次派发的 `model` 设定档位；钉为会话模型即同模派发），`advisor` 用 `fable-advisor`，`explorer` 用内置 explorer。两条 CLI 都缺失时，它让插件保持自包含。
 
-两条 CLI lane 流程相同；以 codex 演练为典范，grok 的差异紧随其后。
+两条 CLI 车道流程相同；以 codex 演练为典范，grok 的差异紧随其后。两条 runner 默认服务 `worker` 角色，并在 report mode 下服务只读角色（见下文「报告模式」）。
 
-## 0. 前言到达每一条 lane
+## 0. 前言到达每一条车道
 
-两条 runner 都读取 `<plugin-root>/skills/orchestration/lane-preamble.md`（相对它们自己的目录 `<plugin-root>/scripts/` 解析），并将其原文前置到 lane 提示，排在五个部分之前。前言缺失会使 runner 在拉起任何东西之前以非零退出——执行侧契约从不被静默丢掉。
+两条 runner 都读取 `<plugin-root>/skills/orchestration/lane-preamble.md`（相对它们自己的目录 `<plugin-root>/scripts/` 解析），并将其原文前置到车道提示，排在五个部分之前。前言缺失会使 runner 在拉起任何东西之前以非零退出——执行侧契约从不被静默丢掉。
 
 ## 1. 撰写 spec
 
-从干净的工作树开始——`git status --porcelain` 为空。runner 用 `git status` 检测 lane 的变更，因此预先存在的脏状态会让空跑看起来像做了工作（见下文 `no_diff`）。
+从干净的工作树开始——`git status --porcelain` 为空。runner 用 `git status` 检测车道的变更，因此预先存在的脏状态会让空跑看起来像做了工作（见下文 `no_diff`）。
 
 把五部 spec 写成 JSON，写入目标仓库的 `.fable-advisor/pending/<slug>.json`：
 
@@ -27,11 +27,12 @@
 - `model` — `gpt-6-astra`（默认）或 `gpt-5.6-luna`；codex 目录是静态白名单，因此已退役的名字是 `spec_invalid`。
 - `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。默认随模型：astra → `medium`，luna → `max`。建议用法（准则，不强制）：astra 用 `medium` 或 `high`；luna 只用 `max`。
 - `service_tier` — 省略则用 Codex 自己的默认；仅在以质量换速度时用 `"fast"`。
-- `idle_timeout_sec` — 静默截止（默认 600 秒）：*最后*一个事件之后多久杀掉停滞的 CLI 子进程。一直在吐事件的 lane 要跑多久就跑多久；被切断的只有静默，而该路径会跳过核验，因此在这里被切断的 lane 会完全失去它的核验证据。
+- `idle_timeout_sec` — 静默截止（默认 600 秒）：*最后*一个事件之后多久杀掉停滞的 CLI 子进程。一直在吐事件的车道要跑多久就跑多久；被切断的只有静默，而该路径会跳过核验，因此在这里被切断的车道会完全失去它的核验证据。
 - `timeout_sec` — 对整次运行的可选绝对上限；无默认值，省略即不设上限。
 - `resume_session_id` — 先前的 codex session id；见下文「返工票」。
+- `mode` — `implement`（默认）或 `report`；见下文「报告模式」。
 
-把 codex lane 按质量优先来调：选*哪一条* lane 是成本优先（grok 是默认，且 lane 级比较按默认拨盘给 codex 计价，即 astra 配 `medium`），但一旦任务值得走 codex lane，在其内部做一次质量上调是负担得起的。对异常困难的任务升到 `high`。Luna 不是进入 codex lane 的更便宜路径：仅在用户声明时请求它，或当任务简单且本来就要 GPT 家族时。
+把 `codex lane` 按质量优先来调：选*哪一条*车道是成本优先（车道级比较按默认拨盘给 codex 计价，即 astra 配 `medium`），但一旦任务值得走 `codex lane`，在其内部做一次质量上调是负担得起的。对异常困难的任务升到 `high`。Luna 不是进入 `codex lane` 的更便宜路径：仅在用户声明时请求它，或当任务简单且本来就要 GPT 家族时。
 
 **回退。** 若 astra 在会话建立之前失败（`preparation_stalled`，或尚无 session id 的 `codex_failed`），runner 按 luna 的默认 effort 在 luna 上重试一次；receipt 显示 `model_requested: gpt-6-astra`、`model_used: gpt-5.6-luna`，以及非空的 `fallback_reason`。一旦会话已存在则不回退——半成品运行不会在另一模型上重做。直接请求 luna 从不回退。验收一次发生过回退的运行时，用你自己的话复述降级；receipt 负责披露，你负责承认。
 
@@ -45,18 +46,18 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 
 ## 3. 等待 runner
 
-lane 完成于 **runner 进程退出** —— 不是事件流出现 `end` 事件时，也不是一次 sleep 到期时。等待方式只有两种，没有第三种：
+车道完成于 **runner 进程退出** —— 不是事件流出现 `end` 事件时，也不是一次 sleep 到期时。等待方式只有两种，没有第三种：
 
 - 在前台运行 runner，让 Bash 在退出时返回。
 - 若已后台化，对该 Bash 任务调用 `TaskOutput(task_id, block=true)`。
 
-完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。绝不要用 `sleep N` 再 `ls .fable-advisor/pending/` 充当等待——固定睡眠会在 runner 已经退出之后继续烧完整段间隔。对于并行 lane，逐条 block 每个后台任务，或在同一条消息里前台运行各 runner。
+完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。绝不要用 `sleep N` 再 `ls .fable-advisor/pending/` 充当等待——固定睡眠会在 runner 已经退出之后继续烧完整段间隔。对于并行车道，逐条 block 每个后台任务，或在同一条消息里前台运行各 runner。
 
 有三个互相独立的时钟压在一次派发上，每一个都能单独结束它：
 
 - **runner 自己的静默截止**（`idle_timeout_sec`，默认 600 秒）在事件流静默这么久之后杀掉 CLI 子进程、跳过核验，并留下一份 `idle_timeout` receipt。显式给出的 `timeout_sec` 在其之上再加一道绝对上限，留下 `timeout` receipt；不给则 runner 不设任何总量限制。
 - **宿主 Bash 工具的 `timeout`**（默认 600000 毫秒，最大 3600000 毫秒）杀掉前台调用。runner 来不及写下任何东西，因此根本没有 receipt，而 pending spec 留在原地。既然 runner 默认不设上限，这就是前台派发的真正天花板：预计要跑很久的票据需要显式传入更大的 Bash `timeout`。
-- **`TaskOutput` 的 `timeout`**（默认 30000 毫秒，最大 600000 毫秒）不杀任何东西，但一次调用不等于一次等待——它返回时 lane 仍在运行。等待超过十分钟意味着反复重新阻塞，直到完成证据出现。这是唯一没有上限的路径；单次前台调用永远不可能超过 60 分钟。
+- **`TaskOutput` 的 `timeout`**（默认 30000 毫秒，最大 600000 毫秒）不杀任何东西，但一次调用不等于一次等待——它返回时车道仍在运行。等待超过十分钟意味着反复重新阻塞，直到完成证据出现。这是唯一没有上限的路径；单次前台调用永远不可能超过 60 分钟。
 
 让 runner 自己跑完，总是比杀掉它更便宜。CLI 子进程以 detached 方式拉起，处在它自己的进程组中，因此它能在一个瞄准 runner 进程组的信号下存活。runner 捕获 SIGTERM 与 SIGINT，杀掉子进程树并写下一份 `interrupted` receipt——但对 runner 的一次 SIGKILL 仍会留下 CLI 继续运行、继续改动仓库，且完全没有 receipt。
 
@@ -64,18 +65,16 @@ lane 完成于 **runner 进程退出** —— 不是事件流出现 `end` 事件
 
 runner 把 receipt 打印到 stdout，并写入 `.fable-advisor/receipts/<spec_hash>.json`：
 
-- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | git_status_failed`。
+- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | unexpected_diff | empty_report | git_status_failed`。
 - `codex_session_id` — 绑定到所拉起进程的事件流，不受并发会话串扰；在恢复运行上它等于被恢复的 id。
 - `model_requested`、`model_used`、`fallback_reason`（无回退时为 null）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程 close；未见终止事件时为 null——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是诊断，不是门禁：一次 `idle_timeout` 之后它说明静默截止是不是定得太紧，正常跑完的运行上它显示还剩多少余量）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。
 - `changed_files`，外加核验命令的实际退出码与输出尾部。
 
-`no_diff` 意味着 `files` 非空且没有任何变更；pending 文件保留。在普通 spec 上这是一次静默空跑——去查。在返工票上，当 lane 发现缺陷无法复现时，这是预期答案：读报告、删除 pending 文件，并说明。`git_status_failed` 意味着 runner 无法判定改了什么；它不是 `complete`。
+`no_diff` 意味着 `files` 非空且 implement 模式下没有任何变更；pending 文件保留。在普通 spec 上这是一次静默空跑——去查。在返工票上，当车道发现缺陷无法复现时，这是预期答案：读报告、删除 pending 文件，并说明。`git_status_failed` 意味着 runner 无法判定改了什么；它不是 `complete`。
 
-`idle_timeout` 与 `timeout` 意味着某个时钟切断了这条 lane，而不是它的工作有错——而且因为两条路径都跳过核验，receipt 里没有可供裁决的核验证据。被切断会话的数据在磁盘上完好，所以干净的恢复方式是一张返工票，在 `resume_session_id` 中携带该 receipt 的 session id：lane 恢复运行并跑完它自己的核验。由你自己手工核验一条被切断 lane 的工作树，不是恢复路径。
+`idle_timeout` 与 `timeout` 意味着某个时钟切断了这条车道，而不是它的工作有错——而且因为两条路径都跳过核验，receipt 里没有可供裁决的核验证据。被切断会话的数据在磁盘上完好，所以干净的恢复方式是一张返工票，在 `resume_session_id` 中携带该 receipt 的 session id：车道恢复运行并跑完它自己的核验。由你自己手工核验一条被切断车道的工作树，不是恢复路径。
 
-CLI lane 验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。
-
-对于第 3 层评审，OpenAI Codex 插件的 `/codex:adversarial-review`（有 schema 支撑的裁决，只读沙箱）是现成的上下文干净 reviewer。
+CLI 车道验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。第 3 层是 `advisor` 的 acceptance 形状；由哪种填充来答，是填充表中 `advisor` 那一行。
 
 receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fable-advisor/pending/` 下任何 spec 缺少 `complete` receipt 时阻止结束。一旦 `complete`，runner 自行删除 pending spec。若你放弃或改道一项 pending 任务，删除其 pending 文件并显式说明——绝不让 gate 成为唯一知情者。gate 强制的是 receipt 的存在；其内容仍由你裁决。
 
@@ -83,20 +82,34 @@ receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fabl
 
 ## 返工票
 
-返工票是一份新的五部 pending 文件，携带 `resume_session_id` —— 被返工那次运行的 `codex_session_id`（或 `grok_session_id`）。runner 调用 `codex exec resume <id>`（grok：`--resume <id>`），因此 lane 保留它已经付过的上下文；receipt 记录 `resumed_from`，其 session id 等于被恢复的那个。Objective = 缺陷，Files = 原范围，Verification = 失败的那条检查——里面不写修复方案（形态见 [SKILL.md](SKILL.md)）。两轮失败之后，任务在新会话中重走阶段 1：省略 `resume_session_id`。
+返工票是一份新的五部 pending 文件，携带 `resume_session_id` —— 被返工那次运行的 `codex_session_id`（或 `grok_session_id`）。runner 调用 `codex exec resume <id>`（grok：`--resume <id>`），因此车道保留它已经付过的上下文；receipt 记录 `resumed_from`，其 session id 等于被恢复的那个。Objective = 缺陷，Files = 原范围，Verification = 失败的那条检查——里面不写修复方案（形态见 [SKILL.md](SKILL.md)）。返工票也失败时，归因决定（SKILL.md「升级」）：契约缺口在修正契约下保留 `resume_session_id`；能力失败则交给更高档位的 `worker`、新会话——省略 `resume_session_id`，并把原契约、先前车道的报告及其 receipt 交给接管契约。
+
+## 报告模式
+
+`mode` 是两条 runner 上的可选键：`implement`（默认，上文所述语义）或 `report`。报告模式把只读角色——`explorer` 或 `advisor`——派到 Grok 或 GPT 家族，且不期望 diff：
+
+- CLI 以只读工具集运行；`files` 是读取范围，可为空；`verification` 可为空。
+- 工作树无变更是正常结果，且为 `complete`；receipt 额外携带 `mode` 与 `report`（CLI 的最终消息，即车道的答案）。
+- 工作树有变更是错误类 `unexpected_diff`，绝不是 `complete`：只读角色写了文件是失败，不是彩头。
+- 工作树干净但收集到的报告文本为空或仅空白，是错误类 `empty_report`，绝不是 `complete`：只读角色什么都没说，就还没有作答。pending spec 保留。
+- 报告模式下的优先级：先 `unexpected_diff`（脏树），再 `empty_report`，然后 `complete`。
+- receipt gate 照常适用：没有 `complete` receipt 的 report-mode pending spec 与其他任何 pending 一样阻塞会话。
+
+未知的 `mode` 值是 `spec_invalid`。pending/receipt 流程、等待协议和 `resume_session_id` 不变。
 
 ## Grok 差异
 
-`scripts/run-grok.mjs` —— 同一 CLI 契约（`--spec`、`--cwd`），同一前言，同一 pending/receipt 流程，同一 receipt gate，同一等待协议。
+`scripts/run-grok.mjs` —— 同一 CLI 契约（`--spec`、`--cwd`），同一前言，同一 pending/receipt 流程，同一 receipt gate，同一等待协议，同一 `mode` 取值。
 
 ```bash
 node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
 ```
 
-- Spec 键：五个部分加上可选的 `model`、`idle_timeout_sec`、`timeout_sec` 和 `resume_session_id` 而已——没有 `effort`/`service_tier`（grok CLI 没有这些旋钮）。
-- `model` —— 默认省略：未设置则不发送 `-m` 标志，因此 CLI 跑自己的默认并跟踪实时目录（当前为 grok-4.6，2026-09），世代更换时 spec 零改动。仅在有意挑选 `grok models` 列出的非默认目录条目时才设置。当目录可读时，`model` 对照每一个列出的条目校验——不在目录中的模型是 `spec_invalid`。目录不可读不是 `grok_unavailable`：runner 记录一条诊断、跳过校验，由真正的运行决定可用性。
-- 错误类镜像 codex lane（`grok_unavailable | grok_failed | …`，外加 `no_diff` 与 `git_status_failed`）。receipt 携带同样的 `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` 字段（`fallback_reason` 保持 null——grok lane 没有定义模型回退），并额外记录 grok 结束事件中的 `usage` 与 `total_cost_usd`。`grok_session_id` 由 runner 注入（`--session-id`），而非从流中嗅探。
+- Spec 键：五个部分加上可选的 `model`、`effort`、`mode`、`idle_timeout_sec`、`timeout_sec` 和 `resume_session_id` 而已——没有 `service_tier`。
+- `effort` — 可选，白名单 `low | medium | high | xhigh`；越界值是 `spec_invalid`。省略则不发送 effort 标志，因此 CLI 自己的默认生效；receipt 记录实际使用的值。这就是在不换车道的情况下给 grok `worker` 拨档位的方式。
+- `model` — 默认省略：未设置则不发送 `-m` 标志，因此 CLI 跑自己的默认并跟踪实时目录（当前为 grok-4.6，2026-09），世代更换时 spec 零改动。仅在有意挑选 `grok models` 列出的非默认目录条目时才设置。当目录可读时，`model` 对照每一个列出的条目校验——不在目录中的模型是 `spec_invalid`。目录不可读不是 `grok_unavailable`：runner 记录一条诊断、跳过校验，由真正的运行决定可用性。
+- 错误类镜像 `codex lane`（`grok_unavailable | grok_failed | …`，外加 `no_diff`、`unexpected_diff`、`empty_report` 和 `git_status_failed`）。receipt 携带同样的 `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` 字段（`fallback_reason` 保持 null——`grok lane` 没有定义模型回退），并额外记录 grok 结束事件中的 `usage` 与 `total_cost_usd`。`grok_session_id` 由 runner 注入（`--session-id`），而非从流中嗅探。
 
 ## 派发，而非探测
 
-切勿预先探测 CLI 的认证状态（例如 `grok models` 登录快照之类）：grok CLI 只在真正运行时刷新登录，且用户侧的提供商配置可以完全绕过认证，因此登出快照不是该 lane 宕机的证据。预检最多可检查安装（`which grok`）。把 spec 路由出去，让 runner 的 receipt 决定——`*_unavailable` 触发 [SKILL.md](SKILL.md) 中的改道规则。
+切勿预先探测 CLI 的认证状态（例如 `grok models` 登录快照之类）：grok CLI 只在真正运行时刷新登录，且用户侧的提供商配置可以完全绕过认证，因此登出快照不是该车道宕机的证据。预检最多可检查安装（`which grok`）。把 spec 路由出去，让 runner 的 receipt 决定——`*_unavailable` 触发 [SKILL.md](SKILL.md) 中的改道规则。
