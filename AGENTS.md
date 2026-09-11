@@ -1,6 +1,6 @@
 # fable-advisor
 
-A Claude Code plugin implementing the architect pattern: the session runs a flagship-tier model as a full-time architect and routes implementation to cheaper cross-vendor lanes. This is a fork of [`DannyMac180/fable-advisor`](https://github.com/DannyMac180/fable-advisor) carrying local hardening commits — see [ADR 0001](docs/adr/0001-upstream-sync-fork.md) before syncing upstream.
+A Claude Code / Cursor plugin that ships a role pool (explorer / worker / advisor at light / standard / senior tiers) reached through the grok, codex, claude and handoff lanes; any model can run the main agent, and a posture (orchestrating or implementing) decides whether it edits deliverables itself — see [ADR 0014](docs/adr/0014-role-pool-posture.md). This is a fork of [`DannyMac180/fable-advisor`](https://github.com/DannyMac180/fable-advisor) carrying local hardening commits — see [ADR 0001](docs/adr/0001-upstream-sync-fork.md) before syncing upstream.
 
 ## Agent skills
 

@@ -139,3 +139,16 @@ Status: ready-for-agent
 - **旧路线保留**：分支 `feature/v4-architect-mode` 指向 4.2.0 时点的 `main`（提交 `25ddc8d`），供在原"一强带弱"路线上继续迭代或调研。
 - **复盘条件**（写入 ADR 0014）：深度不限导致成本失控或失败无法归因 → 重议一层委派；姿态默认误判（有任务件却该直接改、或反之）累计 ≥3 次 → 重议默认规则或声明词；填充表某格长期只有一个填充 → 该档位是否多余；Cursor 探明加载 Stop hook → 改 `lanes-cursor.md`；任一模型换代 → 用户填充表按失效条件重估。
 - 与上游 v5.x（钉死 Fable 5.1 架构师、强制终审）方向相反，按 ADR 0001 纪律记为有意分叉。
+
+## Comments
+
+### 2026-09-12 — 实施记录（工单 01–08 完成，09 至版本号与全测）
+
+- 提交区间 `25ddc8d..HEAD`（`main`）；旧路线分支 `feature/v4-architect-mode` = `25ddc8d`。
+- 派发：01 / 02 / 02b codex lane（astra，隔离 worktree，已合入并删除）；03 / 04 同模派发；05 / 06 / 07 grok lane；08 架构师亲写。返工两次：07（历史段落还原）、06（拒绝文案）。
+- advisor 验收形状对 runner 合并 diff：ACCEPT；发现契约空白（空报告可 `complete`）→ 02b 新增 `empty_report`。
+- 四个测试脚本全绿（15/15、16/16、7/7、8/8）；旧名清扫零命中（README 历史段落除外）。
+- `/code-review`（基点 `25ddc8d`）：Standards 轴一条硬违规——运行时 md 与中文孪生未落同一提交（HEAD 配对完整，提交未 push，是否压缩由用户定）；Divergent Change → 后续票 10（报告模式前言分流，`needs-triage`）。Spec 轴：`CONTEXT.md` 残留"承诺边界"、`AGENTS.md` 首句旧定位——已修；`unexpected_diff` 覆盖 `*_failed` 记作已知（见 02 票评论）。
+- 范围外披露：06 车道把门脚本与 pin 规则同步到了 WSL / Windows live 路径（为保 ADR 0011 漂移用例绿）；`docs/chatgpt_模型编排模式比较_6aa2cfb9.md` 作为讨论记录随规划提交入库。
+- 未做：push、两侧 `claude plugin update`、两个姿态的真实场景（须在更新后的插件上跑）——等用户授权。
+

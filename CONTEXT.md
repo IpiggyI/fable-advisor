@@ -10,6 +10,10 @@
 Stop hook，fail open；针对的是**主会话自己**——排了 spec 却不跑、或把非-complete receipt 当完成的威胁。
 _Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与历史上的 spawn 护栏混同（后者针对 wrapper 子代理，已随 wrapper 一并退役，见 ADR 0009）。
 
+**决策类型门**:
+对任何主代理、任一姿态都适用的一张关键点清单（架构 / 数据迁移 / API 形状 / 重构策略；推翻既定方案；改公共接口或跨模块依赖；放宽验收标准；同一问题两次失败；宣告多步交付物完成前），到点位咨询 advisor。是 doctrine 规则，不是 hook。
+_Avoid_: 沿用旧名"承诺边界"；与 receipt gate / lane family gate 这类机械门禁混称；理解成逐 diff 过审或按模型身份触发。
+
 **lane family gate**:
 Cursor 用户级 `preToolUse` 门：`Task` 派发具名 agent `fable-advisor` 时必须带显式、非 inherit 的 `model`；守的是"静默继承会话模型"，不查家族。
 _Avoid_: 与 receipt gate 混称；称作插件 hook 或本仓 project hook；把用户级 Task pin 规则当成另一套门禁；把它扩到 `generalPurpose` 派发（无标记可区分 worker 与普通 scout）。
@@ -77,7 +81,7 @@ _Avoid_: 用模型身份推断姿态（旧词 `架构师层` / `advisor-only` �
 _Avoid_: 把"写契约"理解成替 worker 写实现步骤；改称组长 / 老师 / 管理者。
 
 **实现姿态**:
-主代理可亲手改交付物，同时按需派任一角色；在承诺边界咨询 advisor。没人声明且无上游任务件时为此姿态。
+主代理可亲手改交付物，同时按需派任一角色；在决策类型门的点位咨询 advisor。没人声明且无上游任务件时为此姿态。
 _Avoid_: 读成"一把梭、不派活"；把它当成弱模型专属。
 
 **架构师**:

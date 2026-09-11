@@ -154,7 +154,7 @@ def _parse_messages(exc: json.JSONDecodeError) -> tuple[str, str]:
         f"fable-lane-family-gate could not parse stdin JSON ({detail}). "
         "This is envelope serialization, not the pin check."
     )
-    user = f"车道门无法解析 Task 参数：{detail}。不是钉钉校验失败。"
+    user = f"车道门无法解析 Task 参数：{detail}。不是模型 pin 校验失败。"
     return agent, user
 
 
