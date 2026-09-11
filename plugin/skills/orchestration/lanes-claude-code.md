@@ -65,7 +65,7 @@ Letting the runner finish is always cheaper than killing it. The CLI child is sp
 
 The runner prints the receipt to stdout and writes it to `.fable-advisor/receipts/<spec_hash>.json`:
 
-- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | unexpected_diff | git_status_failed`.
+- `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | unexpected_diff | empty_report | git_status_failed`.
 - `codex_session_id` — bound to the spawned process's event stream, immune to concurrent-session mix-ups; on a resumed run it equals the resumed id.
 - `model_requested`, `model_used`, `fallback_reason` (null when none), `resumed_from` (null when none), `end_to_close_ms` (terminal event to process close; null when the terminal event was not seen — a diagnostic, not a gate), `max_idle_ms` (the longest gap between consecutive events on the CLI's stream, measured from child spawn to the last event; null when no event was observed — a diagnostic, not a gate: after an `idle_timeout` it says whether the idle deadline was too tight, on a clean run how much headroom was left), `idle_timeout_sec` and `timeout_sec` (the values actually in force; `timeout_sec` null when the run was uncapped).
 - `changed_files`, plus the verification commands' actual exit codes and output tails.
@@ -91,6 +91,8 @@ A rework ticket is a new five-part pending file that carries `resume_session_id`
 - The CLI runs with a read-only tool set; `files` is the read scope and may be empty; `verification` may be empty.
 - An unchanged working tree is the normal outcome and is `complete`; the receipt additionally carries `mode` and `report` (the CLI's final message, which is the lane's answer).
 - A changed working tree is the error class `unexpected_diff`, never `complete`: a read-only role that wrote is a failure, not a bonus.
+- A clean working tree whose collected report text is empty or whitespace-only is the error class `empty_report`, never `complete`: a read-only role that said nothing has not answered. The pending spec is kept.
+- Precedence in report mode: `unexpected_diff` (dirty tree) first, then `empty_report`, then `complete`.
 - The receipt gate applies as usual: a report-mode pending spec without a `complete` receipt blocks the session like any other.
 
 An unknown `mode` value is `spec_invalid`. The pending/receipt flow, the wait protocol, and `resume_session_id` are unchanged.
@@ -106,7 +108,7 @@ node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.j
 - Spec keys: the five parts plus optional `model`, `effort`, `mode`, `idle_timeout_sec`, `timeout_sec`, and `resume_session_id` only — no `service_tier`.
 - `effort` — optional, whitelist `low | medium | high | xhigh`; a value outside it is `spec_invalid`. Omitted sends no effort flag, so the CLI's own default applies; the receipt records the value actually used. This is how a grok worker's tier is dialled without changing lane.
 - `model` — omit by default: unset sends no `-m` flag, so the CLI runs its own default and tracks the live catalog (currently grok-4.6, 2026-09) with zero spec edits on a generation swap. Set it only to deliberately pick a non-default catalog entry surfaced by `grok models`. When the catalog is readable, `model` is validated against every listed entry — a model not in the catalog is `spec_invalid`. An unreadable catalog is not `grok_unavailable`: the runner logs a diagnostic, skips validation, and the real run decides availability.
-- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff`, `unexpected_diff`, and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
+- Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff`, `unexpected_diff`, `empty_report`, and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.
 
 ## Dispatch, not probes
 

@@ -8,9 +8,13 @@
 
 上游：`.scratch/role-pool-posture/spec.md` "插件 agent 定义" 节。范围：`plugin/agents/`（中文孪生归 05 票）。产物类别：准则散文。
 
-- [ ] `plugin/agents/worker.md` 存在，frontmatter `name: worker`、`model: opus`、`effort: medium`，无 `tools` 限制；正文指向 `lane-preamble.md`，只含 claude lane 特有内容
-- [ ] `plugin/agents/implementer.md` 删除
-- [ ] `plugin/agents/fable-advisor.md` frontmatter 保留 `name: fable-advisor`、`model: fable`、`tools: Read, Grep, Glob`，新增 `effort: high`；description 改为职责句（两种请求形状），不含 Fable 系列身份
-- [ ] 两个文件都不出现 `implementer`、`In-house`、`architect tier`、`reviewer`
-- [ ] `claude plugin validate plugin/agents`（若本机可用）通过；否则以 frontmatter 可解析（`---` 首行、YAML 合法）为验收
-- [ ] 不改动 `docs/zh/**`
+- [x] `plugin/agents/worker.md` 存在，frontmatter `name: worker`、`model: opus`、`effort: medium`，无 `tools` 限制；正文指向 `lane-preamble.md`，只含 claude lane 特有内容
+- [x] `plugin/agents/implementer.md` 删除
+- [x] `plugin/agents/fable-advisor.md` frontmatter 保留 `name: fable-advisor`、`model: fable`、`tools: Read, Grep, Glob`，新增 `effort: high`；description 改为职责句（两种请求形状），不含 Fable 系列身份
+- [x] 两个文件都不出现 `implementer`、`In-house`、`architect tier`、`reviewer`
+- [x] `claude plugin validate plugin/agents`（若本机可用）通过；否则以 frontmatter 可解析（`---` 首行、YAML 合法）为验收
+- [x] 不改动 `docs/zh/**`
+
+## Comments
+
+2026-09-11 — 已实现（同模派发，inherit）。`worker.md` 29 行、`fable-advisor.md` 35 行；退役词 grep exit 1；`claude plugin validate plugin/agents` 通过；frontmatter 经严格 YAML 解析（车道发现并修掉 description 里裸 `: ` 的历史隐患）。顺带把 02b 的 `empty_report` 补进 `lanes-claude-code.md`（L68 / L94-95 / L111）。zh 镜像测试按预期 6/8（缺 `worker.md` 孪生、多 `implementer.md` 孪生），归 05。架构师通读两文件。
