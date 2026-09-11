@@ -737,6 +737,8 @@ async function main() {
         state.errorClass = "verification_failed";
       } else if (changedFilesResult.failed) {
         state.errorClass = "git_status_failed";
+      } else if (spec.mode === "report" && !(state.codexFinalMessage ?? "").trim()) {
+        state.errorClass = "empty_report";
       } else if (spec.mode === "implement"
         && spec.files.length > 0 && state.changedFiles.length === 0) {
         state.errorClass = "no_diff";

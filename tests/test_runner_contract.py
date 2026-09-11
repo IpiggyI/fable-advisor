@@ -165,11 +165,11 @@ prompt = sys.stdin.read() if codex else Path(args[args.index("--prompt-file") + 
 Path(os.environ["PROMPT_LOG"]).write_text(prompt)
 if codex:
     print(json.dumps({"type": "thread.started", "thread_id": "report-session"}))
-    for text in ("intermediate message", "Report findings."):
+    for text in json.loads(os.environ.get("REPORT_CHUNKS", '["intermediate message", "Report findings."]')):
         print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": text}}))
     print(json.dumps({"type": "turn.completed"}))
 else:
-    for text in ("Report ", "findings."):
+    for text in json.loads(os.environ.get("REPORT_CHUNKS", '["Report ", "findings."]')):
         print(json.dumps({"type": "text", "data": text}))
     session_flag = "--resume" if "--resume" in args else "--session-id"
     print(json.dumps({"type": "end", "sessionId": args[args.index(session_flag) + 1]}))
@@ -289,6 +289,47 @@ def case_report_and_implement_modes():
                     assert receipt["fallback_reason"] == "codex_failed"
     print("ASSERT report: both runners readonly argv, text, clean/dirty, empty scope/checks, resume, fallback, pending")
     print("ASSERT implement: explicit/omitted defaults and no_diff unchanged")
+
+
+def case_empty_report():
+    for binary in ("codex", "grok"):
+        for chunks in ([], [""], [" \t\n"], [" Findings. \n"]):
+            for mode in ("report", "implement", None):
+                for dirty in (False, True):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        bin_dir = Path(tmp) / "bin"
+                        bin_dir.mkdir()
+                        fake_report_cli(bin_dir, binary)
+                        fake_git(bin_dir)
+                        if dirty:
+                            write_executable(bin_dir, "git", "#!/bin/sh\necho ' M scope.txt'\n")
+                        runner = copy_runner(tmp, "run-%s.mjs" % binary)
+                        cwd = Path(tmp) / "work"
+                        cwd.mkdir()
+                        spec = base_spec()
+                        if mode is not None:
+                            spec["mode"] = mode
+                        result, receipt = run_runner(
+                            runner, cwd, spec, bin_dir,
+                            {"CALL_LOG": str(Path(tmp) / "calls"),
+                             "PROMPT_LOG": str(Path(tmp) / "prompt"),
+                             "REPORT_CHUNKS": json.dumps(chunks)},
+                            pending=True,
+                        )
+                        text = "".join(chunks)
+                        expected = "complete"
+                        if mode == "report":
+                            expected = "unexpected_diff" if dirty else (
+                                "complete" if text.strip() else "empty_report"
+                            )
+                        assert receipt["error_class"] == expected, receipt
+                        assert receipt["report"] == (text if mode == "report" else None), receipt
+                        assert (result.returncode == 0) == (expected == "complete"), result.stderr
+                        pending_path = cwd / ".fable-advisor" / "pending" / "job.json"
+                        assert pending_path.exists() == (expected != "complete")
+                        receipt_path = cwd / ".fable-advisor" / "receipts" / (receipt["spec_hash"] + ".json")
+                        assert json.loads(receipt_path.read_text()) == receipt
+    print("ASSERT empty_report: both runners absent/empty/whitespace rejected; dirty wins; text preserved; implement unchanged")
 
 
 def case_schema_defaults_and_validation():
@@ -1028,6 +1069,7 @@ def case_last_terminal_event_drives_timing():
 CASES = [
     ("mode validation", case_mode_validation),
     ("report and implement modes", case_report_and_implement_modes),
+    ("empty report", case_empty_report),
     ("schema defaults and validation", case_schema_defaults_and_validation),
     ("grok effort", case_grok_effort),
     ("missing preamble is spawn-free", case_preamble_missing_is_spawn_free),
