@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "fable-advisor",
-      "version": "4.2.0",
+      "version": "5.0.0",
       "source": "./plugin",
       "description": "Role pool: any model can be the main agent; two postures (orchestrating: deliverables only through a worker; implementing: the main agent may edit directly); explorer, worker, and advisor at light, standard, and senior; grok, codex, claude, and handoff lanes. User-side fill table maps (role, tier) to models; GPT family via the codex runner (currently GPT-6 Astra default)."
     }
