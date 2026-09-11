@@ -8,7 +8,11 @@
 
 产物类别：协调件，架构师亲写。
 
-- [ ] `docs/adr/0014-role-pool-posture.md`：Status / Date / 影响范围 / 关联；背景；选项对比（至少覆盖：门的三种拆法、边界三选、五分类 vs 三角色×三档位、审查员独立 vs 并入 advisor、advisor 工具三选、前言三选、runner 报告模式 vs 只用内建、家族门三选、`--no-subagents`）；决策；核心理由；实施代价；复盘条件；备注（grok build 两条未知、Cursor Stop hook 假设、与上游方向相反按 ADR 0001 记分叉）
-- [ ] `AGENTS.md`："the architect never edits deliverables, whatever the size" 改为编排姿态限定；产物类别映射不变；`implementer` 若出现改 `worker`
-- [ ] `.scratch/role-pool-posture/user-rules/claude-fable-advisor.md` 与 `cursor-fable-advisor.mdc`：两模式文字删除；姿态默认规则与声明词；填充表；决策类型门；日期戳 2026-09-11
-- [ ] 上述三处术语与 `CONTEXT.md` 一致
+- [x] `docs/adr/0014-role-pool-posture.md`：Status / Date / 影响范围 / 关联；背景；选项对比（至少覆盖：门的三种拆法、边界三选、五分类 vs 三角色×三档位、审查员独立 vs 并入 advisor、advisor 工具三选、前言三选、runner 报告模式 vs 只用内建、家族门三选、`--no-subagents`）；决策；核心理由；实施代价；复盘条件；备注（grok build 两条未知、Cursor Stop hook 假设、与上游方向相反按 ADR 0001 记分叉）
+- [x] `AGENTS.md`："the architect never edits deliverables, whatever the size" 改为编排姿态限定；产物类别映射不变；`implementer` 若出现改 `worker`
+- [x] `.scratch/role-pool-posture/user-rules/claude-fable-advisor.md` 与 `cursor-fable-advisor.mdc`：两模式文字删除；姿态默认规则与声明词；填充表；决策类型门；日期戳 2026-09-11
+- [x] 上述三处术语与 `CONTEXT.md` 一致
+
+## Comments
+
+2026-09-11 — 已写：`docs/adr/0014-role-pool-posture.md`、`AGENTS.md` 边界句、`.scratch/role-pool-posture/user-rules/` 两份替换文本（待用户安装到 `~/.claude/rules/fable-advisor.md` 与 `.cursor/rules/fable-advisor.mdc`）。

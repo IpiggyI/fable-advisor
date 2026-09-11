@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deny Cursor Task spawns of named lane agents on the wrong model family.
+"""Deny Cursor Task spawns of fable-advisor when model is missing or inherit.
 
 Read stdin as UTF-8 bytes, stripping a leading BOM (`utf-8-sig`). Windows
 Python defaults to GBK text. Cursor 3.16.17 has prefixed hook stdin with
@@ -7,8 +7,8 @@ UTF-8 BOM, and has split `cursor-grok-4.6-*` slugs so `4.6` is a JSON number
 (`"cursor-grok-"4.6"-medium"`). Empty stdin is deny. JSON that still cannot
 be parsed is deny with the decoder error, not a BOM message.
 Explore/generalPurpose inherit is allowed when tool_input is visible.
-fable-advisor inherit is allowed (2026-08-31, Fable 5 quota). Resume
-skips the model check.
+fable-advisor requires an explicit, non-inherit model. Resume skips the
+model check.
 
 First-party: Cursor 3.16.17, 2026-08-18 Windows leak — hook ran, logged INPUT
 had tool_input.model=inherit, process wrote permission=allow. Replay of those
@@ -25,10 +25,7 @@ from pathlib import Path
 
 LOG = Path.home() / ".cursor" / "hooks" / "logs" / "fable-lane-family-gate.jsonl"
 
-FAMILY = {
-    "fable-advisor": ("fable",),
-    "implementer": ("opus",),
-}
+NAMED_AGENT = "fable-advisor"
 
 UNREADABLE_AGENT = (
     "fable-lane-family-gate got no tool_input (empty or unparseable stdin). "
@@ -52,8 +49,7 @@ def decide(tool_input: dict) -> tuple[str, str | None, str | None]:
         return "allow", None, None
 
     agent = str(tool_input.get("subagent_type") or "")
-    tokens = FAMILY.get(agent)
-    if not tokens:
+    if agent != NAMED_AGENT:
         return "allow", None, None
 
     model = tool_input.get("model")
@@ -62,38 +58,19 @@ def decide(tool_input: dict) -> tuple[str, str | None, str | None]:
         or not model.strip()
         or model.strip().lower() == "inherit"
     )
-    # 2026-08-31: fable-advisor inherits the parent (Fable 5 quota).
-    # Any explicit pin is deny so a Fable slug cannot sneak through.
-    # Restore: delete this block; inherit then falls through to omit-deny.
-    if agent == "fable-advisor":
-        if inherit:
-            return "allow", None, None
-        agent_msg = (
-            "Cursor Task for fable-advisor must inherit the parent (omit model). "
-            "Fable pin paused 2026-08-31 (quota). Retry with no model / inherit."
-        )
-        user_msg = "fable-advisor 暂用会话默认模型，请省略 model 后重试。不要钉 Fable slug。"
-        return "deny", agent_msg, user_msg
+    if not inherit:
+        return "allow", None, None
 
-    if inherit:
-        agent_msg = (
-            f"Cursor Task for {agent} omitted model (inherit parent). "
-            f"Pin a {tokens[0]}-family slug from this turn's Task allowlist and retry. "
-            "Agent frontmatter model: is not honored in Cursor."
-        )
-        user_msg = f"{agent} 未钉模型，已拦截。请从本次允许清单选 {tokens[0]} 家族 slug 后重试。"
-        return "deny", agent_msg, user_msg
-
-    slug = model.strip().lower()
-    if not any(token in slug for token in tokens):
-        agent_msg = (
-            f"Cursor Task for {agent} pinned {model!r}, which is not {tokens[0]}-family. "
-            f"Pin a {tokens[0]}-family slug from this turn's Task allowlist and retry."
-        )
-        user_msg = f"{agent} 钉了错家族模型 {model}，已拦截。"
-        return "deny", agent_msg, user_msg
-
-    return "allow", None, None
+    agent_msg = (
+        f"Cursor Task for {NAMED_AGENT} omitted model (inherit parent). "
+        "An explicit, non-inherit model from this turn's Task allowlist is required. "
+        "Agent frontmatter model: is not honored in Cursor."
+    )
+    user_msg = (
+        f"{NAMED_AGENT} 需要显式、非 inherit 的 model，已拦截。"
+        "请从本次允许清单给出一个型号后重试。"
+    )
+    return "deny", agent_msg, user_msg
 
 
 def extract_tool_input(payload: object) -> dict:
@@ -175,9 +152,9 @@ def _parse_messages(exc: json.JSONDecodeError) -> tuple[str, str]:
     detail = str(exc)[:160]
     agent = (
         f"fable-lane-family-gate could not parse stdin JSON ({detail}). "
-        "This is envelope serialization, not the family check."
+        "This is envelope serialization, not the pin check."
     )
-    user = f"车道门无法解析 Task 参数：{detail}。不是家族校验失败。"
+    user = f"车道门无法解析 Task 参数：{detail}。不是钉钉校验失败。"
     return agent, user
 
 
@@ -313,20 +290,25 @@ def _self_test() -> int:
     decide_cases = [
         ({"subagent_type": "explore"}, "allow"),
         ({"subagent_type": "generalPurpose"}, "allow"),
-        ({"subagent_type": "fable-advisor"}, "allow"),
-        ({"subagent_type": "fable-advisor", "model": "inherit"}, "allow"),
-        ({"subagent_type": "fable-advisor", "model": "cursor-grok-4.6-xhigh"}, "deny"),
-        ({"subagent_type": "fable-advisor", "model": "claude-fable-5-thinking-xhigh"}, "deny"),
-        ({"subagent_type": "implementer"}, "deny"),
-        ({"subagent_type": "implementer", "model": "claude-opus-5-thinking-high"}, "allow"),
+        ({"subagent_type": "generalPurpose", "model": "inherit"}, "allow"),
+        ({"subagent_type": "fable-advisor"}, "deny"),
+        ({"subagent_type": "fable-advisor", "model": ""}, "deny"),
+        ({"subagent_type": "fable-advisor", "model": "inherit"}, "deny"),
+        ({"subagent_type": "fable-advisor", "model": "cursor-grok-4.6-xhigh"}, "allow"),
+        ({"subagent_type": "fable-advisor", "model": "claude-fable-5-thinking-xhigh"}, "allow"),
         ({"subagent_type": "fable-advisor", "resume": "abc"}, "allow"),
     ]
     failed = 0
     for tool_input, expected in decide_cases:
-        got, _, _ = decide(tool_input)
+        got, agent_message, _user_message = decide(tool_input)
         if got != expected:
             print(f"FAIL decide {tool_input!r}: got {got} expected {expected}", file=sys.stderr)
             failed += 1
+        if expected == "deny" and agent_message:
+            joined = agent_message.lower()
+            if "explicit" not in joined or "non-inherit" not in joined:
+                print(f"FAIL decide deny copy {tool_input!r}: {agent_message!r}", file=sys.stderr)
+                failed += 1
 
     extract_cases = [
         ({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor", "model": "inherit"}}, {"subagent_type", "model"}),
@@ -372,7 +354,7 @@ def _self_test() -> int:
                 },
                 ensure_ascii=False,
             ).encode("utf-8"),
-            "allow",
+            "deny",
         ),
         (
             json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "explore"}}).encode(),
@@ -388,7 +370,7 @@ def _self_test() -> int:
                     },
                 }
             ).encode(),
-            "deny",
+            "allow",
         ),
         (
             b"\xef\xbb\xbf"
@@ -401,7 +383,7 @@ def _self_test() -> int:
                     },
                 }
             ).encode("utf-8"),
-            "deny",
+            "allow",
         ),
         (
             b"\xef\xbb\xbf"
@@ -414,7 +396,7 @@ def _self_test() -> int:
                     },
                 }
             ).encode("utf-8"),
-            "allow",
+            "deny",
         ),
         (
             json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor", "resume": "abc"}}).encode(),
@@ -422,7 +404,7 @@ def _self_test() -> int:
         ),
         (
             b'{"tool_name":"Task","tool_input":{"subagent_type":"fable-advisor","model":"cursor-grok-"4.6"-medium"}}',
-            "deny",
+            "allow",
         ),
         (
             b'{"tool_name":"Task","tool_input":{"subagent_type":"explore","model":"cursor-grok-"4.6"-medium"}}',
@@ -430,7 +412,27 @@ def _self_test() -> int:
         ),
         (
             b'{"tool_name":"Task","tool_input":{"prompt":"use `cwd` and "quotes"","model":"claude-fable-5-thinking-low","subagent_type":"fable-advisor"}}',
+            "allow",
+        ),
+        (
+            json.dumps(
+                {
+                    "tool_name": "Task",
+                    "tool_input": {
+                        "subagent_type": "fable-advisor",
+                        "model": "cursor-grok-4.6-xhigh",
+                    },
+                }
+            ).encode(),
+            "allow",
+        ),
+        (
+            json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor"}}).encode(),
             "deny",
+        ),
+        (
+            json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "generalPurpose"}}).encode(),
+            "allow",
         ),
     ]
     for raw, expected in eval_cases:
