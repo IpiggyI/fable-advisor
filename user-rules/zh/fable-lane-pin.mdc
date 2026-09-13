@@ -1,0 +1,9 @@
+# Cursor Task 钉模型
+
+本文件是仓外活体的中文备份，不是活体。Cursor 加载的是英文正典 `cursor-hooks/fable-lane-pin.mdc`（活体路径 `~/.cursor/rules/fable-lane-pin.mdc`）。不要把本文件拷进 Cursor 的 `rules/`。
+
+省略 Task 的 `model` 会继承父会话。插件 frontmatter 的 `model:` 不生效。
+
+- `fable-advisor`：传入本轮 allowlist 里显式、非 `inherit` 的 `model`。`preToolUse` hook 会拒绝缺失、空值或 `inherit`。
+- worker 车道：用 `generalPurpose`（只读检索用 `explore`）加上显式 `model`。省略 `model` 是同模派发，不是供应商车道。
+- 使用本轮 allowlist 里的 slug，不要用技能示例里可能已经不在名单中的名字。

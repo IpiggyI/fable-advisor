@@ -24,13 +24,17 @@ Version bump (two files) → push to `origin` → per-side `claude plugin` updat
 
 Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule live under `cursor-hooks/` (not `plugin/hooks/`). See `docs/agents/cursor-lane-gate.md`.
 
+### User-level fill table
+
+English live copies of the Claude and Cursor user rules (posture selector, fill table, Pareto inputs) are archived under `user-rules/`. Chinese backups of those documents, plus the pin rule, live in `user-rules/zh/` — they are not installed. Copy only the English files to the live paths. `python3 tests/test_user_level_archive.py` checks English-vs-live drift and that the Chinese twins exist.
+
 ### Delegation boundary by artifact class
 
 Per [ADR 0013](docs/adr/0013-delivery-contract-not-build-instructions.md) and [ADR 0014](docs/adr/0014-role-pool-posture.md), in the **orchestrating posture** the main agent never edits deliverables, whatever the size — they go through a `worker`; coordination artifacts it writes directly in either posture. In the implementing posture (no upstream task artifact, or the user said so) the main agent may edit deliverables itself. In this repo:
 
-- Deliverables (worker only while orchestrating): `plugin/**`, `tests/**`, `cursor-hooks/**`, `README.md`, `docs/zh/**`.
+- Deliverables (worker only while orchestrating): `plugin/**`, `tests/**`, `cursor-hooks/**`, `user-rules/**`, `README.md`, `docs/zh/**`.
 - Coordination artifacts (main agent may write): `.scratch/**`, `docs/adr/**`, `CONTEXT.md`, `AGENTS.md`, `docs/agents/**`, `.fable-advisor/**`, and the two version fields named in `docs/agents/plugin-release.md`.
 
 ### Chinese mirror of runtime docs
 
-Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship.
+Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship. User-level Chinese backups stay in `user-rules/zh/`, not under `docs/zh/`.

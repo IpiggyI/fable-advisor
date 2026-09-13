@@ -35,7 +35,7 @@ Done when `--self-test` prints `self-test ok` and the drift test passes against 
 
 ## Task pin rule
 
-Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `alwaysApply` user rule, not from this repo.
+Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `alwaysApply` user rule, not from this repo. The Chinese backup is `user-rules/zh/fable-lane-pin.mdc` and is not installed.
 
 - WSL: `/home/hyy/.cursor/rules/fable-lane-pin.mdc`
 - Windows: `C:/Users/Shy/.cursor/rules/fable-lane-pin.mdc`

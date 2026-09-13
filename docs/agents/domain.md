@@ -17,6 +17,7 @@ If either doesn't exist, **proceed silently**. Don't flag their absence; don't s
 /
 ├── CONTEXT.md
 ├── cursor-hooks/
+├── user-rules/
 ├── docs/adr/
 │   ├── 0001-upstream-sync-fork.md
 │   └── 0002-codex-lane-dewrapper-receipt-gate.md
