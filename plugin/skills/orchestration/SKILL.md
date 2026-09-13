@@ -49,7 +49,7 @@ A role is a contract shape (input, permissions, output) and names no model; a ti
 | `worker` | writes inside the contract's Files | a diff plus verification evidence |
 | `advisor` | read-only | a verdict under 300 words, in two request shapes: **decision** (before committing: decision, constraints, options) or **acceptance** (after: contract, diff, receipt → criteria met?) |
 
-Tiers: `light`, `standard`, `senior`; any role at any tier. A takeover of a stuck task is a senior worker plus a takeover contract, not another role. The advisor's authority comes from the code it reads, not its tier.
+Tiers: `light`, `standard`, `senior`; any role at any tier. A takeover of a stuck task is a senior worker under a takeover contract. The advisor's authority comes from the code it reads, not its tier.
 
 ## Lanes
 
@@ -62,7 +62,7 @@ A lane answers how a vendor is reached; roles and tiers answer what is dispatche
 | claude lane | Claude subagents (`worker`, `fable-advisor`, the harness explorer); no external CLI. From a Claude main agent disclose: same family (no cross-vendor review), shared Anthropic quota, highest unit price |
 | handoff lane | the user carries a spec file to a harness of their own; see [handoff-lane.md](handoff-lane.md) |
 
-The **fill table**, (role, tier) → candidate lanes and dials (a `dial` is model plus effort inside a lane), lives in the user's rules. This doctrine names no models.
+The **fill table**, (role, tier) → candidate lanes and dials (a `dial` is model plus effort inside a lane), lives in the user's rules.
 
 ### Harness mechanics
 

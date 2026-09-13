@@ -6,14 +6,14 @@
 
 - **调用。** 派发提示以一行开场，把 subagent 指向 `<plugin-root>/skills/orchestration/lane-preamble.md` —— 这里没有东西替你前置它，而执行侧契约必须到达每一条车道。五部契约原文紧随其后。
 - **角色。** `worker` 是带显式 `model` 的 `generalPurpose` 派发；`explorer` 是带显式 `model` 的 `explore`（或 `generalPurpose`）派发；`advisor` 是具名 agent `fable-advisor`，显式钉死。钉死的家族由填充表选择：Grok 家族钉死即 `grok lane`，Claude 家族钉死即 `claude lane`。档位是该钉死所点名的拨盘。
-- **每次都显式钉死。** Agent 的 frontmatter `model:` 对 Cursor 中插件加载的 agent 不生效，且省略 `model` 时 Task 继承会话模型——一次未钉死的派发会静默变成会话正在跑的那个。用户级 lane family gate 拒绝 `model` 缺失或为 `inherit` 的 `fable-advisor` 派发；它不查家族，也不覆盖 `generalPurpose`，因此未钉死的 `worker` 要你自己抓住。使用本轮 allowlist 里存活的 slug；skill 示例可能点名 allowlist 没有的世代。
+- **每次都显式钉死。** Agent 的 frontmatter `model:` 对 Cursor 中插件加载的 agent 不生效，且省略 `model` 时 Task 继承会话模型——一次未钉死的派发会静默变成会话正在跑的那个。用户级 lane family gate 只管一种情况：`model` 缺失或为 `inherit` 的 `fable-advisor` 派发。钉的是哪个家族、以及未钉死的 `generalPurpose` `worker`，要你自己抓住。使用本轮 allowlist 里存活的 slug；skill 示例可能点名 allowlist 没有的世代。
 - **同模派发。** 唯一不携带 `model` 的派发：编排姿态下准则散文的 `claude lane` 拨盘是省略 `model` 的 `generalPurpose` 派发——继承会话模型是目的，不是疏漏，且它不是具名 agent 派发，所以门禁不会触发。在路由披露中写明「inherit」，以免被误当成未钉死的车道。
 - **验收。** 报告作为派发结果在带内返回，失败或不可用的派发也在带内大声失败。验收完全按 [SKILL.md](SKILL.md) 中的核验层运行；Task 派发没有 receipt。
 - **返工。** 返工票是一次带先前派发 agent id 的 Task `resume`，把返工契约（缺陷、原范围、失败的检查）作为新提示带上——车道保留它已经建好的上下文。返工票也失败时，归因（SKILL.md「升级」）：契约缺口在修正契约下再次 resume；能力失败则是更高档位的新派发，带接管契约。
 - **改道。** 因用户套餐上模型不可用而失败的派发，改道到同一格的另一种填充，并显式披露——与 CLI 车道同一规则。
 - **effort 钉死在 slug 上。** 临时模型钉死携带固定的 effort 档——`codex lane` 的 `effort` 旋钮在裸派发上不存在。方括号参数（`<slug>[effort=high]`）仅在自定义 agent 定义文件中可用；仅当任务真正需要升高 effort 时才有意添加一份定义文件，而非默认。
 - **竞速。** 「挑选更强 diff」的竞速是同一条消息中的两次钉死派发——无需保持不同的 pending 文件。
-- **经济不变。** 各厂模型在 Cursor 中占用各自的额度池，因此各车道价格——以及整套成本纪律——按原文适用。
+- **经济。** 各厂模型在 Cursor 中占用各自的额度池，因此各车道价格——以及整套成本纪律——按原文适用。
 
 ## 经 Shell 的 codex lane
 

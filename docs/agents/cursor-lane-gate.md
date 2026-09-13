@@ -2,7 +2,7 @@
 
 Canonical copies of user-level Cursor live artifacts live under `cursor-hooks/` (not `plugin/hooks/`, not this repo's `.cursor/`). The same class as [ADR 0011](../adr/0011-cursor-lane-family-gate-user-level.md): archive in-repo, live stays user-level so it applies in every Cursor workspace, byte-identical drift detection. This is not Claude Code's receipt-gate.
 
-The gate exists to stop a named-agent `Task` dispatch from silently inheriting the session model. It does not match vendor families.
+The gate exists to stop a named-agent `Task` dispatch from silently inheriting the session model; that is the only check it makes.
 
 ## preToolUse script
 
@@ -15,7 +15,7 @@ Register under `preToolUse`, matcher `Task`, timeout 10. Merge `cursor-hooks/hoo
 
 ### Behaviour
 
-I/O is unchanged: UTF-8 stdin payload in, JSON `permission` (`allow` / `deny`) out, exit 0. Only the decision rule changed.
+I/O: UTF-8 stdin payload in, JSON `permission` (`allow` / `deny`) out, exit 0.
 
 - `subagent_type` is `fable-advisor` and `model` is missing, empty, or `inherit` → deny. The deny text says an explicit, non-inherit `model` is required.
 - `fable-advisor` with any other explicit `model` string → allow (any vendor slug).

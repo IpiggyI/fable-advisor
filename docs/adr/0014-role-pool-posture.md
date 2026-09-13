@@ -132,4 +132,5 @@
 
 - 决策链见本会话 grilling Q1–Q22；用户三条关键裁定：对"主代理是最好的模型"产生动摇、不想被"强 + 弱"一种组合困住；`实现` 姿态不能读成"不派子代理"；allowlist 随时变、不要过度关注。
 - 与上游 v5.x（钉死 Fable 5.1 架构师、强制终审、六段 spec）方向相反，按 [ADR 0001](./0001-upstream-sync-fork.md) 纪律记为有意分叉。
+- ADR 0003 追记（2026-09-06）把"astra 用 medium / high、luna 只值得 max"这类档位偏好放进 doctrine 文字；本 ADR 决策五把所有拨盘判断收进用户侧填充表，该落点随之作废，`lanes-claude-code.md` 只保留 runner 的机制事实（白名单、按模型默认值）。
 - 已记录假设：grok `--effort` 取值（v1.0.25 实测）；Claude Code 子代理 `effort` 仅 frontmatter、`model` 有按次参数（官方文档 2026-09-11）；Cursor 不加载插件 Stop hook（未探明）；grok build 对插件 agent 的发现规则（4.2.0 下只见 `fable-advisor`）。

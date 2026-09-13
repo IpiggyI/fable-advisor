@@ -1,6 +1,6 @@
-# Claude Code 中的 CLI 车道 —— runner，而非 agent
+# Claude Code 中的 CLI 车道 —— runner
 
-在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者：没有 subagent 启动成本，主代理与 CLI 之间也没有任何可能悄悄自行实现的东西。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner：`worker` 角色用 `worker` agent（每次派发的 `model` 设定档位；钉为会话模型即同模派发），`advisor` 用 `fable-advisor`，`explorer` 用内置 explorer。两条 CLI 都缺失时，它让插件保持自包含。
+在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者，没有 subagent 启动成本。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner：`worker` 角色用 `worker` agent（每次派发的 `model` 设定档位；钉为会话模型即同模派发），`advisor` 用 `fable-advisor`，`explorer` 用内置 explorer。两条 CLI 都缺失时，它让插件保持自包含。
 
 两条 CLI 车道流程相同；以 codex 演练为典范，grok 的差异紧随其后。两条 runner 默认服务 `worker` 角色，并在 report mode 下服务只读角色（见下文「报告模式」）。
 
@@ -25,14 +25,14 @@
 调谐字段可选，且失败即响——越界值或未知顶层键会被拒绝为 `spec_invalid`，从不被静默强制转换。receipt 记录实际使用的值。
 
 - `model` — `gpt-6-astra`（默认）或 `gpt-5.6-luna`；codex 目录是静态白名单，因此已退役的名字是 `spec_invalid`。
-- `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。默认随模型：astra → `medium`，luna → `max`。建议用法（准则，不强制）：astra 用 `medium` 或 `high`；luna 只用 `max`。
+- `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。默认随模型：astra → `medium`，luna → `max`。一个任务用哪个拨盘，由填充表决定。
 - `service_tier` — 省略则用 Codex 自己的默认；仅在以质量换速度时用 `"fast"`。
 - `idle_timeout_sec` — 静默截止（默认 600 秒）：*最后*一个事件之后多久杀掉停滞的 CLI 子进程。一直在吐事件的车道要跑多久就跑多久；被切断的只有静默，而该路径会跳过核验，因此在这里被切断的车道会完全失去它的核验证据。
 - `timeout_sec` — 对整次运行的可选绝对上限；无默认值，省略即不设上限。
 - `resume_session_id` — 先前的 codex session id；见下文「返工票」。
 - `mode` — `implement`（默认）或 `report`；见下文「报告模式」。
 
-把 `codex lane` 按质量优先来调：选*哪一条*车道是成本优先（车道级比较按默认拨盘给 codex 计价，即 astra 配 `medium`），但一旦任务值得走 `codex lane`，在其内部做一次质量上调是负担得起的。对异常困难的任务升到 `high`。Luna 不是进入 `codex lane` 的更便宜路径：仅在用户声明时请求它，或当任务简单且本来就要 GPT 家族时。
+把 `codex lane` 按质量优先来调：选*哪一条*车道是成本优先（车道级比较按默认拨盘给 codex 计价，即 astra 配 `medium`），但一旦任务值得走 `codex lane`，在其内部做一次质量上调是负担得起的。对异常困难的任务升到 `high`。
 
 **回退。** 若 astra 在会话建立之前失败（`preparation_stalled`，或尚无 session id 的 `codex_failed`），runner 按 luna 的默认 effort 在 luna 上重试一次；receipt 显示 `model_requested: gpt-6-astra`、`model_used: gpt-5.6-luna`，以及非空的 `fallback_reason`。一旦会话已存在则不回退——半成品运行不会在另一模型上重做。直接请求 luna 从不回退。验收一次发生过回退的运行时，用你自己的话复述降级；receipt 负责披露，你负责承认。
 
@@ -105,7 +105,7 @@ receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fabl
 node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
 ```
 
-- Spec 键：五个部分加上可选的 `model`、`effort`、`mode`、`idle_timeout_sec`、`timeout_sec` 和 `resume_session_id` 而已——没有 `service_tier`。
+- Spec 键：五个部分加上可选的 `model`、`effort`、`mode`、`idle_timeout_sec`、`timeout_sec` 和 `resume_session_id`。
 - `effort` — 可选，白名单 `low | medium | high | xhigh`；越界值是 `spec_invalid`。省略则不发送 effort 标志，因此 CLI 自己的默认生效；receipt 记录实际使用的值。这就是在不换车道的情况下给 grok `worker` 拨档位的方式。
 - `model` — 默认省略：未设置则不发送 `-m` 标志，因此 CLI 跑自己的默认并跟踪实时目录（当前为 grok-4.6，2026-09），世代更换时 spec 零改动。仅在有意挑选 `grok models` 列出的非默认目录条目时才设置。当目录可读时，`model` 对照每一个列出的条目校验——不在目录中的模型是 `spec_invalid`。目录不可读不是 `grok_unavailable`：runner 记录一条诊断、跳过校验，由真正的运行决定可用性。
 - 错误类镜像 `codex lane`（`grok_unavailable | grok_failed | …`，外加 `no_diff`、`unexpected_diff`、`empty_report` 和 `git_status_failed`）。receipt 携带同样的 `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` 字段（`fallback_reason` 保持 null——`grok lane` 没有定义模型回退），并额外记录 grok 结束事件中的 `usage` 与 `total_cost_usd`。`grok_session_id` 由 runner 注入（`--session-id`），而非从流中嗅探。

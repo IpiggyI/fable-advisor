@@ -3,7 +3,7 @@ alwaysApply: true
 ---
 # Fable Advisor — postures, roles, fill table (Cursor)
 
-Replaces the two-mode text (architect tier / advisor-only). Mode is no longer selected by model identity; any model may be the main agent. Doctrine lives in the fable-advisor:orchestration skill (`lanes-cursor.md` for this harness); this file carries the user-side inputs only. Dated 2026-09-11; anchored to Grok 4.6 / GPT-6 Astra / GPT-5.6 Luna / Opus 5 / Fable 5.1 — re-evaluate an entry when any model it involves changes generation.
+Any model may be the main agent; posture, not model identity, decides how it works. Doctrine lives in the fable-advisor:orchestration skill (`lanes-cursor.md` for this harness); this file carries the user-side inputs only. Dated 2026-09-11; anchored to Grok 4.6 / GPT-6 Astra / GPT-5.6 Luna / Opus 5 / Fable 5.1 — re-evaluate an entry when any model it involves changes generation.
 
 ## Posture
 
@@ -37,9 +37,9 @@ Consult the advisor (`fable-advisor`, decision shape) before: an architecture, d
 | worker @ senior | gpt-6-astra[medium] via codex runner; escalate to [high] for unusually hard work. Takeover contract = original contract + prior report + receipt, fresh session |
 | advisor (default senior) | Fable-family slug via `fable-advisor` › gpt-6-astra[high] via codex runner report mode. Any tier is allowed |
 
-Notes: `gpt-5.6-sol` is outside the codex runner whitelist since 4.0.0; re-add only if it returns to my use set. Effort defaults per role: worker medium, explorer medium, advisor high.
+Notes: effort defaults per role: worker medium, explorer medium, advisor high.
 
-## Pareto inputs (carried from 2026-09-06)
+## Pareto inputs (declared 2026-09-06)
 
 - Speed (fastest first): grok-4.6 > fable5.1 ≈ astra ≈ opus5 > Luna-max.
 - Price (cheapest first): Luna-max < grok-4.6 << opus5 ≤ astra ≤ fable5.1.
@@ -48,7 +48,3 @@ Notes: `gpt-5.6-sol` is outside the codex runner whitelist since 4.0.0; re-add o
 - Volatile state (quota, deadline) enters only by my oral declaration at kickoff, valid for the session, never persisted. No declaration → cheapest adequate fill at its default dial.
 - The handoff lane joins the candidate set only when I declare it per task or session.
 - Low-confidence escape hatch: per the orchestration skill's "User routing profile" section.
-
-## Retired
-
-- The two-mode selector by model series and the third-party architect allowlist block; the `fable-lane-pin` family requirement (now: explicit non-inherit pin only, see `cursor-hooks/fable-lane-pin.mdc`).

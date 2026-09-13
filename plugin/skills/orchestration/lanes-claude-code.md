@@ -1,6 +1,6 @@
-# The CLI lanes in Claude Code — runners, not agents
+# The CLI lanes in Claude Code — the runners
 
-Read this before dispatching a lane in Claude Code. The main agent drives both CLI producers directly through deterministic runners: no subagent startup cost, and nothing between the main agent and the CLI that could silently self-implement. The grok lane requires the [Grok CLI](https://x.ai/cli); the codex lane requires the codex CLI and Node. The claude lane is a plain subagent dispatch, no runner: the `worker` agent for the worker role (its per-dispatch `model` sets the tier; pinned to the session model it is same-model dispatch), `fable-advisor` for the advisor, the built-in explorer for the explorer. It keeps the plugin self-contained when both CLIs are missing.
+Read this before dispatching a lane in Claude Code. The main agent drives both CLI producers directly through deterministic runners, with no subagent startup cost. The grok lane requires the [Grok CLI](https://x.ai/cli); the codex lane requires the codex CLI and Node. The claude lane is a plain subagent dispatch, no runner: the `worker` agent for the worker role (its per-dispatch `model` sets the tier; pinned to the session model it is same-model dispatch), `fable-advisor` for the advisor, the built-in explorer for the explorer. It keeps the plugin self-contained when both CLIs are missing.
 
 Same flow for both CLI lanes; the codex walkthrough is canonical, the grok deltas follow it. Both runners serve the worker role by default and the read-only roles in report mode (see "Report mode" below).
 
@@ -25,14 +25,14 @@ Write the five-part spec as JSON to `.fable-advisor/pending/<slug>.json` in the 
 The tuning fields are optional and fail-loud — an out-of-range value or unknown top-level key is rejected as `spec_invalid`, never silently coerced. The receipt records the values actually used.
 
 - `model` — `gpt-6-astra` (default) or `gpt-5.6-luna`; the codex catalog is a static whitelist, so a retired name is `spec_invalid`.
-- `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. The default follows the model: astra → `medium`, luna → `max`. Recommended use (doctrine, not enforced): astra at `medium` or `high`; luna only at `max`.
+- `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. The default follows the model: astra → `medium`, luna → `max`. Which dial a task gets is the fill table's call.
 - `service_tier` — omit for Codex's own default; `"fast"` only when trading quality for speed.
 - `idle_timeout_sec` — the silence deadline (default 600 s): how long after the *last* event a stalled CLI child is killed. A lane that keeps emitting events runs as long as it takes; only silence is cut, and that path skips verification, so a lane cut here loses its verification evidence entirely.
 - `timeout_sec` — an optional absolute cap on the whole run; no default, so omitting it leaves the run uncapped.
 - `resume_session_id` — a prior codex session id; see "Rework tickets" below.
 - `mode` — `implement` (default) or `report`; see "Report mode" below.
 
-Dial the codex lane quality-first: choosing *which* lane is cost-first (the lane-level comparison prices codex at its default dial, astra at `medium`), but once a task is worth the codex lane, a quality bump inside it is affordable. Escalate to `high` for unusually hard tasks. Luna is not a cheaper way into the codex lane: request it only on a user declaration, or when the task is simple and the GPT family is wanted anyway.
+Dial the codex lane quality-first: choosing *which* lane is cost-first (the lane-level comparison prices codex at its default dial, astra at `medium`), but once a task is worth the codex lane, a quality bump inside it is affordable. Escalate to `high` for unusually hard tasks.
 
 **Fallback.** If astra fails before a session is established (`preparation_stalled`, or `codex_failed` with no session id yet), the runner retries once on luna at luna's default effort; the receipt shows `model_requested: gpt-6-astra`, `model_used: gpt-5.6-luna`, and a non-null `fallback_reason`. Once a session exists there is no fallback — a half-finished run is not redone on another model. A direct luna request never falls back. When accepting a fallen-back run, restate the downgrade in your own words; the receipt discloses, you acknowledge.
 
@@ -105,7 +105,7 @@ An unknown `mode` value is `spec_invalid`. The pending/receipt flow, the wait pr
 node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
 ```
 
-- Spec keys: the five parts plus optional `model`, `effort`, `mode`, `idle_timeout_sec`, `timeout_sec`, and `resume_session_id` only — no `service_tier`.
+- Spec keys: the five parts plus optional `model`, `effort`, `mode`, `idle_timeout_sec`, `timeout_sec`, and `resume_session_id` only.
 - `effort` — optional, whitelist `low | medium | high | xhigh`; a value outside it is `spec_invalid`. Omitted sends no effort flag, so the CLI's own default applies; the receipt records the value actually used. This is how a grok worker's tier is dialled without changing lane.
 - `model` — omit by default: unset sends no `-m` flag, so the CLI runs its own default and tracks the live catalog (currently grok-4.6, 2026-09) with zero spec edits on a generation swap. Set it only to deliberately pick a non-default catalog entry surfaced by `grok models`. When the catalog is readable, `model` is validated against every listed entry — a model not in the catalog is `spec_invalid`. An unreadable catalog is not `grok_unavailable`: the runner logs a diagnostic, skips validation, and the real run decides availability.
 - Error classes mirror the codex lane's (`grok_unavailable | grok_failed | …`, plus `no_diff`, `unexpected_diff`, `empty_report`, and `git_status_failed`). The receipt carries the same `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` fields (`fallback_reason` stays null — no model fallback is defined for the grok lane), and additionally records `usage` and `total_cost_usd` from grok's end event. `grok_session_id` is injected by the runner (`--session-id`), not sniffed from the stream.

@@ -1,5 +1,5 @@
 {
-  "description": "Receipt gate: a Stop hook that blocks claiming completion while a spec under .fable-advisor/pending/ lacks a complete receipt (fail open without python — it is a ratchet, not the primary guardrail).",
+  "description": "Receipt gate: a Stop hook that blocks claiming completion while a spec under .fable-advisor/pending/ lacks a complete receipt (fail open without python — it is a ratchet).",
   "hooks": {
     "Stop": [
       {

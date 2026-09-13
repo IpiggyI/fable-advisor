@@ -49,7 +49,7 @@ description: 角色池（explorer / worker / advisor，档位 light / standard /
 | `worker` | 在契约的 Files 范围内写入 | diff 外加核验证据 |
 | `advisor` | 只读 | 不超过 300 词的裁决，两种请求形状：**decision**（承诺前：决定、约束、选项）或 **acceptance**（完成后：契约、diff、receipt → 标准是否满足？） |
 
-档位：`light`、`standard`、`senior`；任一角色可配任一档位。接管卡住的任务是 `senior` 档位的 `worker` 加一份接管契约，不是另一个角色。`advisor` 的权威来自它读到的代码，不来自档位。
+档位：`light`、`standard`、`senior`；任一角色可配任一档位。接管卡住的任务是 `senior` 档位的 `worker` 带一份接管契约。`advisor` 的权威来自它读到的代码，不来自档位。
 
 ## 车道
 
@@ -62,7 +62,7 @@ description: 角色池（explorer / worker / advisor，档位 light / standard /
 | `claude lane` | Claude 子代理（`worker`、`fable-advisor`、宿主 explorer）；无外部 CLI。从 Claude 主代理出发时披露：同族（无跨厂评审）、共享 Anthropic 额度、单价最高 |
 | `handoff lane` | 用户把 spec 文件带到自选 harness；见 [handoff-lane.md](handoff-lane.md) |
 
-**填充表**，（角色, 档位）→ 候选车道与拨盘（`dial` 是车道内的 model 加 effort），写在用户自己的规则里。本准则不点名模型。
+**填充表**，（角色, 档位）→ 候选车道与拨盘（`dial` 是车道内的 model 加 effort），写在用户自己的规则里。
 
 ### Harness 机制
 

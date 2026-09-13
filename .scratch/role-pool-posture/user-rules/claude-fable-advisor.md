@@ -1,6 +1,6 @@
 # Fable Advisor — postures, roles, fill table
 
-Replaces the two-mode text (architect tier / advisor-only). Mode is no longer selected by model identity; any model may be the main agent. Doctrine lives in the fable-advisor:orchestration skill; this file carries the user-side inputs only. Dated 2026-09-11; anchored to Grok 4.6 / GPT-6 Astra / GPT-5.6 Luna / Opus 5 / Fable 5.1 — re-evaluate an entry when any model it involves changes generation.
+Any model may be the main agent; posture, not model identity, decides how it works. Doctrine lives in the fable-advisor:orchestration skill; this file carries the user-side inputs only. Dated 2026-09-11; anchored to Grok 4.6 / GPT-6 Astra / GPT-5.6 Luna / Opus 5 / Fable 5.1 — re-evaluate an entry when any model it involves changes generation.
 
 ## Posture
 
@@ -28,9 +28,9 @@ Candidates are dials (model[effort]) reached through a lane. The doctrine's stag
 | worker @ senior | gpt-6-astra[medium]; escalate to [high] for unusually hard work. Takeover contract = original contract + prior report + receipt, fresh session |
 | advisor (default senior) | gpt-6-astra[high] via codex lane report mode (Claude Code: `/codex:adversarial-review` also fits) › claude-fable-5-1[high] via `fable-advisor` agent. Any tier is allowed; the advisor's authority is the code it reads |
 
-Notes: `gpt-5.6-sol` is outside the codex runner whitelist since 4.0.0 (ADR 0003 addendum); re-add only if it returns to my use set. Effort defaults per role: worker medium, explorer medium, advisor high; a lane's default applies only when the role is silent.
+Notes: effort defaults per role: worker medium, explorer medium, advisor high; a lane's default applies only when the role is silent.
 
-## Pareto inputs (carried from 2026-09-06)
+## Pareto inputs (declared 2026-09-06)
 
 - Speed (fastest first): grok-4.6 > fable5.1 ≈ astra ≈ opus5 > Luna-max.
 - Price (cheapest first): Luna-max < grok-4.6 << opus5 ≤ astra ≤ fable5.1.
@@ -39,7 +39,3 @@ Notes: `gpt-5.6-sol` is outside the codex runner whitelist since 4.0.0 (ADR 0003
 - Volatile state (quota headroom, deadline) enters only by my oral declaration at kickoff, valid for the session, never persisted. No declaration → cheapest adequate fill at its default dial.
 - The handoff lane joins the candidate set only when I declare it per task or session.
 - Low-confidence escape hatch: per the orchestration skill's "User routing profile" section.
-
-## Retired
-
-- The two-mode selector by model series and the third-party architect allowlist block: gone. Capability gating now runs on decision types, not on model identity.
