@@ -20,3 +20,5 @@
 2026-09-13 — 用户授权部署后已安装到活体（WSL + Windows）。旧文件备份为 `*.bak-before-v5-20260913`。`cmp` 与草稿一致。`fable-lane-pin.mdc` 与 `fable-lane-family-gate.py` 两侧仍与 `cursor-hooks/` 字节一致（工单 06 已拷过，本次未改）。
 
 2026-09-13 — 仓外文档改为仓库正典：英文填充表在 `user-rules/`（与活体字节一致），中文备份在 `user-rules/zh/`（含 pin 规则译文，不安装）。`.scratch/role-pool-posture/user-rules/` 只留 `MOVED.md`。`python3 tests/test_user_level_archive.py` 查漂移与中文孪生存在。
+
+2026-09-13 — 第三份工作副本写入 `D:\Development\Local\prompts\current-prompts\rules\`（v4 旧文件归档到该仓库 `historical-documents/09-13/`）。英文与活体字节一致；中文镜像用该仓库的 `*.zh.md` 约定，不安装到 `~/.claude/rules/`。

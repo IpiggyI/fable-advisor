@@ -26,7 +26,7 @@ Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule li
 
 ### User-level fill table
 
-English live copies of the Claude and Cursor user rules (posture selector, fill table, Pareto inputs) are archived under `user-rules/`. Chinese backups of those documents, plus the pin rule, live in `user-rules/zh/` — they are not installed. Copy only the English files to the live paths. `python3 tests/test_user_level_archive.py` checks English-vs-live drift and that the Chinese twins exist.
+English live copies of the Claude and Cursor user rules (posture selector, fill table, Pareto inputs) are archived under `user-rules/`. Chinese backups of those documents, plus the pin rule, live in `user-rules/zh/` — they are not installed. A third working copy lives in `D:\Development\Local\prompts\current-prompts\rules\` (WSL: `/mnt/d/Development/Local/prompts/current-prompts/rules/`). Copy only the English files to the live paths. `python3 tests/test_user_level_archive.py` checks English-vs-live drift and that the Chinese twins exist.
 
 ### Delegation boundary by artifact class
 

@@ -7,12 +7,15 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USER_RULES = os.path.join(REPO_ROOT, "user-rules")
 USER_RULES_ZH = os.path.join(USER_RULES, "zh")
 
+PROMPTS_RULES = "/mnt/d/Development/Local/prompts/current-prompts/rules"
+
 ENGLISH = [
     (
         os.path.join(USER_RULES, "claude-fable-advisor.md"),
         [
             os.path.expanduser("~/.claude/rules/fable-advisor.md"),
             "/mnt/c/Users/Shy/.claude/rules/fable-advisor.md",
+            os.path.join(PROMPTS_RULES, "fable-advisor.md"),
         ],
     ),
     (
@@ -20,6 +23,13 @@ ENGLISH = [
         [
             os.path.expanduser("~/.cursor/rules/fable-advisor.mdc"),
             "/mnt/c/Users/Shy/.cursor/rules/fable-advisor.mdc",
+            os.path.join(PROMPTS_RULES, "fable-advisor.cursor.mdc"),
+        ],
+    ),
+    (
+        os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-pin.mdc"),
+        [
+            os.path.join(PROMPTS_RULES, "fable-lane-pin.cursor.mdc"),
         ],
     ),
 ]
