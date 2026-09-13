@@ -16,3 +16,5 @@
 ## Comments
 
 2026-09-11 — 已写：`docs/adr/0014-role-pool-posture.md`、`AGENTS.md` 边界句、`.scratch/role-pool-posture/user-rules/` 两份替换文本（待用户安装到 `~/.claude/rules/fable-advisor.md` 与 `.cursor/rules/fable-advisor.mdc`）。
+
+2026-09-13 — 用户授权部署后已安装到活体（WSL + Windows）。旧文件备份为 `*.bak-before-v5-20260913`。`cmp` 与草稿一致。`fable-lane-pin.mdc` 与 `fable-lane-family-gate.py` 两侧仍与 `cursor-hooks/` 字节一致（工单 06 已拷过，本次未改）。
