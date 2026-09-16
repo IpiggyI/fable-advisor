@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fable-advisor 5.2.0 版本说明书</title>
+<style>
+  :root {
+    --ink: #1c1914;
+    --paper: #f4efe4;
+    --card: #fffdf8;
+    --line: #d7cfc0;
+    --muted: #6b6358;
+    --accent: #b45309;
+    --ok: #3f6b3a;
+    --warn: #9a3412;
+    --lane: #1e3a5f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.55 "Iowan Old Style", "Palatino Linotype", Palatino, "Source Han Serif SC", "Noto Serif SC", serif;
+    color: var(--ink);
+    background: var(--paper);
+  }
+  header {
+    padding: 2.2rem 1.4rem 1.4rem;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  header h1 { font-size: 1.7rem; margin: 0 0 .4rem; letter-spacing: -.02em; }
+  header .meta { margin: 0; color: var(--muted); }
+  .lead {
+    margin-top: 1rem;
+    padding: .9rem 1rem;
+    background: #fff7ed;
+    border-left: 4px solid var(--accent);
+  }
+  section {
+    max-width: 980px;
+    margin: 0 auto 2.4rem;
+    padding: 0 1.4rem;
+  }
+  h2 { font-size: 1.15rem; margin: 0 0 .8rem; border-bottom: 1px solid var(--line); padding-bottom: .35rem; }
+  h3 { font-size: 1rem; margin: 1.1rem 0 .45rem; }
+  .grid { display: grid; gap: .7rem; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: .75rem .85rem;
+  }
+  .card strong { display: block; margin-bottom: .25rem; }
+  .tag {
+    display: inline-block;
+    font-size: .72rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--ink);
+    padding: .1rem .4rem;
+    border-radius: 3px;
+  }
+  .tag.ok { background: var(--ok); }
+  .tag.warn { background: var(--warn); }
+  .tag.lane { background: var(--lane); }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; background: var(--card); }
+  th, td { border: 1px solid var(--line); padding: .45rem .55rem; text-align: left; vertical-align: top; }
+  th { background: #efe8d8; font-weight: 600; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace; font-size: .86em; }
+  .note { color: var(--muted); font-size: .92rem; }
+  .box {
+    margin: 1rem 0 0;
+    padding: .85rem 1rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--lane);
+  }
+  .box.warn {
+    border-left-color: var(--accent);
+    background: #fff7ed;
+  }
+  ul.tight { margin: .3rem 0 0; padding-left: 1.1rem; }
+  ul.tight li { margin: .2rem 0; }
+  footer { max-width: 980px; margin: 0 auto; padding: 0 1.4rem 2.5rem; color: var(--muted); font-size: .88rem; }
+  @media (max-width: 760px) {
+    .cols-2, .cols-3, .cols-5 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <p class="meta">fable-advisor · 版本 5.2.0 · 日期 2026-09-16 · 上一版本 5.1.0</p>
+  <h1>fable-advisor 5.2.0 版本说明书</h1>
+  <p class="note">自包含中文说明书。进仓库、不随插件目录发布。第一部分说明本版装上之后的完整行为；第二部分列出相对 5.1.0 的每一条改动。</p>
+  <div class="lead">
+    5.2.0 仍是角色池加姿态：任一模型都可以当主代理；一次派发是一个角色、一个档位、一条车道。本版让报告模式能在已有未提交改动的工作树上跑完，给 CLI 会话一个可读标题，把用户级正典交给伴生安装器写入活体，并把 senior 从首轮选择里拿掉、只经升级梯或用户声明到达。填充表的型号排序属于用户路由档案，不是插件行为。
+  </div>
+</header>
+
+<section>
+  <h2>1. 角色 × 档位 × 车道 × 姿态</h2>
+  <p>这四轴互相正交。角色回答契约形状，档位回答能力等级，车道回答如何到达供应商，姿态回答主代理会不会亲手改交付物。型号不写进插件技能正文。</p>
+
+  <h3>角色</h3>
+  <table>
+    <tr><th>角色</th><th>权限</th><th>返回</th></tr>
+    <tr><td class="mono">explorer</td><td>只读</td><td>证据：<code class="mono">file:line</code>、符号、原文</td></tr>
+    <tr><td class="mono">worker</td><td>在契约的 <code class="mono">Files</code> 内可写</td><td>diff 与验证证据</td></tr>
+    <tr><td class="mono">advisor</td><td>只读</td><td>不超过 300 词的 verdict。两种请求形状：决策（动工前）与验收（完工后：契约 + diff + receipt）</td></tr>
+  </table>
+  <p>角色不含模型型号。卡住任务的接管是 worker 加一份接管契约，不是另一个角色。</p>
+
+  <h3>档位与首轮池</h3>
+  <p>档位是 <code class="mono">light</code> / <code class="mono">standard</code> / <code class="mono">senior</code>，与角色正交。任一角色可派任一档位。</p>
+  <p><code class="mono">light</code> 与 <code class="mono">standard</code> 构成<strong>首轮档位</strong>：两档按第一段对判断依赖的评估自由选择，没有失败前置。<code class="mono">senior</code> 只经升级梯的门或用户声明到达；插件不把「代价高就直派 senior」写成第一段规则。</p>
+  <p>拨盘是档位在车道内的实现：型号加 effort。记法见第 2 节。格内取值写在用户路由档案，见第 12 节。</p>
+
+  <h3>车道</h3>
+  <p>车道回答怎么到达供应商。handoff lane 是条件成员：只有用户按任务或按会话声明之后，才进入第二段候选。</p>
+  <div class="grid cols-2">
+    <article class="card"><span class="tag lane">grok lane</span><strong>Grok 家族</strong>Claude Code：<code class="mono">plugin/scripts/run-grok.mjs</code>。Cursor：钉 Grok 型号名的 Task；<code class="mono">medium</code> / <code class="mono">high</code> 也可经 Shell 跑同一 runner。</article>
+    <article class="card"><span class="tag lane">codex lane</span><strong>GPT 家族</strong>两侧都跑 <code class="mono">plugin/scripts/run-codex.mjs</code>。Cursor 经 Shell。Cursor 侧没有 receipt gate，失败时放行。</article>
+    <article class="card"><span class="tag lane">claude lane</span><strong>Claude 子代理</strong>仓内九份 agent 文件，无外部 CLI。同模派发是它的一个拨盘：模型钉为会话模型。Cursor：<code class="mono">generalPurpose</code> 省略 <code class="mono">model</code>（<code class="mono">inherit</code>）。Claude Code：<code class="mono">worker-*</code> 的按次 <code class="mono">model</code> 设为会话模型。</article>
+    <article class="card"><span class="tag lane">handoff lane</span><strong>用户中介</strong>写入 <code class="mono">.fable-advisor/handoff/&lt;slug&gt;.md</code>。无 receipt、不在 receipt gate 视野内。验收是 diff，由架构师亲自重跑验证。</article>
+  </div>
+  <p class="note" style="margin-top:.8rem">cursor lane 只在 Cursor 宿主存在，见第 8 节。它不进技能正文的车道表。</p>
+
+  <h3>姿态</h3>
+  <div class="grid cols-2">
+    <article class="card"><strong>编排姿态</strong>主代理不亲手改交付物：写交付契约、派 worker、验收。职责名：架构师。没人声明时，存在上游任务件（issue、spec、task）即为此姿态。</article>
+    <article class="card"><strong>实现姿态</strong>主代理可亲手改交付物，同时仍可派任一角色。没人声明且无上游任务件时为此姿态。</article>
+  </div>
+  <p>选择器顺序：用户声明或上层指示优先；二者都没有时，看有没有上游任务件。模型身份不选姿态。姿态相对一次派发成立：车道对自己的契约是实现姿态，对它再派的子代理可以是编排姿态。深度不限。Claude Code 把子代理嵌套上限订在主会话之下三层。</p>
+  <p>编排姿态下，交付物只经 worker 改，与改动大小无关。协调件（任务件、ADR、词表、工作流状态、发布版本字段）任一姿态下主代理都可直接写。本仓路径映射写在 <code class="mono">AGENTS.md</code>。类别不明按交付物处理。</p>
+</section>
+
+<section>
+  <h2>2. 两段式路由与拨盘记法</h2>
+  <p>主代理持有需求、分解、契约、路由与验收。一次派发先选（角色, 档位），再在该格的填充表里做帕累托选择。</p>
+  <h3>第一段</h3>
+  <p>角色按产物：证据走 explorer，改动走 worker，承诺或验收走 advisor。档位在首轮池的 <code class="mono">light</code> 与 <code class="mono">standard</code> 之间，按「契约抓不住的判断有多少」自由选择，无前置条件。<code class="mono">senior</code> 只经第 3 节的 senior 门或用户声明。</p>
+  <h3>第二段</h3>
+  <p>在该格的候选里，按用户档案声明的速度、价格、能力、专长做取舍。专长只打破平手，不推翻第一段。没有任何声明时，取最便宜且够用的候选，车道之间按各车道默认拨盘比较，不把某车道更便宜的型号或更低 effort 提前拿来比。</p>
+  <p>某条车道不可用或超时：同一格换另一个填充，并披露。两条 CLI 车道都不可用时落到 claude lane，并说明失去的跨厂商复核。可用性由这次派发的结果决定，不靠事先探测。</p>
+  <h3>记法 <code class="mono">model[a*, b, c]</code></h3>
+  <p>拨盘写作 <code class="mono">model[a*, b, c]</code>：方括号里是这一格、这一型号可选的 effort，全部属于首轮，<code class="mono">*</code> 标默认。没有 effort 维度的型号裸写（例如 <code class="mono">haiku-4-5</code>）。已退役的 <code class="mono">|</code>（仅升级）记法不再使用。</p>
+  <p class="note">档案里的具体型号排序是用户判断，见第 12 节。本节只说明机制。</p>
+</section>
+
+<section>
+  <h2>3. 升级梯 R1–R4 与 senior 门</h2>
+  <table>
+    <tr><th>规则</th><th>含义</th></tr>
+    <tr><td>R1</td><td>验收未过：返工票，同会话、同拨盘。契约缺口：修正后的契约，仍回同一条车道会话。</td></tr>
+    <tr><td>R2</td><td>返工票也未过，且归因为能力：一次<strong>提升</strong>。新会话，接管契约 = 原契约 + 上轮报告 + receipt。一次提升要么同型号升 effort，要么换型号。</td></tr>
+    <tr><td>R3</td><td>同一型号最多提升一次。再提升必须换型号，除非更高各格里没有别的型号。</td></tr>
+    <tr><td>R4</td><td>执行时出现较大问题（工具反复失败、跑飞、触碰保留项）可跳过返工票，直接换型号，记一次失败。</td></tr>
+  </table>
+  <p><strong>senior 门：</strong>首轮池内两次能力归因的失败，或用户声明。两次失败指：原拨盘的返工票失败，换型号重派后再失败。这与决策类型门的「同一问题两次失败」重合；advisor 的 verdict 顺带裁定是否上 senior。</p>
+  <p>提升跑在接管契约下：那是契约形状，不是档位。契约缺口的路径不走升档：修正契约，仍回同一车道会话。</p>
+</section>
+
+<section>
+  <h2>4. 决策类型门与验证三层</h2>
+  <p>决策类型门约束任何主代理、任一档位、两种姿态。它是技能正文规则，不是 hook。到点位咨询 advisor 的<strong>决策</strong>形状：传入决定、约束、备选；advisor 自己读代码。对 verdict 采取行动，或公开分歧；不得静默忽略。没有机械强制，也没有逐 diff 过审。</p>
+  <ul class="tight">
+    <li>承诺一种架构、数据迁移、API 形状或重构策略</li>
+    <li>推翻既定方案</li>
+    <li>改公共接口或跨模块依赖</li>
+    <li>放宽验收标准</li>
+    <li>同一问题两次失败</li>
+  </ul>
+  <p>advisor 的<strong>验收</strong>形状由验证第 3 层到达，不按步数触发。从 5.1.0 起，「宣告多步交付物完成前」不再是门的一项。</p>
+  <p>报告是声称，不是证据。审查对象是契约。三层：</p>
+  <table>
+    <tr><th>层级</th><th>何时</th><th>做什么</th></tr>
+    <tr><td>第 1 层</td><td>每条车道默认</td><td>接受车道的验证证据（命令、退出码、输出尾、对照工作树抽查）加上 <code class="mono">git diff --stat</code>。完整无范围的 <code class="mono">git diff</code> 不进主代理上下文。</td></tr>
+    <tr><td>第 2 层</td><td>报告、<code class="mono">git diff --stat</code> 或验证输出引起具体怀疑</td><td>读路径范围的 <code class="mono">git diff &lt;file&gt;</code>。车道自己写的验收测试是声称的一部分，要读它。</td></tr>
+    <tr><td>第 3 层</td><td>正确性关键、同族 diff、或用户要求评审</td><td>advisor 以验收形状读 diff 与 receipt，返回 verdict 与标出的片段。同族 diff 优先换跨厂商填充。verdict 仍是声称，终裁在主代理。</td></tr>
+  </table>
+  <p>「应该能工作」「测试应该过」或没有命令输出的报告，都不算完成。</p>
+</section>
+
+<section>
+  <h2>5. 五部交付契约与两份前言</h2>
+  <p>车道不共享主代理上下文。每次派发携带五部：</p>
+  <table>
+    <tr><th>部</th><th>键</th><th>内容</th></tr>
+    <tr><td>1. Objective</td><td class="mono">objective</td><td>结果与验收标准，不是步骤</td></tr>
+    <tr><td>2. Files</td><td class="mono">files</td><td>授权范围（路径或目录）；范围内新建文件允许</td></tr>
+    <tr><td>3. Interfaces</td><td class="mono">interfaces</td><td>结果必须匹配的共享或外部契约；可以为无</td></tr>
+    <tr><td>4. Constraints</td><td class="mono">constraints</td><td>保留项：不得改什么、上游已钉死的选择、调用方留在自己会话里的操作。约束车道、其子代理与其验证命令</td></tr>
+    <tr><td>5. Verification</td><td class="mono">verification</td><td>worker：其输出即验收证据的命令，至少一条在目标未达成时会失败。explorer / advisor：期望的证据或 verdict 形状，可为空</td></tr>
+  </table>
+  <p>Constraints 未钉死的实现选择归车道：不上报、不等待。契约缺口（预期行为不明、要求冲突、必须改保留接口、无法判定什么算通过）上报，由架构师修正契约。</p>
+  <p>存在上游任务件时，契约引用其路径，只内联验收标准、保留约束与验证命令，并标明哪些节有约束力。主代理不重述、不重规划。</p>
+  <p>返工票是给同一车道的新契约，复用其会话：Objective 写缺陷（违反的要求、可复现失败、期望行为、证据）；Files 仍是原范围；Verification 是失败的那条检查。票内不写修复方案。</p>
+
+  <h3>两份前言</h3>
+  <p>前言是执行侧契约的单源，与 runner 同目录解析：<code class="mono">&lt;plugin-root&gt;/skills/orchestration/</code>。当前 <code class="mono">mode</code> 所需前言缺失时，runner 退出非零、不拉起子进程，stderr 指名文件；不写 receipt。</p>
+  <table>
+    <tr><th>文件</th><th>用于</th><th>执行侧约定</th></tr>
+    <tr><td class="mono">lane-preamble.md</td><td><code class="mono">mode: implement</code>（缺省）</td><td>执行者持有 Files 内的交付物。保留操作仍约束它及其子代理。以 <code class="mono">WORKER REPORT</code>（<code class="mono">OBJECTIVE / CHANGES / VERIFIED / GAPS</code>）结尾。</td></tr>
+    <tr><td class="mono">lane-preamble-report.md</td><td><code class="mono">mode: report</code></td><td>只读的 explorer 或 advisor。<code class="mono">Files</code> 是读取范围，不是写权限。回答 Objective。explorer 以证据形状结尾，advisor 以 verdict 形状结尾。不含 <code class="mono">WORKER REPORT</code>。</td></tr>
+  </table>
+  <p>Cursor 的 Task 不会自动前置前言。worker 派发的 prompt 首行指向 <code class="mono">lane-preamble.md</code>；explorer / advisor 派发的 prompt 首行指向 <code class="mono">lane-preamble-report.md</code>。不要在契约正文里复述前言。</p>
+</section>
+
+<section>
+  <h2>6. 两条 runner：spec、receipt、错误类与报告模式</h2>
+  <p>主代理把五部写成 JSON，放到目标仓 <code class="mono">.fable-advisor/pending/&lt;slug&gt;.json</code>，然后跑 runner。车道在 <strong>runner 进程退出</strong>时结束。receipt 打印到 stdout，并写入 <code class="mono">.fable-advisor/receipts/&lt;spec_hash&gt;.json</code>。<code class="mono">error_class: complete</code> 时 runner 自己删除 pending spec。</p>
+  <pre class="mono" style="white-space:pre-wrap;background:var(--ink);color:#f4efe4;padding:1rem;border-radius:6px;">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"
+node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"</pre>
+  <p>未知顶层键或越界值记 <code class="mono">spec_invalid</code>，永不静默改写。CLI 车道验收 = <code class="mono">error_class: complete</code> + 非空会话 id + 可对照工作树抽查的验证输出 + 技能正文的分层验收。引用 receipt 里的型号或 effort 时写「已提交，未观测」：那是 runner 提交给 CLI 的值，不是从运行事件读回来的。</p>
+
+  <h3>spec 键</h3>
+  <p>五部键：<code class="mono">objective</code>、<code class="mono">files</code>、<code class="mono">interfaces</code>、<code class="mono">constraints</code>、<code class="mono">verification</code>。implement 模式 <code class="mono">verification</code> 至少一条；report 模式可以为空数组。<code class="mono">files</code> 在 report 模式是读取范围，也可以为空。</p>
+  <table>
+    <tr><th>键</th><th>codex</th><th>grok</th></tr>
+    <tr><td class="mono">mode</td><td colspan="2"><code class="mono">implement</code>（缺省）或 <code class="mono">report</code>。其他值 → <code class="mono">spec_invalid</code></td></tr>
+    <tr><td class="mono">model</td><td>白名单 <code class="mono">gpt-6-astra</code>（缺省）、<code class="mono">gpt-5.6-luna</code>、<code class="mono">gpt-5.6-sol</code>。名单外 → <code class="mono">spec_invalid</code></td><td>可省略：省略则不传 <code class="mono">-m</code>，由 CLI 默认目录决定。目录可读时按目录校验；目录不可读时跳过校验，由实跑决定可用性，不是 <code class="mono">grok_unavailable</code></td></tr>
+    <tr><td class="mono">effort</td><td><code class="mono">low | medium | high | xhigh | max</code>。省略时按型号：astra → <code class="mono">medium</code>，luna → <code class="mono">max</code>，sol → <code class="mono">high</code></td><td><code class="mono">low | medium | high | xhigh</code>。省略则不传 effort 旗标，CLI 用自己的默认；receipt 记提交值（省略为 null）</td></tr>
+    <tr><td class="mono">title</td><td colspan="2">可选非空字符串。prompt 第一行是标题原文（纯文本，不加 Markdown 标记），空一行，再前言，再五部。省略时第一行是 spec 文件去掉 <code class="mono">.json</code> 后的文件名。空串或非字符串 → <code class="mono">spec_invalid</code>、不拉起子进程</td></tr>
+    <tr><td class="mono">service_tier</td><td>可省略；合法值只有 <code class="mono">fast</code></td><td>不是 spec 键</td></tr>
+    <tr><td class="mono">idle_timeout_sec</td><td colspan="2">静默截止，缺省 600。只切「最后一次事件之后的沉默」，跳过验证</td></tr>
+    <tr><td class="mono">timeout_sec</td><td colspan="2">整次运行的绝对上限。无缺省；省略则不封顶</td></tr>
+    <tr><td class="mono">resume_session_id</td><td>上次的 <code class="mono">codex_session_id</code>；调用 <code class="mono">codex exec resume &lt;id&gt;</code></td><td>上次的 <code class="mono">grok_session_id</code>；传 <code class="mono">--resume &lt;id&gt;</code></td></tr>
+  </table>
+
+  <h3>白名单与回退</h3>
+  <p>codex 目录是静态白名单。启动前回退只保留 astra → luna：条件是 <code class="mono">resume_session_id</code> 为空、请求型号是 <code class="mono">gpt-6-astra</code>、且首次结果为 <code class="mono">preparation_stalled</code>，或 <code class="mono">codex_failed</code> 且尚无会话 id。回退后 receipt 为 <code class="mono">model_requested: gpt-6-astra</code>、<code class="mono">model_used: gpt-5.6-luna</code>、<code class="mono">fallback_reason</code> 非空（值为第一次的错误类）。会话一旦建立不再回退。<code class="mono">gpt-5.6-sol</code> 与 luna 一样不回退：点名 sol 失败时 <code class="mono">model_used</code> 仍是 sol，<code class="mono">fallback_reason</code> 为 null。</p>
+  <p>grok 车道没有型号回退，<code class="mono">fallback_reason</code> 恒为 null。不要预先探测 CLI 登录态；最多检查安装（<code class="mono">which grok</code>）。可用性以 receipt 为准。</p>
+
+  <h3>receipt 字段</h3>
+  <p>两条 runner 都写：<code class="mono">receipt_version</code>、<code class="mono">mode</code>、<code class="mono">report</code>（仅 report 模式带 CLI 最终消息，implement 为 null）、<code class="mono">spec_hash</code>、<code class="mono">cwd</code>、<code class="mono">producer</code>（<code class="mono">codex</code> 或 <code class="mono">grok</code>）、<code class="mono">model</code>、<code class="mono">model_requested</code>、<code class="mono">model_used</code>、<code class="mono">fallback_reason</code>、<code class="mono">effort</code>、<code class="mono">resumed_from</code>、<code class="mono">end_to_close_ms</code>、<code class="mono">max_idle_ms</code>、<code class="mono">idle_timeout_sec</code>、<code class="mono">timeout_sec</code>、<code class="mono">started_at</code>、<code class="mono">finished_at</code>、<code class="mono">exit_status</code>、<code class="mono">error_class</code>、<code class="mono">dirty_baseline</code>、<code class="mono">changed_files</code>、<code class="mono">verification</code>。</p>
+  <p>codex 另有 <code class="mono">service_tier</code>、<code class="mono">codex_session_id</code>、<code class="mono">codex_final_message</code>。grok 另有 <code class="mono">grok_session_id</code>（runner 注入 <code class="mono">--session-id</code>）、<code class="mono">stop_reason</code>、<code class="mono">usage</code>、<code class="mono">total_cost_usd</code>、<code class="mono">grok_final_message</code>。</p>
+  <p><code class="mono">dirty_baseline</code>：拉起 CLI 之前跑一次 <code class="mono">git status --porcelain</code>。非空为 <code class="mono">true</code>，空为 <code class="mono">false</code>，这次 <code class="mono">git status</code> 本身失败为 <code class="mono">null</code> 并继续。两条 runner、两种模式都记。运行后的 <code class="mono">git status</code> 失败仍是 <code class="mono">git_status_failed</code>。</p>
+  <p><code class="mono">end_to_close_ms</code> 与 <code class="mono">max_idle_ms</code> 是诊断，不是门。</p>
+
+  <h3>错误类</h3>
+  <p>共享：<code class="mono">complete</code>、<code class="mono">spec_invalid</code>、<code class="mono">preparation_stalled</code>、<code class="mono">idle_timeout</code>、<code class="mono">timeout</code>、<code class="mono">interrupted</code>、<code class="mono">verification_failed</code>、<code class="mono">no_diff</code>、<code class="mono">unexpected_diff</code>、<code class="mono">empty_report</code>、<code class="mono">git_status_failed</code>。</p>
+  <p>codex 另有 <code class="mono">codex_unavailable</code>（PATH 上没有 codex）、<code class="mono">codex_failed</code>。grok 另有 <code class="mono">grok_unavailable</code>（拉起进程得到 <code class="mono">ENOENT</code>）、<code class="mono">grok_failed</code>。</p>
+  <p><code class="mono">no_diff</code>：implement 模式且 <code class="mono">files</code> 非空、运行后无改动；pending 文件留下。普通 spec 要调查；返工票上这可能表示缺陷无法复现。<code class="mono">idle_timeout</code> 与 <code class="mono">timeout</code> 表示时钟切断，跳过验证；恢复路径是带该 receipt 会话 id 的返工票（<code class="mono">resume_session_id</code>），不是主代理手验工作树。</p>
+  <p>implement 模式应先有干净工作树：<code class="mono">git status --porcelain</code> 为空。开跑前已有脏文件时，空跑会看起来像做了工作。implement 的 <code class="mono">no_diff</code> 与 <code class="mono">git_status_failed</code> 语义相对 5.1.0 不变。</p>
+
+  <h3>报告模式语义与脏基线规则</h3>
+  <ul class="tight">
+    <li>CLI 以只读工具集运行。codex 为 <code class="mono">--sandbox read-only</code>。</li>
+    <li>前言用报告前言，不用 worker 前言。</li>
+    <li>工作树没有被本车道弄脏，是正常结果，记 <code class="mono">complete</code>。receipt 另带 <code class="mono">mode</code> 与 <code class="mono">report</code>。</li>
+    <li>开跑前干净、跑完变脏：<code class="mono">unexpected_diff</code>，不是 <code class="mono">complete</code>。</li>
+    <li><code class="mono">dirty_baseline: true</code> 时不判 <code class="mono">unexpected_diff</code>。<code class="mono">empty_report</code> 与 <code class="mono">complete</code> 仍按原规则。<code class="mono">changed_files</code> 仍记录运行后观察到的路径。此时只读工具集是唯一防线。</li>
+    <li><code class="mono">dirty_baseline: null</code>（开跑前 <code class="mono">git status</code> 失败）不满足「为 true 则跳过」，跑完若观察到改动仍会判 <code class="mono">unexpected_diff</code>。</li>
+    <li>工作树干净但收集到的报告文本为空或只有空白：<code class="mono">empty_report</code>，pending spec 留下。</li>
+    <li>报告模式判定顺序：先 <code class="mono">unexpected_diff</code>（本车道弄脏的树），再 <code class="mono">empty_report</code>，再 <code class="mono">complete</code>。</li>
+    <li>receipt gate 对报告模式的 pending spec 同样生效。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>7. claude 车道的九份 agent 文件</h2>
+  <p>一份文件对应一个（角色, effort）。以 <code class="mono">fable-advisor:&lt;name&gt;</code> 派发。文件名与 <code class="mono">name:</code> 用缩写（<code class="mono">l</code> / <code class="mono">md</code> / <code class="mono">h</code> / <code class="mono">xh</code>）；文首字段 <code class="mono">effort:</code> 写全称。effort 没有按次参数：文件钉死 effort，按次 <code class="mono">model</code> 选择填充。</p>
+  <p>不要传 <code class="mono">name</code>（具名队友）：传了则文首字段 <code class="mono">effort:</code> 被忽略，静默落到该型号在 <code class="mono">~/.claude/settings.json</code> 里的档位。省略 <code class="mono">name</code> 才是后台子代理，文首 effort 生效。</p>
+  <p>agent 文件只在会话启动时加载。中途新增或改名会得到 <code class="mono">Agent type '&lt;name&gt;' not found</code>。改池之后必须重启会话。</p>
+  <p>解析顺序：按次 <code class="mono">model</code> → 文件的 <code class="mono">model:</code> → <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code> → 主会话模型。内置 <code class="mono">Explore</code> 仍可用作 light explorer，但没有自己的 effort；省略 <code class="mono">model</code> 时跑会话模型（Claude API 上限 Opus）。</p>
+  <table>
+    <tr><th>name</th><th>角色</th><th>effort</th><th>模型处理</th></tr>
+    <tr><td class="mono">explorer-h</td><td>explorer</td><td class="mono">high</td><td>无 <code class="mono">model:</code> 键。工具仅 <code class="mono">Read</code>、<code class="mono">Grep</code>、<code class="mono">Glob</code>。按次 <code class="mono">model</code> 必给；省略则回落到会话模型</td></tr>
+    <tr><td class="mono">explorer-xh</td><td>explorer</td><td class="mono">xhigh</td><td>同上</td></tr>
+    <tr><td class="mono">worker-md</td><td>worker</td><td class="mono">medium</td><td>无 <code class="mono">model:</code>。备用拨盘，只在调用方按名点到时到达</td></tr>
+    <tr><td class="mono">worker-h</td><td>worker</td><td class="mono">high</td><td>无 <code class="mono">model:</code>。已结算契约的常规入口</td></tr>
+    <tr><td class="mono">worker-xh</td><td>worker</td><td class="mono">xhigh</td><td>无 <code class="mono">model:</code>。实现选择本身很难时用</td></tr>
+    <tr><td class="mono">advisor-l</td><td>advisor</td><td class="mono">low</td><td><code class="mono">model: fable</code>；<code class="mono">readonly: true</code>；工具 <code class="mono">Read</code>、<code class="mono">Grep</code>、<code class="mono">Glob</code></td></tr>
+    <tr><td class="mono">advisor-md</td><td>advisor</td><td class="mono">medium</td><td>同上</td></tr>
+    <tr><td class="mono">advisor-h</td><td>advisor</td><td class="mono">high</td><td>同上</td></tr>
+    <tr><td class="mono">advisor-xh</td><td>advisor</td><td class="mono">xhigh</td><td>同上</td></tr>
+  </table>
+  <p>插件不固定 advisor 的缺省拨盘。缺省写在用户路由档案：决策形状用 <code class="mono">standard</code> 格，验收形状用 <code class="mono">light</code> 格；落到哪份 agent 文件由该格所选拨盘的 effort 决定（<code class="mono">advisor-l</code> / <code class="mono">advisor-md</code> / <code class="mono">advisor-h</code> / <code class="mono">advisor-xh</code>）。</p>
+  <p>没有 <code class="mono">explorer-l</code>：haiku 没有 effort 维度，light explorer 用 <code class="mono">explorer-h</code> 加按次型号。从 Claude 主代理派本车道时须披露：同族（没有跨厂商复核）、共享 Anthropic 额度。Fable 作为 advisor 走用量额度，账户需要先启用。</p>
+</section>
+
+<section>
+  <h2>8. Cursor：钉派发、cursor lane、runner 经 Shell、用户级门禁</h2>
+  <p>Cursor 经 Claude 插件兼容路径加载本插件。grok lane、claude lane 与 cursor lane 是原生 Task 派发，各自钉模型。codex lane 不在 Task 枚举里。</p>
+  <h3>钉模型的 Task</h3>
+  <ul class="tight">
+    <li>worker：<code class="mono">generalPurpose</code> + 显式 <code class="mono">model</code>，prompt 首行指向 <code class="mono">lane-preamble.md</code>。</li>
+    <li>explorer：<code class="mono">explore</code>（或 <code class="mono">generalPurpose</code>）+ 显式 <code class="mono">model</code>，prompt 首行指向 <code class="mono">lane-preamble-report.md</code>。</li>
+    <li>advisor：具名 <code class="mono">advisor-*</code> agent，显式钉模型，prompt 首行指向报告前言。</li>
+  </ul>
+  <p>钉的家族就是车道：Grok 家族是 grok lane，Claude 家族是 claude lane，Cursor 自家模型是 <strong>cursor lane</strong>。cursor lane 只在 Cursor 宿主存在。插件 agent 的文首字段 <code class="mono">model:</code> 在 Cursor 对插件加载的 agent 不生效；省略 <code class="mono">model</code> 会继承会话模型。Cursor 不向主代理回传执行元数据，披露时标「已请求，未确认」。effort 钉在型号名上；档案里的 <code class="mono">model[…]</code> 在这里映射为型号名变体。用本轮允许名单里的活型号名，不要用技能示例里可能缺席的名字。</p>
+  <p>同模派发是唯一允许省略 <code class="mono">model</code> 的派发：编排姿态下的准则散文，<code class="mono">generalPurpose</code> 继承会话模型。披露里写 <code class="mono">inherit</code>，以免被当成漏钉。验收走技能正文的三层；Task 派发没有 receipt。</p>
+  <p>返工用 Task <code class="mono">resume</code> 加上返工契约。再失败则按升级梯归因。竞赛用隔离工作树的派发类型（当前枚举里的 <code class="mono">best-of-n-runner</code>），每名选手自己的分支与工作目录。</p>
+
+  <h3>codex / grok runner 经 Shell</h3>
+  <p>GPT 家族：<code class="mono">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec … --cwd "$(pwd)"</code>，经 Shell。spec、pending/receipt、等待协议、<code class="mono">resume_session_id</code>、<code class="mono">mode: "report"</code> 与 Claude Code 相同。两处不同：没有 receipt gate（Cursor 是否加载插件 Stop hook 未经核实，本车道按不加载设计，与 handoff 同一安全级）；等待跟 Shell 时钟，长票后台跑、按 shell id 等。</p>
+  <p>grok runner 同样经 Shell：<code class="mono">node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec … --cwd "$(pwd)"</code>，同一套 spec、pending/receipt 与等待协议，同样没有 receipt gate。尚未在 Cursor 实跑。</p>
+
+  <h3>用户级门禁与钉模型规则</h3>
+  <p><strong>lane family gate</strong> 是用户级 <code class="mono">preToolUse</code> 脚本 <code class="mono">cursor-hooks/fable-lane-family-gate.py</code>（活体 <code class="mono">~/.cursor/hooks/fable-lane-family-gate.py</code>）。它守「静默继承会话模型」，不查家族。对 <code class="mono">advisor-</code> 前缀的 <code class="mono">subagent_type</code>，<code class="mono">model</code> 缺失、空串或 <code class="mono">inherit</code> 则 <code class="mono">deny</code>。<code class="mono">resume</code> 跳过型号检查。<code class="mono">explore</code> / <code class="mono">generalPurpose</code> 不在此门范围内。空 stdin 则 <code class="mono">deny</code>。不是插件 hook，也不扩到未标记的 worker。</p>
+  <p>钉模型规则是用户级 Cursor 规则 <code class="mono">cursor-hooks/fable-lane-pin.mdc</code>（活体 <code class="mono">~/.cursor/rules/fable-lane-pin.mdc</code>）：提醒每次显式钉允许名单里的型号名；省略 <code class="mono">model</code> 的 <code class="mono">generalPurpose</code> 是同模派发，不是厂商车道。</p>
+</section>
+
+<section>
+  <h2>9. 用户级文件与伴生安装器</h2>
+  <p>正典是仓内编辑源。活体是宿主实际读取的用户级副本。活体只由伴生安装器写入，安装时无条件覆盖，不留 <code class="mono">.bak</code>。中文备份不安装。</p>
+  <table>
+    <tr><th>正典</th><th>活体</th></tr>
+    <tr><td class="mono">docs/agents/fable-advisor-routing.md</td><td class="mono">~/.claude/docs/fable-advisor-routing.md</td></tr>
+    <tr><td class="mono">cursor-hooks/fable-lane-pin.mdc</td><td class="mono">~/.cursor/rules/fable-lane-pin.mdc</td></tr>
+    <tr><td class="mono">cursor-hooks/fable-lane-family-gate.py</td><td class="mono">~/.cursor/hooks/fable-lane-family-gate.py</td></tr>
+  </table>
+  <p>退役列表（存在即删除）：<code class="mono">~/.claude/rules/fable-advisor.md</code>、<code class="mono">~/.cursor/rules/fable-advisor.mdc</code>。</p>
+  <p>伴生安装器是仓库检出内的 <code class="mono">scripts/install-user-level.py</code>。它不进 <code class="mono">plugin/</code>，不作为插件 hook，也不随 <code class="mono">claude plugin update</code> 自动运行。插件更新后由用户在每侧手动跑一次。</p>
+  <table>
+    <tr><th>旗标</th><th>行为</th></tr>
+    <tr><td>（无）</td><td>默认家目录为当前用户，写入三件活体，删除退役文件</td></tr>
+    <tr><td class="mono">--home &lt;目录&gt;</td><td>可重复；逐个家目录写入</td></tr>
+    <tr><td class="mono">--check</td><td>只比对，不写不删。任一活体缺失或字节不同 → 退出非零并列出。退役文件仍在只警告，不因此失败</td></tr>
+    <tr><td class="mono">--also &lt;目录&gt;</td><td>把同一批英文正典按源文件名（不含目录）平铺写入该备份目录</td></tr>
+  </table>
+  <p>每个目标打印动作前缀：<code class="mono">installed</code> / <code class="mono">unchanged</code> / <code class="mono">removed</code> / <code class="mono">warning</code>。</p>
+  <p><code class="mono">~/.cursor/hooks.json</code>：只检测 <code class="mono">preToolUse</code> 里是否有包含 <code class="mono">fable-lane-family-gate.py</code> 的命令字段。文件不存在或没有该条目时打印 <code class="mono">warning</code>，退出码不变，不修改该文件。</p>
+  <p>本机两侧一次写入：</p>
+  <pre class="mono" style="white-space:pre-wrap;background:var(--ink);color:#f4efe4;padding:1rem;border-radius:6px;">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</pre>
+</section>
+
+<section>
+  <h2>10. receipt gate</h2>
+  <p>插件 Stop hook，针对<strong>主会话自己</strong>：排了 spec 却不跑、或把非 <code class="mono">complete</code> 的 receipt 当完成。实现是 <code class="mono">plugin/hooks/hooks.json</code> 调 <code class="mono">plugin/hooks/receipt-gate.py</code>。</p>
+  <ul class="tight">
+    <li>扫描 <code class="mono">&lt;cwd&gt;/.fable-advisor/pending/*.json</code>。按 spec 文件 sha256 找 <code class="mono">.fable-advisor/receipts/&lt;digest&gt;.json</code>。</li>
+    <li>没有 receipt，或 <code class="mono">error_class</code> 不是 <code class="mono">complete</code>：stderr 列出 pending 文件，退出 2，拦住结束。</li>
+    <li>没有 pending 目录：放行。</li>
+    <li><code class="mono">stop_hook_active</code> 为真：放行，避免重入。</li>
+    <li>stdin 不是合法 JSON：失败时放行（退出 0）。没有 python 运行时：hook 包装同样失败时放行并在 stderr 说明。</li>
+  </ul>
+  <p>门禁只强制 receipt 存在且为 <code class="mono">complete</code>；内容仍由主代理判断。放弃或改道时要亲手删 pending 文件并说明，不能只靠这扇门。handoff 目录在 <code class="mono">.fable-advisor/handoff/</code>，故意不在此视野内。Cursor 经 Shell 的 runner 按无此门设计。</p>
+</section>
+
+<section>
+  <h2>11. 测试套件</h2>
+  <table>
+    <tr><th>文件</th><th>证明什么</th></tr>
+    <tr><td class="mono">tests/test_runner_contract.py</td><td>两条 runner 在进程边界的契约：<code class="mono">mode</code> 校验；implement / report 分流与前言拼装；<code class="mono">empty_report</code>；字段约定的缺省与越界；grok <code class="mono">effort</code>；前言缺失则不拉起子进程；<code class="mono">*_unavailable</code> 字段；<code class="mono">no_diff</code> / <code class="mono">git_status_failed</code>；<code class="mono">resume</code> 调用；codex 单跳回退与边界（sol 不回退）；空闲诊断；中断与进程树；空闲截止与整段时限；<code class="mono">dirty_baseline</code>（报告模式已脏 → <code class="mono">complete</code>；开跑前干净且 CLI 写文件 → <code class="mono">unexpected_diff</code>；开跑前 <code class="mono">git status</code> 失败记 <code class="mono">null</code>）；<code class="mono">title</code> 首行与 <code class="mono">spec_invalid</code>；终端事件驱动计时。假 CLI、假 git、真实 spec 与 receipt。</td></tr>
+    <tr><td class="mono">tests/test_install_user_level.py</td><td>安装器在命令行边界：空家目录装三件且逐字节一致；改活体后 <code class="mono">--check</code> 非零再安装覆盖；<code class="mono">retire</code> 路径被删；<code class="mono">--also</code> 按源文件名写出；<code class="mono">hooks.json</code> 缺失或无门禁条目时打印 <code class="mono">warning</code> 且退出 0、不改文件；有门禁条目则无 <code class="mono">warning</code>；两个 <code class="mono">--home</code> 都写。</td></tr>
+    <tr><td class="mono">tests/test_user_level_archive.py</td><td>英文正典存在；钉模型规则中文备份存在、含中文、含「不是活体」；路由档案中文备份存在且含中文。每个存在的家目录调用 <code class="mono">install-user-level.py --check</code>。prompts 仓库不在比对里。</td></tr>
+    <tr><td class="mono">tests/test_zh_mirror.py</td><td>每个 <code class="mono">plugin/**/*.md</code> 在 <code class="mono">docs/zh/</code> 有同一相对路径的孪生；没有孤儿孪生。只查存在，不查译文内容。</td></tr>
+    <tr><td class="mono">tests/test_receipt_gate.py</td><td>Stop hook 进程边界：无 pending 目录放行；<code class="mono">complete</code> receipt 放行；无 receipt 或非 complete（含 <code class="mono">timeout</code>）拦住；<code class="mono">stop_hook_active</code> 放行；非法 JSON 失败时放行；报告模式 pending 同样拦住。</td></tr>
+    <tr><td class="mono">tests/test_lane_family_gate.py</td><td>Cursor Task 钉模型门：advisor 缺 model / <code class="mono">inherit</code> / 空串则 <code class="mono">deny</code> 且文案不含 <code class="mono">family</code>；显式型号则 <code class="mono">allow</code>；<code class="mono">resume</code> 跳过；worker / <code class="mono">generalPurpose</code> / <code class="mono">explore</code> 不在范围内；未知 <code class="mono">advisor-*</code> 仍守；空 stdin 则 <code class="mono">deny</code>；父信封上的 model 不算子代理的钉。另比对仓内正典与两侧活体（若存在）。带 <code class="mono">--self-test</code>。</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>12. 路由档案</h2>
+  <p>填充表是（角色, 档位）→ 候选车道与拨盘的有序表，属于用户判断，不是插件行为。插件技能只规定：调用方指令点名哪份档案就读哪份；首次分配模型前读；档案变化或滑出上下文时重读；未指定或读不到则报缺口、不假定内容。</p>
+  <table>
+    <tr><th>角色</th><th>路径</th></tr>
+    <tr><td>正典（唯一编辑源）</td><td class="mono">docs/agents/fable-advisor-routing.md</td></tr>
+    <tr><td>活体（技能实际读取、由调用方指名）</td><td class="mono">~/.claude/docs/fable-advisor-routing.md</td></tr>
+    <tr><td>中文备份（不安装）</td><td class="mono">docs/agents/fable-advisor-routing.zh.md</td></tr>
+  </table>
+  <p>结构：声明日期与锚定模型 → 首轮池说明（前两列自由选，第三列有门）→ Claude Code 表 → Cursor 表 → 升级梯引用（指向技能，不复述梯子）→ 资源偏好（含基准数据与声明日期）→ 调整方法。advisor 的缺省也在档案里：决策形状用 <code class="mono">standard</code> 格，验收形状用 <code class="mono">light</code> 格；agent 文件跟着所选拨盘的 effort 走。</p>
+  <p>表头形状是角色 ×（<code class="mono">light</code> / <code class="mono">standard</code> / <code class="mono">senior</code> 有门）。格内拨盘用 <code class="mono">model[a*, b, c]</code>。Cursor 表按机制映射同一份取值：GPT 行经 codex runner（Shell）；grok 的部分 effort 经 grok runner（Shell），其余可钉本轮允许名单里的型号名；Claude 行只取本轮允许名单有的型号名变体；Cursor 自家模型走 cursor lane。型号名来自该轮允许名单，档案不持久化可能过期的型号名。缺席的变体跳过，并在披露里说明。</p>
+  <p>易变状态（额度、截止日期）只在开场口头声明，只对当次会话有效，不落盘。handoff lane 只在用户按任务或按会话声明后进入候选。</p>
+  <h3>如何调整</h3>
+  <ol>
+    <li>只改正典里的格子。中文文件是译文，不是第二编辑源。</li>
+    <li>从仓库检出跑伴生安装器，刷新活体。本机：<code class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</code>。<code class="mono">--check</code> 只报告漂移。</li>
+    <li>不必改技能正文，也不必改插件。技能在档案变化时重读。改表时更新文首声明日期。</li>
+  </ol>
+  <p class="note">本说明书不复述档案里的型号排名。那些排序是用户在声明日写下的判断，随格子而变。</p>
+</section>
+
+<section>
+  <h2>13. 相对 5.1.0 的改动点</h2>
+  <p>5.1.0 基线提交为 <code class="mono">83ce044</code>（2026-09-16）。5.2.0 是次版本：runner 契约与技能正文语义向后兼容。下面每一条写改了什么、为什么、依据。</p>
+
+  <h3>脏基线 <code class="mono">dirty_baseline</code></h3>
+  <div class="card">
+    <p><strong>改了什么</strong>两条 runner 在拉起 CLI 前跑 <code class="mono">git status --porcelain</code>，receipt 增加布尔字段 <code class="mono">dirty_baseline</code>（失败为 <code class="mono">null</code>）。报告模式且开跑前已脏时不判 <code class="mono">unexpected_diff</code>。implement 模式的 <code class="mono">no_diff</code> / <code class="mono">git_status_failed</code> 不变。「先干净再派」只约束 implement。</p>
+    <p><strong>为什么</strong>5.1.0 用运行后的 <code class="mono">git status</code> 判改动，报告模式把任何脏树都打成 <code class="mono">unexpected_diff</code>。主代理因此拒绝在未提交工作树上派 grok / codex explorer，只读调查被逼去 claude 内置 explorer，丢掉跨厂商复核。</p>
+    <p><strong>依据</strong>ADR 0018 决策 1；工单 01。</p>
+  </div>
+
+  <h3><code class="mono">title</code> 键与 <code class="mono">[fable-advisor] &lt;slug&gt;</code> 退役</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>spec 新增可选顶层键 <code class="mono">title</code>。prompt 第一行是标题原文；省略则用该 spec 文件短名。旧的 <code class="mono">[fable-advisor] &lt;slug&gt;</code> 行删除。receipt 不为此新增字段。Cursor Task 已有 <code class="mono">description</code>，不加标题句。</p>
+    <p><strong>为什么</strong>5.1.0 每条 CLI 车道的 prompt 都以同一段前言开头，codex / grok 会话列表按首行显示，全部是同一句话，回看与续跑时无法分辨。</p>
+    <p><strong>依据</strong>ADR 0018 决策 2；工单 01。</p>
+  </div>
+
+  <h3>报告前言 <code class="mono">lane-preamble-report.md</code> 与内联覆盖段删除</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>implement 前置 <code class="mono">lane-preamble.md</code>；report 前置新文件 <code class="mono">lane-preamble-report.md</code>（只读、Files 是读取范围、回答 Objective、以证据或 verdict 结尾、不含 <code class="mono">WORKER REPORT</code>）。runner 内联的报告模式覆盖段删除。任一前言缺失即非零退出、不拉起子进程。Cursor 侧 explorer / advisor 派发首行改为指向报告前言。</p>
+    <p><strong>为什么</strong>报告模式的车道以前读到的是要求持有 Files、以 <code class="mono">WORKER REPORT</code> 结尾的 worker 前言，执行侧契约自相矛盾。</p>
+    <p><strong>依据</strong>ADR 0018 决策 3；工单 02。承接 <code class="mono">role-pool-posture/issues/10</code>。</p>
+  </div>
+
+  <h3><code class="mono">gpt-5.6-sol</code> 回白名单、不回退</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>codex 白名单加入 <code class="mono">gpt-5.6-sol</code>，省略 effort 时提交 <code class="mono">high</code>。sol 在建立会话前失败不回退到 luna。astra → luna 单跳回退保持。</p>
+    <p><strong>为什么</strong>按档案派 sol 在 5.1.0 会 <code class="mono">spec_invalid</code>。用户要为即将到来的 gpt-6-sol 铺路，届时只改型号名。点名的型号只允许以失败出现在 receipt 里，不能被静默换成 luna。</p>
+    <p><strong>依据</strong>ADR 0018 决策 4（撤销 ADR 0014 决策 11）；工单 01。</p>
+  </div>
+
+  <h3>伴生安装器、两份旧规则退役、漂移测试改 <code class="mono">--check</code>、prompts 退出测试</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>新增 <code class="mono">scripts/install-user-level.py</code>：覆盖三件正典到活体，删除 <code class="mono">~/.claude/rules/fable-advisor.md</code> 与 <code class="mono">~/.cursor/rules/fable-advisor.mdc</code>。无条件覆盖。<code class="mono">hooks.json</code> 只警告不改。<code class="mono">tests/test_user_level_archive.py</code> 改为对每个存在的家目录调用 <code class="mono">--check</code>；prompts 仓库副本退出比对。发布流程在两侧插件更新之后加「跑安装器」一步。</p>
+    <p><strong>为什么</strong>5.1.0 活体靠手抄，两侧仍是带「advisor (default senior)」的旧规则。手抄会漂。prompts 缺席或落后不应当让本仓测试失败。</p>
+    <p><strong>依据</strong>ADR 0018 决策 5（修订 ADR 0011 的「活体须手动拷」）；工单 03。</p>
+  </div>
+
+  <h3>首轮池与 senior 门</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>第一段改为：档位只在 light 与 standard 之间按判断自由选；senior 只经升级梯的门或用户声明。删除「判断很多、代价高就直派 senior 或双填竞赛」作为第一段路径（竞赛条款留在「并行」段）。角色默认 effort 句不再作为技能正文缺省。</p>
+    <p><strong>为什么</strong>主代理频繁把任务派给最贵拨盘。模型没有判断其他模型能力的能力；用户要求把「何时上 senior」写成门，而不是留给模型临场发挥。</p>
+    <p><strong>依据</strong>ADR 0018 决策 6；工单 04。</p>
+  </div>
+
+  <h3>升级梯 R1–R4</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>「升级」段改写成四条：返工票 → 提升（同型号升 effort 或换型号）→ 同型号只提升一次 → 执行时较大问题可跳过返工直接换型号。senior 门与决策类型门「同一问题两次失败」重合。</p>
+    <p><strong>为什么</strong>5.1.0 的升级叙述没有钉死返工、提升、换型号、升档的顺序，同一型号可能被连升多次 effort。</p>
+    <p><strong>依据</strong>ADR 0018 决策 7；工单 04。</p>
+  </div>
+
+  <h3>记法 <code class="mono">model[a*, b, c]</code> 与 <code class="mono">|</code> 退役</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>拨盘记法改为格内全部 effort 首轮可选，<code class="mono">*</code> 标默认。5.1.0 的 <code class="mono">model[first-round options | escalation-only]</code> 退役。</p>
+    <p><strong>为什么</strong>用户要在格内按需选更高 effort，同时默认仍走便宜档。竖线把部分 effort 锁成「仅升级」，与首轮池冲突。</p>
+    <p><strong>依据</strong>ADR 0018 决策 8（修订 ADR 0015 决策 4）；工单 04。</p>
+  </div>
+
+  <h3>cursor lane</h3>
+  <div class="card">
+    <p><strong>改了什么</strong><code class="mono">lanes-cursor.md</code> 与词表增加 cursor lane：钉 Cursor 自家模型（如 composer）的 Task 派发。只在 Cursor 宿主存在。不把 composer 算进 claude lane，也不写进 Claude Code 填充表。</p>
+    <p><strong>为什么</strong>Cursor 侧 explorer @ light 的首位是 Cursor 自家模型。披露时若把它算进 claude lane，会把配额与复核说错。</p>
+    <p><strong>依据</strong>ADR 0018 决策 9；工单 04。</p>
+  </div>
+
+  <h3>grok runner 经 Shell</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>Cursor 车道文档写明 grok runner 可经 Shell 调用，机制与 codex runner 相同（同一 spec、pending/receipt、等待协议；无 receipt gate）。标注尚未在 Cursor 实跑。</p>
+    <p><strong>为什么</strong>档案里 grok 的 <code class="mono">medium</code> / <code class="mono">high</code> 在 Cursor 没有对应型号名变体时，只能走 runner。5.1.0 文档只写了 codex runner 经 Shell。</p>
+    <p><strong>依据</strong>ADR 0018 决策 9；工单 04。</p>
+  </div>
+
+  <h3>版本说明书制度本身</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>从 5.2.0 起每个发布版本有一份自包含中文 HTML：<code class="mono">docs/manuals/&lt;version&gt;.html</code>。两部分：本版完整行为；相对上一版的改动点。属交付物，进仓库、不进 <code class="mono">plugin/</code>、不随插件发布。发布流程在改版本号之前必须先写说明书。</p>
+    <p><strong>为什么</strong>否则读者只能拼 ADR、工单与 diff，才能知道装上的是什么。</p>
+    <p><strong>依据</strong>ADR 0018 决策 11；工单 07。</p>
+  </div>
+
+  <h3>路由档案重写为先写后调</h3>
+  <div class="card">
+    <p><strong>改了什么</strong><code class="mono">docs/agents/fable-advisor-routing.md</code> 按 2026-09-16 的结构重写：首轮池说明、两张表、基准数据、末节调整方法（改格、跑安装器）。取值先落地，之后改格即生效，不改技能正文、不改插件。中文备份同步改写，仍不安装。</p>
+    <p><strong>为什么</strong>5.1.0 档案与旧规则仍允许模型自行判断首轮上 senior，且活体落后。用户要一份能随时改格子、安装器一次刷新活体的档案，而不是改插件。</p>
+    <p><strong>依据</strong>ADR 0018 决策 10；工单 05。</p>
+  </div>
+
+  <div class="box warn">
+    <strong>升级后要做什么</strong>
+    <ol>
+      <li>两侧都跑插件更新：<code class="mono">claude plugin marketplace update fable-advisor</code>，然后 <code class="mono">claude plugin update fable-advisor@fable-advisor</code>。Windows 侧从 WSL 经 <code class="mono">cmd.exe</code> 执行同等命令（先 <code class="mono">cd /mnt/c</code>）。</li>
+      <li>从本仓检出跑伴生安装器，刷新活体并删除两份旧规则：<code class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</code>。用 <code class="mono">--check</code> 确认无漂移。</li>
+      <li>重启 Claude Code 与 Cursor 会话。agent 文件与插件缓存只在新会话生效。跑着的会话会继续用旧版。</li>
+    </ol>
+  </div>
+</section>
+
+<footer>
+  真源：<code class="mono">plugin/skills/orchestration/</code>、<code class="mono">plugin/scripts/run-*.mjs</code>、<code class="mono">plugin/agents/</code>、<code class="mono">plugin/hooks/</code>、<code class="mono">scripts/install-user-level.py</code>、<code class="mono">cursor-hooks/</code>、<code class="mono">tests/*.py</code>、<code class="mono">docs/adr/0018-post-5-1-tuning.md</code>、<code class="mono">CONTEXT.md</code>。填充表取值以活体路由档案为准，本页不将其当作插件行为。
+</footer>
+</body>
+</html>

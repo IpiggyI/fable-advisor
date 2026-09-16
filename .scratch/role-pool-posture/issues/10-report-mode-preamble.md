@@ -4,7 +4,7 @@
 
 **Blocked by:** 09（发布后再动运行时文本，避免与 5.0.0 同批）
 
-**Status:** needs-triage
+**Status:** wontfix
 
 来源：`/code-review` Standards 轴对 `25ddc8d...HEAD` 的判断项；ADR 0014 决策九、十一。范围：`plugin/skills/orchestration/`（新增报告前言文件或在 `lane-preamble.md` 内分节）、两条 runner 的前言加载、`lanes-claude-code.md` / `lanes-cursor.md` 对应句、`docs/zh/` 孪生、契约测试（前言缺失 fail-loud 用例扩到报告前言）。
 
@@ -13,3 +13,9 @@
 - [ ] `lanes-cursor.md`：explorer / advisor 派发首行指向报告前言
 - [ ] 契约测试覆盖：报告模式 prompt 含报告前言且不含 `WORKER REPORT`；implement 模式不变
 - [ ] 中文孪生同提交更新；`python3 tests/test_zh_mirror.py`、`python3 tests/test_runner_contract.py` 绿
+
+## Comments
+
+### 2026-09-16
+
+由 `.scratch/post-5-1-tuning/issues/02-report-preamble.md` 承接全部验收项；本票关闭为 `wontfix`（不是不做，是换票做）。报告前言文件名定为 `lane-preamble-report.md`。

@@ -18,7 +18,7 @@ The rule, in one place: a `Task` whose `subagent_type` starts with `advisor-` ne
 ### Update
 
 1. Edit `cursor-hooks/fable-lane-family-gate.py`; change `decide()` only when the rule itself is the task.
-2. Copy that file onto both live paths. The archive and both live copies must stay byte-identical.
+2. Run `python3 scripts/install-user-level.py` from the checkout (repeat `--home` for each live home). The archive and both live copies must stay byte-identical.
 3. On a new machine only, merge the example `preToolUse` fragment. Do not edit a live `hooks.json` unless the user named that file.
 4. Run `python3 cursor-hooks/fable-lane-family-gate.py --self-test` and `python3 tests/test_lane_family_gate.py`.
 
@@ -26,7 +26,7 @@ Done when `--self-test` prints `self-test ok` and the drift test passes against 
 
 ## Task pin rule
 
-Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `alwaysApply` user rule, not from this repo. The Chinese backup is `cursor-hooks/zh/fable-lane-pin.mdc` and is not installed. The copy in the prompts repo (`/mnt/d/Development/Local/prompts/current-prompts/rules/fable-lane-pin.cursor.mdc`) is a deployment snapshot; edit here.
+Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `alwaysApply` user rule, not from this repo. The Chinese backup is `cursor-hooks/zh/fable-lane-pin.mdc` and is not installed.
 
 - WSL: `/home/hyy/.cursor/rules/fable-lane-pin.mdc`
 - Windows: `C:/Users/Shy/.cursor/rules/fable-lane-pin.mdc`
@@ -34,7 +34,7 @@ Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `always
 ### Update
 
 1. Edit `cursor-hooks/fable-lane-pin.mdc`.
-2. Copy that file onto both live paths and the prompts-repo snapshot. Archive and copies must stay byte-identical.
+2. Run `python3 scripts/install-user-level.py` from the checkout (repeat `--home` for each live home). Archive and copies must stay byte-identical.
 3. Run `python3 tests/test_user_level_archive.py`.
 
 Done when the drift test passes against every copy that exists.

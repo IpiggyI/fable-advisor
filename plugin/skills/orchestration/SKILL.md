@@ -49,7 +49,7 @@ A role is a contract shape (input, permissions, output) and names no model; a ti
 | `worker` | writes inside the contract's Files | a diff plus verification evidence |
 | `advisor` | read-only | a verdict under 300 words, in two request shapes: **decision** (before committing: decision, constraints, options) or **acceptance** (after: contract, diff, receipt → criteria met?) |
 
-Tiers: `light`, `standard`, `senior`; any role at any tier. A takeover of a stuck task is a senior worker under a takeover contract. The advisor's authority comes from the code it reads, not its tier.
+Tiers: `light`, `standard`, `senior`; any role at any tier. A raise (ladder R2) runs under a takeover contract: contract shape, not tier. The advisor's authority comes from the code it reads, not its tier.
 
 ## Lanes
 
@@ -64,34 +64,34 @@ A lane answers how a vendor is reached; roles and tiers answer what is dispatche
 
 ### Harness mechanics
 
-Identify the harness by the host you run in and its tools' parameter structure, never by one tool name or the presence of a `model` parameter; the main agent then reads the matching lanes file before its first dispatch:
+Identify the harness by the host you run in and its tools' parameter structure, never by one tool name or a `model` parameter's presence; read the matching lanes file before the first dispatch:
 
 - Claude Code (runners, receipts, receipt gate, report mode): [lanes-claude-code.md](lanes-claude-code.md)
 - Cursor (pinned dispatches, codex runner through Shell, lifecycle): [lanes-cursor.md](lanes-cursor.md)
 
-[lane-preamble.md](lane-preamble.md) is the executor side of the contract: runners prepend it; a Cursor dispatch opens by pointing the subagent at it. Do not restate it.
+Two executor-side contracts: [lane-preamble.md](lane-preamble.md) for a worker, [lane-preamble-report.md](lane-preamble-report.md) for an explorer or advisor. Runners prepend the one `mode` names; a Cursor dispatch points at the one its role needs. Restate neither.
 
 ## Routing — two stages
 
-**Stage 1 — (role, tier) by judgment dependence.** Role by output: evidence → explorer, a change → worker, a commitment or acceptance → advisor. Tier by how much the outcome depends on judgment the contract cannot capture: little → light or standard (verify anyway); a lot, with costly mistakes → senior, or a race of two fills on one contract.
+**Stage 1 — (role, tier) by judgment dependence.** Role by output. Tier: `light` and `standard` form the first-round pool, chosen freely by the outcome's dependence on judgment the contract cannot capture, no precondition; `senior` only through the senior gate below or a user declaration.
 
-**Stage 2 — Pareto inside the cell.** Among that cell's fills in the fill table, trade speed, price, capability, and specialty against the user's declared profile. Specialty is a tie-breaker; it never overturns stage 1. With no declarations, take the cheapest adequate fill, each lane priced at its default dial; dial positions never enter the lane-level comparison.
+**Stage 2 — Pareto inside the cell.** Among the cell's fills, trade speed, price, capability, and specialty against the declared profile; specialty only breaks ties, never overturns stage 1. No declarations → the cheapest adequate fill, lanes compared at their default dials only.
 
-**Re-routing.** An unavailable or timed-out lane gets the same contract re-routed to another fill in the cell, disclosed. Both CLI lanes down → the claude lane, stating any loss of cross-vendor review. Availability is decided by dispatch, not probes.
+**Re-routing.** An unavailable or timed-out lane's contract goes unchanged to another fill in the cell, disclosed; both CLI lanes down → the claude lane, stating any lost cross-vendor review. Availability is decided by dispatch, not probes.
 
-**Escalation.** One failed acceptance gets a rework ticket (lane-owned defect; never a hand fix) or a corrected contract (contract gap). When the rework ticket also fails, attribute: capability → a higher-tier worker in a fresh session under a takeover contract (original contract, prior report, receipt); contract gap → a corrected contract on the same lane session.
+**Escalation — the ladder.** R1: a failed acceptance gets a rework ticket, same session, same dial; a contract gap gets a corrected contract, same lane session. R2: the rework ticket fails too, cause capability → a raise: fresh session, takeover contract (original contract, prior report, receipt); one raise is the same model at higher effort or another model. R3: a model is raised at most once; the next raise changes model unless the higher cells hold no other. R4: a major execution problem (repeated tool failures, runaway, a reserved item touched) may skip the rework ticket and change model at once, counted as one failure. **Senior gate:** two capability-attributed failures in the first-round pool, or a user declaration — the decision-type gate's "the same problem failing twice", whose advisor verdict also rules on going senior.
 
 ## User routing profile
 
-Stage 2 inputs enter only as declarations, in two layers.
+Stage 2 inputs enter only as declarations.
 
-**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in the user routing profile the caller's instructions name, not this repo. Read it before the first model assignment; re-read it when it changes or has slid out of context; if none is named or it cannot be read, report the gap and assume nothing. A `dial` is written `model[first-round options | escalation-only]`, `*` marks the default; options after `|` are reached by a worker only through escalation after a failed rework ticket, and by any role only on user declaration.
+**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in the user routing profile the caller's instructions name, never this repo. Read it before the first model assignment, again when it changes or slides out of context; none named or readable → report the gap, assume nothing. A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, all first-round, `*` the default; a model without an effort dimension is written bare.
 
-**Volatile state** (quota balance, deadline pressure) is declared verbally when the work starts, holds for that session only, and is never written to disk.
+**Volatile state** (quota balance, deadline pressure) is declared verbally at kickoff, holds for that session only, never written to disk.
 
-**The handoff declaration.** Per task or per session; it alone makes the handoff lane selectable in stage 2. The main agent may suggest it for large, fully-specified, non-urgent work; a suggestion never routes.
+**The handoff declaration** (per task or session) alone makes the handoff lane selectable in stage 2; the main agent may suggest it for large, fully-specified, non-urgent work; suggesting never routes.
 
-**The low-confidence escape hatch.** Ask the user before routing in exactly two cases, offering at least two options with reasons: declared constraints conflict on the deciding dimension; or the task is high-risk (correctness-critical or hard to reverse) and the profile is silent. Not for a mechanical task, absent declarations (the default), or an unavailable lane (re-route and disclose). Parallel fan-out: ask at most once per batch.
+**The low-confidence escape hatch.** Ask the user before routing, with two or more reasoned options, only when declared constraints conflict on the deciding dimension, or the task is high-risk (correctness-critical or hard to reverse) and the profile is silent; once per parallel batch at most.
 
 ## The delivery contract
 

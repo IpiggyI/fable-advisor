@@ -2,6 +2,10 @@
 
 How a change in this repo reaches the installed plugin on this machine (WSL + Windows). The installed marketplaces on **both** sides point at GitHub (`IpiggyI/fable-advisor`), not at this working tree — an unpushed commit never reaches the plugin.
 
+## 0. Write the version manual
+
+Write `docs/manuals/<version>.html` before bumping any version field. The version manual is a self-contained Chinese HTML with two parts: a full description of this version's behaviour, and every change since the previous version (what changed, why, ADR and ticket). A release does not proceed without it. From 5.2.0 onward each release has one file in `docs/manuals/`.
+
 ## 1. Bump the version — two files, not one
 
 - `plugin/.claude-plugin/plugin.json` → `version`
@@ -44,7 +48,17 @@ CMD refuses a WSL UNC path as its working directory — change to a Windows driv
 cd /mnt/c && cmd.exe /c "claude plugin marketplace update fable-advisor && claude plugin update fable-advisor@fable-advisor"
 ```
 
-## 5. Restart and spot-check
+## 5. Run the companion installer
+
+From the checkout:
+
+```bash
+python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy
+```
+
+`--check` is what the drift test runs.
+
+## 6. Restart and spot-check
 
 Both CLIs report "Restart to apply changes" — running Claude Code / Cursor sessions keep the old version until restarted. Cursor consumes the same installed plugin through its Claude-plugin compatibility paths (see ADR 0010), so one update serves both harnesses per side.
 

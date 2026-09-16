@@ -1,29 +1,15 @@
 #!/usr/bin/env python3
-"""Pin-rule and routing-profile archive: English byte-identical to live copies, Chinese twins present."""
+"""Canonical archives exist, Chinese twins present, live homes match via installer --check."""
 import os
+import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-PROMPTS_RULES = "/mnt/d/Development/Local/prompts/current-prompts/rules"
+INSTALLER = os.path.join(REPO_ROOT, "scripts", "install-user-level.py")
 
 ENGLISH = [
-    (
-        os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-pin.mdc"),
-        [
-            os.path.expanduser("~/.cursor/rules/fable-lane-pin.mdc"),
-            "/mnt/c/Users/Shy/.cursor/rules/fable-lane-pin.mdc",
-            os.path.join(PROMPTS_RULES, "fable-lane-pin.cursor.mdc"),
-        ],
-    ),
-    (
-        os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.md"),
-        [
-            os.path.expanduser("~/.claude/docs/fable-advisor-routing.md"),
-            "/mnt/c/Users/Shy/.claude/docs/fable-advisor-routing.md",
-            "/mnt/d/Development/Local/prompts/current-prompts/docs/fable-advisor-routing.md",
-        ],
-    ),
+    os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-pin.mdc"),
+    os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.md"),
 ]
 
 CHINESE = [
@@ -32,6 +18,11 @@ CHINESE = [
 
 # Routing zh is a profile translation, not a pin-rule backup: no 不是活体.
 ROUTING_ZH = os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.zh.md")
+
+HOMES = [
+    os.path.expanduser("~"),
+    "/mnt/c/Users/Shy",
+]
 
 
 def has_cjk(text):
@@ -55,7 +46,7 @@ def main():
             print("FAIL  %s — unexpected %s: %s" % (desc, type(e).__name__, e))
             failed += 1
 
-    for archive, _lives in ENGLISH:
+    for archive in ENGLISH:
         rel = os.path.relpath(archive, REPO_ROOT)
 
         def exists(path=archive, name=rel):
@@ -87,30 +78,25 @@ def main():
 
     check("chinese twin %s" % routing_zh_rel, routing_zh_ok)
 
-    seen = 0
-    for archive, lives in ENGLISH:
-        with open(archive, "rb") as fh:
-            archived = fh.read()
-        for live in lives:
-            if not os.path.isfile(live):
-                continue
-            if os.path.samefile(live, archive):
-                continue
-            seen += 1
+    for home in HOMES:
+        if not os.path.isdir(home):
+            print("SKIP  home missing %s" % home)
+            continue
 
-            def drift(path=live, expected=archived):
-                with open(path, "rb") as fh:
-                    body = fh.read()
-                assert body == expected, "drift vs %s (%d bytes live, %d bytes archive)" % (
-                    path,
-                    len(body),
-                    len(expected),
-                )
+        def drift(path=home):
+            result = subprocess.run(
+                [sys.executable, INSTALLER, "--check", "--home", path],
+                capture_output=True,
+                text=True,
+                cwd=REPO_ROOT,
+            )
+            if result.returncode != 0:
+                output = result.stdout
+                if result.stderr:
+                    output += result.stderr
+                raise AssertionError("exit %s\n%s" % (result.returncode, output))
 
-            check("matches live %s" % live, drift)
-
-    if seen == 0:
-        print("SKIP  no live fill-table copies present")
+        check("install --check %s" % home, drift)
 
     total = passed + failed
     print("%d/%d passed, %d failed" % (passed, total, failed))

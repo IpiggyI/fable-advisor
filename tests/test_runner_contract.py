@@ -29,15 +29,18 @@ def base_spec(**overrides):
     return spec
 
 
-def copy_runner(tmp, name, *, preamble=True):
+def copy_runner(tmp, name, *, preamble=True, report_preamble=True):
     plugin = Path(tmp) / "plugin"
     scripts = plugin / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
     shutil.copy2(REPO_ROOT / "plugin" / "scripts" / name, scripts / name)
+    orch = plugin / "skills" / "orchestration"
+    if preamble or report_preamble:
+        orch.mkdir(parents=True, exist_ok=True)
     if preamble:
-        preamble_path = plugin / "skills" / "orchestration" / "lane-preamble.md"
-        preamble_path.parent.mkdir(parents=True, exist_ok=True)
-        preamble_path.write_text("STUB LANE PREAMBLE", encoding="utf-8")
+        (orch / "lane-preamble.md").write_text("STUB LANE PREAMBLE", encoding="utf-8")
+    if report_preamble:
+        (orch / "lane-preamble-report.md").write_text("STUB REPORT PREAMBLE", encoding="utf-8")
     return scripts / name
 
 
@@ -78,6 +81,30 @@ def fake_git(directory, exit_code=0):
         directory,
         "git",
         "#!/bin/sh\nexit %d\n" % exit_code,
+    )
+
+
+def fake_git_sequence(directory, calls):
+    """Successive `git status --porcelain` results as (exit_code, stdout) pairs.
+
+    A counter file beside the script distinguishes the pre-run call from
+    later ones. After the last pair, the last result repeats.
+    """
+    write_executable(
+        directory,
+        "git",
+        """#!/usr/bin/env python3
+import sys
+from pathlib import Path
+calls = %s
+counter = Path(__file__).with_name(".git-status-count")
+n = int(counter.read_text()) if counter.exists() else 0
+counter.write_text(str(n + 1))
+code, stdout = calls[n] if n < len(calls) else calls[-1]
+if stdout:
+    sys.stdout.write(stdout if stdout.endswith("\\n") else stdout + "\\n")
+raise SystemExit(code)
+""" % json.dumps(list(calls)),
     )
 
 
@@ -228,7 +255,7 @@ def case_report_and_implement_modes():
                 fake_report_cli(bin_dir, binary)
                 fake_git(bin_dir, git_exit)
                 if expected == "unexpected_diff":
-                    write_executable(bin_dir, "git", "#!/bin/sh\necho ' M scope.txt'\n")
+                    fake_git_sequence(bin_dir, [(0, ""), (0, " M scope.txt")])
                 elif expected == "verification_diff":
                     write_executable(bin_dir, "git", '#!/bin/sh\nif [ -f "$2/changed" ]; then echo "?? changed"; fi\nexit 0\n')
                 runner = copy_runner(tmp, "run-%s.mjs" % binary)
@@ -265,8 +292,15 @@ def case_report_and_implement_modes():
                 attempts = calls[1:]
                 assert len(attempts) == (2 if binary == "codex" and fallback else 1), calls
                 prompt = prompt_log.read_text()
-                assert prompt.startswith("STUB LANE PREAMBLE\n\n[fable-advisor]")
-                assert ("Files defines the read scope" in prompt) == (mode == "report")
+                assert "[fable-advisor]" not in prompt
+                assert "Files defines the read scope" not in prompt
+                assert "WORKER REPORT" not in prompt
+                if mode == "report":
+                    assert prompt.startswith("job\n\nSTUB REPORT PREAMBLE\n\n")
+                    assert "STUB LANE PREAMBLE" not in prompt
+                else:
+                    assert prompt.startswith("job\n\nSTUB LANE PREAMBLE\n\n")
+                    assert "STUB REPORT PREAMBLE" not in prompt
                 for args in attempts:
                     if mode == "report" and binary == "codex":
                         assert args.count("--sandbox") == 1
@@ -319,17 +353,17 @@ def case_empty_report():
                         text = "".join(chunks)
                         expected = "complete"
                         if mode == "report":
-                            expected = "unexpected_diff" if dirty else (
-                                "complete" if text.strip() else "empty_report"
-                            )
+                            expected = "complete" if text.strip() else "empty_report"
                         assert receipt["error_class"] == expected, receipt
+                        if dirty:
+                            assert receipt["dirty_baseline"] is True
                         assert receipt["report"] == (text if mode == "report" else None), receipt
                         assert (result.returncode == 0) == (expected == "complete"), result.stderr
                         pending_path = cwd / ".fable-advisor" / "pending" / "job.json"
                         assert pending_path.exists() == (expected != "complete")
                         receipt_path = cwd / ".fable-advisor" / "receipts" / (receipt["spec_hash"] + ".json")
                         assert json.loads(receipt_path.read_text()) == receipt
-    print("ASSERT empty_report: both runners absent/empty/whitespace rejected; dirty wins; text preserved; implement unchanged")
+    print("ASSERT empty_report: both runners absent/empty/whitespace rejected; dirty_baseline skips unexpected_diff; text preserved; implement unchanged")
 
 
 def case_schema_defaults_and_validation():
@@ -350,7 +384,11 @@ def case_schema_defaults_and_validation():
         assert luna["effort"] == "max"
 
         _, sol = run_runner(codex, cwd, base_spec(model="gpt-5.6-sol"), bin_dir)
-        assert sol["error_class"] == "spec_invalid"
+        assert sol["error_class"] == "codex_unavailable"
+        assert sol["effort"] == "high"
+        assert sol["model_requested"] == "gpt-5.6-sol"
+        assert sol["model_used"] == "gpt-5.6-sol"
+        assert sol["fallback_reason"] is None
 
         _, terra = run_runner(codex, cwd, base_spec(model="gpt-5.6-terra"), bin_dir)
         assert terra["error_class"] == "spec_invalid"
@@ -459,6 +497,45 @@ def case_preamble_missing_is_spawn_free():
             assert not marker.exists()
             assert not (cwd / ".fable-advisor" / "receipts").exists()
 
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            marker = Path(tmp) / "spawned"
+            write_executable(
+                bin_dir,
+                binary,
+                "#!/bin/sh\ntouch '%s'\n" % marker,
+            )
+            runner = copy_runner(tmp, name, report_preamble=False)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            result, receipt = run_runner(
+                runner, cwd, base_spec(mode="report", verification=[]), bin_dir,
+            )
+            assert result.returncode != 0 and receipt is None
+            assert "lane-preamble-report.md" in result.stderr
+            assert not marker.exists()
+            assert not (cwd / ".fable-advisor" / "receipts").exists()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, name, report_preamble=False)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            result, receipt = run_runner(
+                runner, cwd, base_spec(), bin_dir,
+                {"CALL_LOG": str(Path(tmp) / "calls"),
+                 "PROMPT_LOG": str(Path(tmp) / "prompt")},
+            )
+            assert result.returncode == 0, result.stderr
+            assert receipt["error_class"] == "complete"
+            assert (Path(tmp) / "prompt").read_text().startswith(
+                "job\n\nSTUB LANE PREAMBLE\n\n"
+            )
+
 
 def case_unavailable_receipt_fields():
     for name, error_class in (
@@ -555,8 +632,9 @@ def case_resume_invocations_and_preamble():
                 assert "--resume" in execution and "--session-id" not in execution
                 assert "session id mismatch" in result.stderr
             assert prompt_log.read_text().startswith(
-                "STUB LANE PREAMBLE\n\n[fable-advisor]"
+                "job\n\nSTUB LANE PREAMBLE\n\n"
             )
+            assert "[fable-advisor]" not in prompt_log.read_text()
             print(
                 "ASSERT resume: runner=%s argv_id=resume-123 receipt_id=resume-123"
                 % name
@@ -638,6 +716,19 @@ def case_codex_fallback_boundaries():
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(
             tmp,
+            base_spec(model="gpt-5.6-sol"),
+            "fail_before_session",
+        )
+        assert len(attempts) == 1
+        assert receipt["model_requested"] == "gpt-5.6-sol"
+        assert receipt["model_used"] == "gpt-5.6-sol"
+        assert receipt["effort"] == "high"
+        assert receipt["fallback_reason"] is None
+        assert "model_reasoning_effort=high" in attempts[0]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        receipt, attempts = run_codex_mode(
+            tmp,
             base_spec(),
             "fail_after_session",
         )
@@ -655,7 +746,7 @@ def case_codex_fallback_boundaries():
         assert receipt["fallback_reason"] == "codex_failed"
         assert receipt["error_class"] == "preparation_stalled"
         print(
-            "ASSERT fallback boundaries: direct_luna=1 "
+            "ASSERT fallback boundaries: direct_luna=1 direct_sol=1 "
             "session_established=1 second_error=preparation_stalled"
         )
 
@@ -1054,6 +1145,201 @@ def case_idle_and_wall_deadlines():
         ))
 
 
+def case_dirty_baseline():
+    dirty = " M scope.txt"
+
+    def run_case(binary, spec, git_calls, extra_env=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            fake_git_sequence(bin_dir, git_calls)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            env = {
+                "CALL_LOG": str(Path(tmp) / "calls"),
+                "PROMPT_LOG": str(Path(tmp) / "prompt"),
+            }
+            if extra_env:
+                env.update(extra_env)
+            result, receipt = run_runner(runner, cwd, spec, bin_dir, env)
+            return result, receipt
+
+    for binary in ("codex", "grok"):
+        result, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(0, dirty), (0, dirty)],
+        )
+        assert result.returncode == 0, result.stderr
+        assert receipt["error_class"] == "complete", receipt
+        assert receipt["dirty_baseline"] is True
+        assert receipt["changed_files"] == ["scope.txt"]
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(0, dirty), (0, "")],
+        )
+        assert receipt["error_class"] == "complete", receipt
+        assert receipt["dirty_baseline"] is True
+        assert receipt["changed_files"] == []
+
+        result, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(0, ""), (0, dirty)],
+        )
+        assert result.returncode != 0
+        assert receipt["error_class"] == "unexpected_diff", receipt
+        assert receipt["dirty_baseline"] is False
+        assert receipt["changed_files"] == ["scope.txt"]
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(1, ""), (0, "")],
+        )
+        assert receipt["error_class"] == "complete", receipt
+        assert receipt["dirty_baseline"] is None
+
+        result, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(1, ""), (0, dirty)],
+        )
+        assert receipt["error_class"] == "unexpected_diff", receipt
+        assert receipt["dirty_baseline"] is None
+
+        result, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(0, ""), (1, "")],
+        )
+        assert receipt["error_class"] == "git_status_failed", receipt
+        assert receipt["dirty_baseline"] is False
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(0, dirty), (0, dirty)],
+            {"REPORT_CHUNKS": json.dumps([])},
+        )
+        assert receipt["error_class"] == "empty_report", receipt
+        assert receipt["dirty_baseline"] is True
+        assert receipt["changed_files"] == ["scope.txt"]
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="implement", files=["owned.txt"]),
+            [(0, dirty), (0, dirty)],
+        )
+        assert receipt["error_class"] == "complete", receipt
+        assert receipt["dirty_baseline"] is True
+        assert receipt["changed_files"] == ["scope.txt"]
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="implement", files=["owned.txt"]),
+            [(0, ""), (0, "")],
+        )
+        assert receipt["error_class"] == "no_diff", receipt
+        assert receipt["dirty_baseline"] is False
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="implement", files=["owned.txt"]),
+            [(0, ""), (1, "")],
+        )
+        assert receipt["error_class"] == "git_status_failed", receipt
+        assert receipt["dirty_baseline"] is False
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="implement"),
+            [(0, ""), (0, "")],
+        )
+        assert receipt["error_class"] == "complete", receipt
+        assert receipt["dirty_baseline"] is False
+    print("ASSERT dirty_baseline: report skips unexpected_diff iff true; clean-then-dirty still unexpected_diff; implement unchanged; pre-fail=null")
+
+
+def case_title():
+    invalid_titles = ("", None, 7, True, [], {})
+    for binary in ("codex", "grok"):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            call_log = Path(tmp) / "calls"
+            prompt_log = Path(tmp) / "prompt"
+            env = {"CALL_LOG": str(call_log), "PROMPT_LOG": str(prompt_log)}
+
+            result, receipt = run_runner(
+                runner, cwd, base_spec(title="Scout the dirty tree"), bin_dir, env,
+            )
+            assert result.returncode == 0, result.stderr
+            assert receipt["error_class"] == "complete", receipt
+            prompt = prompt_log.read_text()
+            assert prompt.startswith("Scout the dirty tree\n\nSTUB LANE PREAMBLE\n\n")
+            assert prompt.splitlines()[0] == "Scout the dirty tree"
+            assert prompt.splitlines()[1] == ""
+            assert "[fable-advisor]" not in prompt
+            assert "# Scout" not in prompt.splitlines()[0]
+            prompt_log.unlink()
+            call_log.unlink()
+
+            result, receipt = run_runner(
+                runner, cwd, base_spec(title="# not a heading"), bin_dir, env,
+            )
+            assert result.returncode == 0, result.stderr
+            prompt = prompt_log.read_text()
+            assert prompt.startswith("# not a heading\n\nSTUB LANE PREAMBLE\n\n")
+            assert "[fable-advisor]" not in prompt
+            prompt_log.unlink()
+            call_log.unlink()
+
+            result, receipt = run_runner(runner, cwd, base_spec(), bin_dir, env)
+            assert result.returncode == 0, result.stderr
+            prompt = prompt_log.read_text()
+            assert prompt.startswith("job\n\nSTUB LANE PREAMBLE\n\n")
+            assert "# Objective" in prompt
+            assert prompt.index("STUB LANE PREAMBLE") < prompt.index("# Objective")
+            assert "[fable-advisor]" not in prompt
+            prompt_log.unlink()
+            if call_log.exists():
+                call_log.unlink()
+
+            for title in invalid_titles:
+                result, receipt = run_runner(
+                    runner, cwd, base_spec(title=title), bin_dir, env,
+                )
+                assert result.returncode != 0, title
+                assert receipt["error_class"] == "spec_invalid", (title, receipt)
+                assert not call_log.exists(), "invalid title spawned CLI: %r" % (title,)
+    print("ASSERT title: first line verbatim; omitted=slug; empty/non-string=spec_invalid spawn-free; no [fable-advisor]")
+
+
+def case_real_preamble_files():
+    orchestration = REPO_ROOT / "plugin" / "skills" / "orchestration"
+    worker = orchestration / "lane-preamble.md"
+    report = orchestration / "lane-preamble-report.md"
+    worker_text = worker.read_text(encoding="utf-8")
+    report_text = report.read_text(encoding="utf-8")
+    assert worker.is_file() and worker_text.strip(), worker
+    assert report.is_file() and report_text.strip(), report
+    assert "WORKER REPORT" in worker_text
+    assert "WORKER REPORT" not in report_text
+    assert worker_text.startswith("**Posture.**")
+    assert report_text.startswith("**Posture.**")
+    print("ASSERT real preambles: worker has WORKER REPORT; report does not; both start **Posture.**")
+
+
 def case_last_terminal_event_drives_timing():
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(tmp, base_spec(), "multi_terminal")
@@ -1070,6 +1356,9 @@ CASES = [
     ("mode validation", case_mode_validation),
     ("report and implement modes", case_report_and_implement_modes),
     ("empty report", case_empty_report),
+    ("dirty baseline", case_dirty_baseline),
+    ("spec title", case_title),
+    ("real preamble files", case_real_preamble_files),
     ("schema defaults and validation", case_schema_defaults_and_validation),
     ("grok effort", case_grok_effort),
     ("missing preamble is spawn-free", case_preamble_missing_is_spawn_free),

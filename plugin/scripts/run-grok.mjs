@@ -14,13 +14,14 @@ const interruption = new AbortController();
 const PREPARATION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
-const PREAMBLE_PATH = path.resolve(
+const PREAMBLE_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
   "skills",
   "orchestration",
-  "lane-preamble.md",
 );
+const PREAMBLE_PATH = path.join(PREAMBLE_DIR, "lane-preamble.md");
+const REPORT_PREAMBLE_PATH = path.join(PREAMBLE_DIR, "lane-preamble-report.md");
 const SPEC_KEYS = new Set([
   "mode",
   "objective",
@@ -33,6 +34,7 @@ const SPEC_KEYS = new Set([
   "timeout_sec",
   "idle_timeout_sec",
   "resume_session_id",
+  "title",
 ]);
 
 function diagnostic(message) {
@@ -142,6 +144,11 @@ function normalizeSpec(value) {
   if (value.resume_session_id !== undefined) {
     requireString(value.resume_session_id, "resume_session_id", { nonEmpty: true });
   }
+  if (value.title !== undefined) {
+    if (typeof value.title !== "string" || value.title === "") {
+      throw new Error("title must be a non-empty string");
+    }
+  }
 
   return {
     objective: value.objective,
@@ -155,20 +162,15 @@ function normalizeSpec(value) {
     timeout_sec: value.timeout_sec ?? null,
     idle_timeout_sec: value.idle_timeout_sec ?? DEFAULT_IDLE_TIMEOUT_SEC,
     resume_session_id: value.resume_session_id ?? null,
+    title: value.title ?? null,
   };
 }
 
-function renderPrompt(spec, slug) {
+function renderPrompt(spec) {
   const files = spec.files.map((file) => `- ${file}`).join("\n");
   const verification = spec.verification.join("\n");
 
   return [
-    `[fable-advisor] ${slug}`,
-    ...(spec.mode === "report" ? [
-      "# Mode",
-      "Report mode: act as a read-only explorer or advisor. Files defines the read scope, "
-        + "not write ownership. Do not modify files. Return your findings as the final message.",
-    ] : []),
     "# Objective",
     spec.objective,
     "# Files",
@@ -505,6 +507,7 @@ function initialState(startedAt) {
     childExitCode: null,
     startedAt,
     errorClass: null,
+    dirtyBaseline: null,
     changedFiles: [],
     verification: [],
     grokFinalMessage: null,
@@ -538,6 +541,7 @@ function buildReceipt(state) {
     finished_at: new Date().toISOString(),
     exit_status: exitStatus,
     error_class: state.errorClass,
+    dirty_baseline: state.dirtyBaseline,
     changed_files: state.changedFiles,
     verification: state.verification,
     grok_final_message: state.grokFinalMessage,
@@ -615,10 +619,11 @@ async function main() {
   }
 
   let preamble;
+  const preamblePath = spec.mode === "report" ? REPORT_PREAMBLE_PATH : PREAMBLE_PATH;
   try {
-    preamble = await readFile(PREAMBLE_PATH, "utf8");
+    preamble = await readFile(preamblePath, "utf8");
   } catch (error) {
-    diagnostic(`could not read lane preamble ${PREAMBLE_PATH}: ${errorMessage(error)}`);
+    diagnostic(`could not read lane preamble ${preamblePath}: ${errorMessage(error)}`);
     return 1;
   }
 
@@ -648,10 +653,13 @@ async function main() {
     state.model = spec.model;
   }
 
+  const baseline = await collectChangedFiles(state.cwd);
+  state.dirtyBaseline = baseline.failed ? null : baseline.files.length > 0;
+
   const slug = path.basename(parsedArguments.specPath, ".json");
   let promptPath;
   try {
-    const prompt = `${preamble}\n\n${renderPrompt(spec, slug)}`;
+    const prompt = `${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
     promptPath = await writePromptFile(prompt);
     const grokResult = await executeGrok(spec, state.cwd, promptPath);
     state.grokSessionId = grokResult.grokSessionId;
@@ -684,7 +692,8 @@ async function main() {
       changedFilesResult = await collectChangedFiles(state.cwd);
       state.changedFiles = changedFilesResult.files;
     }
-    if (spec.mode === "report" && state.changedFiles.length > 0) {
+    // shortcut: report mode skips the unexpected_diff check when the tree was dirty at start; ceiling: a lane write on an already-dirty tree goes undetected (the read-only sandbox is the only guard); replace when: a report-mode lane writes under dirty_baseline true, or implement mode misreports because of pre-existing dirt twice (ADR 0018 review conditions).
+    if (spec.mode === "report" && state.changedFiles.length > 0 && state.dirtyBaseline !== true) {
       state.errorClass = "unexpected_diff";
     }
     if (state.errorClass === null) {
