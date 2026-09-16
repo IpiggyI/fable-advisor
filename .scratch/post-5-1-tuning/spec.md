@@ -145,3 +145,13 @@ Status: ready-for-agent
 - **工单**：见 `issues/01`–`08`。01 runner 契约（第 1、2、4 条 + 契约测试 + 车道文档对应句）；02 报告前言分流（第 3 条，含工单 10 的验收项）；03 伴生安装器与漂移测试（第 5–9 条）；04 doctrine 与 Cursor 车道文档（第 10–14、16、17 条）；05 路由档案与中文备份（第 18–22 条）；06 ADR 0018、README 升级段、`AGENTS.md` 类别表（第 24、25、27 条）；07 版本说明书 5.2.0（第 26–29 条）；08 发布 5.2.0。
 - **5.1.0 已于 2026-09-16 提交（`83ce044`）、推送并在两侧安装**；门禁脚本活体同步到 5.1.0 版；`.scratch/post-5-1-tuning/` 与 `CONTEXT.md` 的新词条未随 5.1.0 提交。
 - 来源：本轮 grilling（2026-09-16）；`.scratch/role-pool-posture/issues/10-report-mode-preamble.md`；codex-advisor 仓库的伴生安装器（`install-agents.sh`）作为形态参照，覆盖策略与之相反。
+
+## Comments
+
+### 2026-09-16 — 实施记录（工单 01–08 全部完成）
+
+- 姿态：编排。01、03、06-README、07 grok 车道（Cursor 钉 `cursor-grok-4.6-xhigh`，requested, not confirmed）；02 复用 01 会话；04 同模派发；05、06 的 ADR 与 `AGENTS.md`、`CONTEXT.md` 词条架构师亲写。每票 Tier 1 验收（复跑测试 + 路径限定 diff），runner 与安装器另做 Tier 2 读码。
+- Code review（两轴，各一条 codex runner 报告模式车道，`gpt-6-astra[low]`）：Standards 4 项、Spec 4 项。处理：前言指针冲突（`lanes-cursor.md:7`、`SKILL.md:72`）→ 同模车道返工；`dirtyBaseline !== true` 缺 shortcut 标记 → runner 车道加注释；中文文件裸英文（说明书 overlay、报告前言 hunks、档案 specialty）→ 各自翻译；测试桩不检真前言 → 新增 `case_real_preamble_files`（注入 `WORKER REPORT` 可红）；说明书把 `advisor-h` 写成默认 → 改为"默认在档案"。未处理并记录：两条 runner 的重复形状（按 ADR 0009 两脚本独立，判断项）；安装器 `gate_present` 子串匹配的构造性误报（警告而非门禁）。
+- 发布：见 `issues/08` 评论。
+- 未验证项：说明书在浏览器中的渲染（Cursor 内置浏览器拒绝 `file://` 与 WSL 本地服务）；codex / grok 会话列表首行标题的用户可见效果；Cursor 是否加载插件 hooks（范围外）。
+- 范围外遗留：`ONBOARDING.md`、`docs/fable-advisor-healthcheck-2026-09.md`、`docs/fable-advisor-orchestration-handoff-2026-09.md`、`outputs/`、`cursor-hooks/__pycache__/` 与 `tests/__pycache__/` 仍未跟踪；建议 `.gitignore` 加 `__pycache__/`。
