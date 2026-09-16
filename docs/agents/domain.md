@@ -9,25 +9,6 @@ This is a **single-context** repo: one `CONTEXT.md` and one `docs/adr/` at the r
 - **`CONTEXT.md`** at the repo root — the glossary.
 - **`docs/adr/`** — read the ADRs that touch the area you're about to work in.
 
-If either doesn't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
-
-## File structure
-
-```
-/
-├── CONTEXT.md
-├── cursor-hooks/
-├── user-rules/
-├── docs/adr/
-│   ├── 0001-upstream-sync-fork.md
-│   └── 0002-codex-lane-dewrapper-receipt-gate.md
-└── plugin/
-    ├── agents/
-    ├── hooks/
-    ├── scripts/
-    └── skills/
-```
-
 ## ADR location — one store only
 
 `docs/adr/` is the **only** decision store, and it is tracked in git.

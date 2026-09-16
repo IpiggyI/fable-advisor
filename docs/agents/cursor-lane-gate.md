@@ -13,20 +13,11 @@ Canonical script: `cursor-hooks/fable-lane-family-gate.py`.
 
 Register under `preToolUse`, matcher `Task`, timeout 10. Merge `cursor-hooks/hooks.example.json` into an existing `~/.cursor/hooks.json`; do not replace a forked file. WSL and Windows configs are already different.
 
-### Behaviour
-
-I/O: UTF-8 stdin payload in, JSON `permission` (`allow` / `deny`) out, exit 0.
-
-- `subagent_type` is `fable-advisor` and `model` is missing, empty, or `inherit` → deny. The deny text says an explicit, non-inherit `model` is required.
-- `fable-advisor` with any other explicit `model` string → allow (any vendor slug).
-- Any other `subagent_type` (`generalPurpose`, `explore`, and the rest) → allow regardless of `model`.
-- `resume` set → allow (skips the pin check).
-
-Do not extend the hook to `generalPurpose`. There is no marker that distinguishes a worker dispatch from an ordinary scout.
+The rule, in one place: a `Task` whose `subagent_type` starts with `advisor-` needs an explicit, non-inherit `model`; any other `subagent_type` passes regardless of `model`; `resume` skips the check. The match is the prefix, not a fixed name, so a new advisor dial is guarded as soon as its file lands — ADR 0016's decision 8 moved the trigger here from the retired bare name `fable-advisor`. The `subagent_type` is stripped and lowercased before the prefix test, the way `model` already was: a permission decision normalizes its input first, so ` advisor-h` and `Advisor-h` deny too. Normalization stops at whitespace and case; an interior zero-width or full-width character would still slip past, and closing that needs evidence of what Cursor accepts as a `subagent_type`. I/O is UTF-8 stdin payload in, JSON `permission` (`allow` / `deny`) out, exit 0. Do not extend the hook to `generalPurpose`: nothing marks a worker dispatch apart from an ordinary scout. The full case list is the script's `--self-test`.
 
 ### Update
 
-1. Edit `cursor-hooks/fable-lane-family-gate.py`. Change `decide()` only when the pin rule itself is the task: named agent `fable-advisor` needs an explicit, non-inherit `model`; every other `subagent_type` is allowed regardless of `model`; resume skips the pin check.
+1. Edit `cursor-hooks/fable-lane-family-gate.py`; change `decide()` only when the rule itself is the task.
 2. Copy that file onto both live paths. The archive and both live copies must stay byte-identical.
 3. On a new machine only, merge the example `preToolUse` fragment. Do not edit a live `hooks.json` unless the user named that file.
 4. Run `python3 cursor-hooks/fable-lane-family-gate.py --self-test` and `python3 tests/test_lane_family_gate.py`.
@@ -35,17 +26,15 @@ Done when `--self-test` prints `self-test ok` and the drift test passes against 
 
 ## Task pin rule
 
-Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `alwaysApply` user rule, not from this repo. The Chinese backup is `user-rules/zh/fable-lane-pin.mdc` and is not installed.
+Canonical rule: `cursor-hooks/fable-lane-pin.mdc`. Cursor loads it as an `alwaysApply` user rule, not from this repo. The Chinese backup is `cursor-hooks/zh/fable-lane-pin.mdc` and is not installed. The copy in the prompts repo (`/mnt/d/Development/Local/prompts/current-prompts/rules/fable-lane-pin.cursor.mdc`) is a deployment snapshot; edit here.
 
 - WSL: `/home/hyy/.cursor/rules/fable-lane-pin.mdc`
 - Windows: `C:/Users/Shy/.cursor/rules/fable-lane-pin.mdc`
 
-`fable-advisor` dispatches must carry an explicit, non-inherit `model`. Worker lanes are `generalPurpose` (or `explore` for read-only scouting) plus an explicit `model`; omitting `model` is a same-model dispatch, not a vendor lane. Plugin frontmatter `model:` is ignored. Use the live allowlist slug.
-
 ### Update
 
 1. Edit `cursor-hooks/fable-lane-pin.mdc`.
-2. Copy that file onto both live paths. The archive and both live copies must stay byte-identical.
-3. Run `python3 tests/test_lane_family_gate.py`.
+2. Copy that file onto both live paths and the prompts-repo snapshot. Archive and copies must stay byte-identical.
+3. Run `python3 tests/test_user_level_archive.py`.
 
-Done when the drift test passes against every live copy that exists.
+Done when the drift test passes against every copy that exists.

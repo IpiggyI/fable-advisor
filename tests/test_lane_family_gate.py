@@ -93,18 +93,18 @@ def main():
     check("--self-test", self_test)
 
     def advisor_missing_model():
-        out = assert_permission(_task({"subagent_type": "fable-advisor"}), "deny")
+        out = assert_permission(_task({"subagent_type": "advisor-h"}), "deny")
         assert_omit_deny(out)
 
     def advisor_inherit():
         out = assert_permission(
-            _task({"subagent_type": "fable-advisor", "model": "inherit"}), "deny"
+            _task({"subagent_type": "advisor-l", "model": "inherit"}), "deny"
         )
         assert_omit_deny(out)
 
     def advisor_empty_model():
         out = assert_permission(
-            _task({"subagent_type": "fable-advisor", "model": ""}), "deny"
+            _task({"subagent_type": "advisor-md", "model": ""}), "deny"
         )
         assert_omit_deny(out)
 
@@ -112,7 +112,7 @@ def main():
         assert_permission(
             _task(
                 {
-                    "subagent_type": "fable-advisor",
+                    "subagent_type": "advisor-xh",
                     "model": "cursor-grok-4.6-xhigh",
                 }
             ),
@@ -123,7 +123,7 @@ def main():
         assert_permission(
             _task(
                 {
-                    "subagent_type": "fable-advisor",
+                    "subagent_type": "advisor-h",
                     "model": "claude-fable-5-1-thinking-high",
                 }
             ),
@@ -132,8 +132,22 @@ def main():
 
     def advisor_resume_skips_pin():
         assert_permission(
-            _task({"subagent_type": "fable-advisor", "resume": "abc"}), "allow"
+            _task({"subagent_type": "advisor-h", "resume": "abc"}), "allow"
         )
+
+    def worker_not_gated():
+        assert_permission(_task({"subagent_type": "worker-h"}), "allow")
+        assert_permission(
+            _task({"subagent_type": "worker-md", "model": "inherit"}), "allow"
+        )
+
+    def unknown_advisor_dial():
+        # The gate matches the advisor prefix, so a dial added after this test
+        # was written is guarded without touching the hook.
+        out = assert_permission(
+            _task({"subagent_type": "advisor-future", "model": "inherit"}), "deny"
+        )
+        assert_omit_deny(out)
 
     def general_purpose_omitted():
         assert_permission(_task({"subagent_type": "generalPurpose"}), "allow")
@@ -155,18 +169,20 @@ def main():
                 "tool_name": "Task",
                 "hook_event_name": "preToolUse",
                 "model": "cursor-grok-4.6-xhigh",
-                "tool_input": {"subagent_type": "fable-advisor"},
+                "tool_input": {"subagent_type": "advisor-h"},
             }
         ).encode("utf-8")
         out = assert_permission(raw, "deny")
         assert_omit_deny(out)
 
-    check("fable-advisor missing model denies", advisor_missing_model)
-    check("fable-advisor inherit denies", advisor_inherit)
-    check("fable-advisor empty model denies", advisor_empty_model)
-    check("fable-advisor non-Fable explicit model allows", advisor_non_fable_explicit)
-    check("fable-advisor Fable explicit model allows", advisor_fable_explicit)
-    check("fable-advisor resume skips pin", advisor_resume_skips_pin)
+    check("advisor-h missing model denies", advisor_missing_model)
+    check("advisor-l inherit denies", advisor_inherit)
+    check("advisor-md empty model denies", advisor_empty_model)
+    check("advisor-xh non-Fable explicit model allows", advisor_non_fable_explicit)
+    check("advisor-h Fable explicit model allows", advisor_fable_explicit)
+    check("advisor-h resume skips pin", advisor_resume_skips_pin)
+    check("worker dial is out of the gate's scope", worker_not_gated)
+    check("unknown advisor dial still denies", unknown_advisor_dial)
     check("generalPurpose omitted model allows", general_purpose_omitted)
     check("generalPurpose inherit allows", general_purpose_inherit)
     check("explore omitted model allows", explore_omitted)

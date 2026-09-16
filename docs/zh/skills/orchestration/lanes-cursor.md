@@ -5,14 +5,14 @@
 ## Task 派发 —— grok lane 与 claude lane
 
 - **调用。** 派发提示以一行开场，把 subagent 指向 `<plugin-root>/skills/orchestration/lane-preamble.md` —— 这里没有东西替你前置它，而执行侧契约必须到达每一条车道。五部契约原文紧随其后。
-- **角色。** `worker` 是带显式 `model` 的 `generalPurpose` 派发；`explorer` 是带显式 `model` 的 `explore`（或 `generalPurpose`）派发；`advisor` 是具名 agent `fable-advisor`，显式钉死。钉死的家族由填充表选择：Grok 家族钉死即 `grok lane`，Claude 家族钉死即 `claude lane`。档位是该钉死所点名的拨盘。
-- **每次都显式钉死。** Agent 的 frontmatter `model:` 对 Cursor 中插件加载的 agent 不生效，且省略 `model` 时 Task 继承会话模型——一次未钉死的派发会静默变成会话正在跑的那个。用户级 lane family gate 只管一种情况：`model` 缺失或为 `inherit` 的 `fable-advisor` 派发。钉的是哪个家族、以及未钉死的 `generalPurpose` `worker`，要你自己抓住。使用本轮 allowlist 里存活的 slug；skill 示例可能点名 allowlist 没有的世代。
+- **角色。** `worker` 是带显式 `model` 的 `generalPurpose` 派发；`explorer` 是带显式 `model` 的 `explore`（或 `generalPurpose`）派发；`advisor` 是具名的 `advisor-*` agent 之一，显式钉死。钉死的家族由填充表选择：Grok 家族钉死即 `grok lane`，Claude 家族钉死即 `claude lane`。档位是该钉死所点名的拨盘。钉死是请求值：Cursor 不向主代理回传执行元数据（model、effort），因此路由披露或报告引用一次派发的 model 时，标为 "requested, not confirmed"。
+- **每次都显式钉死。** Agent 的 frontmatter `model:` 对 Cursor 中插件加载的 agent 不生效，且省略 `model` 时 Task 继承会话模型——一次未钉死的派发会静默变成会话正在跑的那个。用户级 lane family gate 只管一种情况：`model` 缺失、为空或为 `inherit` 的 `advisor-*` 派发。钉的是哪个家族、以及未钉死的 `generalPurpose` `worker`，要你自己抓住。使用本轮 allowlist 里存活的 slug；skill 示例可能点名 allowlist 没有的世代。
 - **同模派发。** 唯一不携带 `model` 的派发：编排姿态下准则散文的 `claude lane` 拨盘是省略 `model` 的 `generalPurpose` 派发——继承会话模型是目的，不是疏漏，且它不是具名 agent 派发，所以门禁不会触发。在路由披露中写明「inherit」，以免被误当成未钉死的车道。
 - **验收。** 报告作为派发结果在带内返回，失败或不可用的派发也在带内大声失败。验收完全按 [SKILL.md](SKILL.md) 中的核验层运行；Task 派发没有 receipt。
 - **返工。** 返工票是一次带先前派发 agent id 的 Task `resume`，把返工契约（缺陷、原范围、失败的检查）作为新提示带上——车道保留它已经建好的上下文。返工票也失败时，归因（SKILL.md「升级」）：契约缺口在修正契约下再次 resume；能力失败则是更高档位的新派发，带接管契约。
 - **改道。** 因用户套餐上模型不可用而失败的派发，改道到同一格的另一种填充，并显式披露——与 CLI 车道同一规则。
-- **effort 钉死在 slug 上。** 临时模型钉死携带固定的 effort 档——`codex lane` 的 `effort` 旋钮在裸派发上不存在。方括号参数（`<slug>[effort=high]`）仅在自定义 agent 定义文件中可用；仅当任务真正需要升高 effort 时才有意添加一份定义文件，而非默认。
-- **竞速。** 「挑选更强 diff」的竞速是同一条消息中的两次钉死派发——无需保持不同的 pending 文件。
+- **effort 钉死在 slug 上。** 临时模型钉死携带固定的 effort 档——`codex lane` 的 `effort` 旋钮在裸派发上不存在。方括号参数（`<slug>[effort=high]`）仅在自定义 agent 定义文件中可用；仅当任务真正需要升高 effort 时才有意添加一份定义文件，而非默认。路由档案的 `model[…]` 方括号在此映射为 slug 变体——effort 是 slug 的后缀——因此挑选 effort 符合该格的 slug 变体；当本轮 allowlist 只带该家族的一种变体时，该变体就是拨盘，披露点名它。
+- **竞速。** 「挑选更强 diff」的竞速让每位选手跑在隔离 worktree 的派发类型上（当前 `Task` 枚举中的 `best-of-n-runner`：每次尝试自有分支与工作目录），各自带显式 `model`，在同一条消息中发出。同一工作树上的两个执行者会互相覆盖对方的改动；两次普通钉死派发共享该树，不是竞速。
 - **经济。** 各厂模型在 Cursor 中占用各自的额度池，因此各车道价格——以及整套成本纪律——按原文适用。
 
 ## 经 Shell 的 codex lane
@@ -28,3 +28,5 @@
 
 - 串行批次（同一文件、严格顺序）从后台化得不到任何好处：用 `run_in_background: false` 运行，并当场消费报告。
 - 当一批确实在后台运行时，仅在验收之后才停止其 teammate——核验通过不是结束，因为返工票会恢复同一 agent。一旦 diff 已验收且预期没有后续，就停止它；不要让已验收的车道闲置到会话结束。
+- 后台派发的完成通知是生命周期信号，不是报告：报告在前台派发的工具结果里，或在后台派发的输出文件里——到那里去读。
+- 报告缺失时，先读输出文件与工作区，确认车道到达了什么状态，再按你发现的缺口恢复；仅当工作确实必须再执行一遍时才重新派发，且从不对已结束的 agent 做 `resume` 来催要报告——那会重启该 agent，再得到一次完成通知。

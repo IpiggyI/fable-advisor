@@ -11,11 +11,11 @@ Stop hook，fail open；针对的是**主会话自己**——排了 spec 却不�
 _Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与历史上的 spawn 护栏混同（后者针对 wrapper 子代理，已随 wrapper 一并退役，见 ADR 0009）。
 
 **决策类型门**:
-对任何主代理、任一姿态都适用的一张关键点清单（架构 / 数据迁移 / API 形状 / 重构策略；推翻既定方案；改公共接口或跨模块依赖；放宽验收标准；同一问题两次失败；宣告多步交付物完成前），到点位咨询 advisor。是 doctrine 规则，不是 hook。
-_Avoid_: 沿用旧名"承诺边界"；与 receipt gate / lane family gate 这类机械门禁混称；理解成逐 diff 过审或按模型身份触发。
+对任何主代理、任一姿态都适用的一张关键点清单（架构 / 数据迁移 / API 形状 / 重构策略；推翻既定方案；改公共接口或跨模块依赖；放宽验收标准；同一问题两次失败），到点位咨询 advisor 的决策形状。advisor 的验收形状经验证 Tier 3 到达（正确性关键、同族 diff、用户要求评审），不按步数触发。是 doctrine 规则，不是 hook。
+_Avoid_: 沿用旧名"承诺边界"；与 receipt gate / lane family gate 这类机械门禁混称；理解成逐 diff 过审或按模型身份触发；把"多步交付完成前"当成门的一项（ADR 0015 已退役）。
 
 **lane family gate**:
-Cursor 用户级 `preToolUse` 门：`Task` 派发具名 agent `fable-advisor` 时必须带显式、非 inherit 的 `model`；守的是"静默继承会话模型"，不查家族。
+Cursor 用户级 `preToolUse` 门：`Task` 派发本角色池的 advisor 文件（`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`）时必须带显式、非 inherit 的 `model`；守的是"静默继承会话模型"，不查家族。ADR 0016 决策 8 把触发名从退役的裸名 `fable-advisor` 改到这一集合。
 _Avoid_: 与 receipt gate 混称；称作插件 hook 或本仓 project hook；把用户级 Task pin 规则当成另一套门禁；把它扩到 `generalPurpose` 派发（无标记可区分 worker 与普通 scout）。
 
 ### 角色与档位
@@ -41,12 +41,12 @@ _Avoid_: 另设"审查员"角色（验收就是 advisor 的一种请求形状）
 _Avoid_: 把档位写成型号名；把档位固定绑到某个角色。
 
 **拨盘（dial）**:
-车道内的具体填充：型号 + effort。拨盘是档位的实现，不是档位本身。
-_Avoid_: 在车道之间比较拨盘（车道级比较按各车道默认拨盘计价）。
+车道内的具体填充：型号 + effort。拨盘是档位的实现，不是档位本身。记法 `model[首轮可选 | 仅升级]`，`*` 标默认；`|` 之后的档位 worker 只经返工失败后的升级到达，任一角色只经用户声明到达。
+_Avoid_: 在车道之间比较拨盘（车道级比较按各车道默认拨盘计价）；把 runner 的省略默认值（如 luna → `max`）当成用户档案的默认。
 
 **填充表**:
-（角色, 档位）→ 候选车道与拨盘的有序表，逐行带日期戳与失效条件；属用户判断，放用户级规则，不入库。
-_Avoid_: 把型号排名写进仓库 doctrine；把填充表当成胜任性筛选（它只在胜任集合内做选择）。
+（角色, 档位）→ 候选车道与拨盘的有序表；属用户判断。本分叉的编辑源是协调件 `docs/agents/fable-advisor-routing.md`，不进 `plugin/`；活体由调用方指令指名（本机为 `~/.claude/docs/fable-advisor-routing.md`）。主代理首次分配模型前读取，档案变化或滑出上下文时重读，读不到即报缺口。
+_Avoid_: 把型号排名写进仓库 doctrine（`plugin/` 内的技能与 agent 正文）；把填充表当成胜任性筛选（它只在胜任集合内做选择）；写"在用户规则里"；在技能正文里写死本机路径。
 
 ### 车道
 

@@ -7,9 +7,9 @@ How a change in this repo reaches the installed plugin on this machine (WSL + Wi
 - `plugin/.claude-plugin/plugin.json` → `version`
 - `.claude-plugin/marketplace.json` → `plugins[0].version`
 
-Both must move together. The marketplace version drives update discovery; leaving it stale means `claude plugin update` sees nothing new. Minor bump for semantic changes, per the ADR precedents.
+Both must move together. The marketplace version drives update discovery; leaving it stale means `claude plugin update` sees nothing new. Major for a breaking runner or doctrine change, minor for a backward-compatible semantic change, patch for text-only fixes.
 
-Runtime lives under `plugin/`; `marketplace.json` sets `"source": "./plugin"`. Claude Code copies that directory wholesale into the versioned cache (it does not honor `.pluginignore` or `export-ignore`). Anything outside `plugin/` is repo-only and does not ship — `docs/`, `.scratch/`, `.agent-discuss/`, `tests/`, `cursor-hooks/`, `user-rules/`, and the root instruction files (`AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, `README.md`, `LICENSE`). `source` stays `./plugin`.
+Only `plugin/` ships: `marketplace.json` sets `"source": "./plugin"`, and Claude Code copies that directory wholesale into the versioned cache (it does not honor `.pluginignore` or `export-ignore`). `source` stays `./plugin`.
 
 ## 1b. Sync the Chinese mirror
 
@@ -17,9 +17,15 @@ Every `plugin/**/*.md` touched by the release has a twin at the same relative pa
 
 ## 2. Commit and push
 
+Stage the release files by name, review the staged diff, then commit and push:
+
 ```bash
-git add -A && git commit && git push origin main
+git add plugin/ docs/zh/ .claude-plugin/marketplace.json <other files of this release>
+git diff --cached --stat
+git commit && git push origin main
 ```
+
+Not `git add -A`: `.scratch/` is tracked and `outputs/` is not ignored, so `-A` sweeps in-flight tickets and local artifacts into the release commit.
 
 Commit style: English imperative summary naming the change, the ADR, and the bump — see `git log --oneline` for precedent.
 
@@ -42,14 +48,9 @@ cd /mnt/c && cmd.exe /c "claude plugin marketplace update fable-advisor && claud
 
 Both CLIs report "Restart to apply changes" — running Claude Code / Cursor sessions keep the old version until restarted. Cursor consumes the same installed plugin through its Claude-plugin compatibility paths (see ADR 0010), so one update serves both harnesses per side.
 
-Optional spot-check that the new content actually landed:
+Optional spot-check that the new content actually landed — a version directory existing does not prove its content:
 
 ```bash
 ls ~/.claude/plugins/cache/fable-advisor/fable-advisor/   # new version dir present
-test ! -d ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/docs
-test ! -d ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/.scratch
-test ! -d ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/.agent-discuss
-grep -c "pinned subagents" ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/skills/orchestration/lanes-cursor.md
+grep -c "<a phrase this release added>" ~/.claude/plugins/cache/fable-advisor/fable-advisor/<version>/skills/orchestration/SKILL.md
 ```
-
-(Adapt the grep to whatever the release changed.)

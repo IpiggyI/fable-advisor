@@ -1,44 +1,37 @@
 #!/usr/bin/env python3
-"""User-level live-copy archive: English byte-identical to live, Chinese twins present."""
+"""Pin-rule and routing-profile archive: English byte-identical to live copies, Chinese twins present."""
 import os
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-USER_RULES = os.path.join(REPO_ROOT, "user-rules")
-USER_RULES_ZH = os.path.join(USER_RULES, "zh")
 
 PROMPTS_RULES = "/mnt/d/Development/Local/prompts/current-prompts/rules"
 
 ENGLISH = [
     (
-        os.path.join(USER_RULES, "claude-fable-advisor.md"),
-        [
-            os.path.expanduser("~/.claude/rules/fable-advisor.md"),
-            "/mnt/c/Users/Shy/.claude/rules/fable-advisor.md",
-            os.path.join(PROMPTS_RULES, "fable-advisor.md"),
-        ],
-    ),
-    (
-        os.path.join(USER_RULES, "cursor-fable-advisor.mdc"),
-        [
-            os.path.expanduser("~/.cursor/rules/fable-advisor.mdc"),
-            "/mnt/c/Users/Shy/.cursor/rules/fable-advisor.mdc",
-            os.path.join(PROMPTS_RULES, "fable-advisor.cursor.mdc"),
-        ],
-    ),
-    (
         os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-pin.mdc"),
         [
+            os.path.expanduser("~/.cursor/rules/fable-lane-pin.mdc"),
+            "/mnt/c/Users/Shy/.cursor/rules/fable-lane-pin.mdc",
             os.path.join(PROMPTS_RULES, "fable-lane-pin.cursor.mdc"),
+        ],
+    ),
+    (
+        os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.md"),
+        [
+            os.path.expanduser("~/.claude/docs/fable-advisor-routing.md"),
+            "/mnt/c/Users/Shy/.claude/docs/fable-advisor-routing.md",
+            "/mnt/d/Development/Local/prompts/current-prompts/docs/fable-advisor-routing.md",
         ],
     ),
 ]
 
 CHINESE = [
-    os.path.join(USER_RULES_ZH, "claude-fable-advisor.md"),
-    os.path.join(USER_RULES_ZH, "cursor-fable-advisor.mdc"),
-    os.path.join(USER_RULES_ZH, "fable-lane-pin.mdc"),
+    os.path.join(REPO_ROOT, "cursor-hooks", "zh", "fable-lane-pin.mdc"),
 ]
+
+# Routing zh is a profile translation, not a pin-rule backup: no 不是活体.
+ROUTING_ZH = os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.zh.md")
 
 
 def has_cjk(text):
@@ -82,6 +75,17 @@ def main():
             assert "不是活体" in body, "%s missing live-copy disclaimer" % name
 
         check("chinese twin %s" % rel, zh_ok)
+
+    routing_zh_rel = os.path.relpath(ROUTING_ZH, REPO_ROOT)
+
+    def routing_zh_ok(path=ROUTING_ZH, name=routing_zh_rel):
+        assert os.path.isfile(path), "missing %s" % name
+        with open(path, encoding="utf-8") as fh:
+            body = fh.read()
+        assert body.strip(), "%s is empty" % name
+        assert has_cjk(body), "%s has no Chinese" % name
+
+    check("chinese twin %s" % routing_zh_rel, routing_zh_ok)
 
     seen = 0
     for archive, lives in ENGLISH:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deny Cursor Task spawns of fable-advisor when model is missing or inherit.
+"""Deny Cursor Task spawns of an advisor agent when model is missing or inherit.
 
 Read stdin as UTF-8 bytes, stripping a leading BOM (`utf-8-sig`). Windows
 Python defaults to GBK text. Cursor 3.16.17 has prefixed hook stdin with
@@ -7,8 +7,8 @@ UTF-8 BOM, and has split `cursor-grok-4.6-*` slugs so `4.6` is a JSON number
 (`"cursor-grok-"4.6"-medium"`). Empty stdin is deny. JSON that still cannot
 be parsed is deny with the decoder error, not a BOM message.
 Explore/generalPurpose inherit is allowed when tool_input is visible.
-fable-advisor requires an explicit, non-inherit model. Resume skips the
-model check.
+Any advisor agent requires an explicit, non-inherit model. Resume skips
+the model check.
 
 First-party: Cursor 3.16.17, 2026-08-18 Windows leak — hook ran, logged INPUT
 had tool_input.model=inherit, process wrote permission=allow. Replay of those
@@ -25,7 +25,23 @@ from pathlib import Path
 
 LOG = Path.home() / ".cursor" / "hooks" / "logs" / "fable-lane-family-gate.jsonl"
 
-NAMED_AGENT = "fable-advisor"
+# Match the advisor family by prefix, not by an enumerated set: the role pool
+# names advisors `advisor-<effort abbreviation>` (`advisor-l`, `advisor-md`,
+# `advisor-h`, `advisor-xh`), so a new dial added later is guarded the moment
+# its file lands, with no edit here. Anything else (`explore`,
+# `generalPurpose`, a worker, an explorer) is out of this gate's scope.
+ADVISOR_PREFIX = "advisor-"
+
+
+def is_advisor(agent: str) -> bool:
+    """True for any advisor dial in the role pool, present or future.
+
+    Normalize before comparing: this is a permission decision, so a name
+    Cursor would accept must not slip past the prefix on whitespace or case
+    (` advisor-h`, `Advisor-h`). The model check normalizes the same way.
+    """
+    return agent.strip().lower().startswith(ADVISOR_PREFIX)
+
 
 UNREADABLE_AGENT = (
     "fable-lane-family-gate got no tool_input (empty or unparseable stdin). "
@@ -49,7 +65,7 @@ def decide(tool_input: dict) -> tuple[str, str | None, str | None]:
         return "allow", None, None
 
     agent = str(tool_input.get("subagent_type") or "")
-    if agent != NAMED_AGENT:
+    if not is_advisor(agent):
         return "allow", None, None
 
     model = tool_input.get("model")
@@ -62,12 +78,12 @@ def decide(tool_input: dict) -> tuple[str, str | None, str | None]:
         return "allow", None, None
 
     agent_msg = (
-        f"Cursor Task for {NAMED_AGENT} omitted model (inherit parent). "
+        f"Cursor Task for {agent} omitted model (inherit parent). "
         "An explicit, non-inherit model from this turn's Task allowlist is required. "
         "Agent frontmatter model: is not honored in Cursor."
     )
     user_msg = (
-        f"{NAMED_AGENT} 需要显式、非 inherit 的 model，已拦截。"
+        f"{agent} 需要显式、非 inherit 的 model，已拦截。"
         "请从本次允许清单给出一个型号后重试。"
     )
     return "deny", agent_msg, user_msg
@@ -291,12 +307,21 @@ def _self_test() -> int:
         ({"subagent_type": "explore"}, "allow"),
         ({"subagent_type": "generalPurpose"}, "allow"),
         ({"subagent_type": "generalPurpose", "model": "inherit"}, "allow"),
-        ({"subagent_type": "fable-advisor"}, "deny"),
-        ({"subagent_type": "fable-advisor", "model": ""}, "deny"),
-        ({"subagent_type": "fable-advisor", "model": "inherit"}, "deny"),
-        ({"subagent_type": "fable-advisor", "model": "cursor-grok-4.6-xhigh"}, "allow"),
-        ({"subagent_type": "fable-advisor", "model": "claude-fable-5-thinking-xhigh"}, "allow"),
-        ({"subagent_type": "fable-advisor", "resume": "abc"}, "allow"),
+        # Out of scope: only advisor dials are gated.
+        ({"subagent_type": "worker-h"}, "allow"),
+        ({"subagent_type": "worker-md", "model": "inherit"}, "allow"),
+        ({"subagent_type": "explorer-xh", "model": "inherit"}, "allow"),
+        # A dial that does not exist yet is still guarded by the prefix.
+        ({"subagent_type": "advisor-future", "model": "inherit"}, "deny"),
+        # Normalized before matching: whitespace and case cannot bypass it.
+        ({"subagent_type": " advisor-h", "model": "inherit"}, "deny"),
+        ({"subagent_type": "Advisor-h", "model": "inherit"}, "deny"),
+        ({"subagent_type": "advisor-h"}, "deny"),
+        ({"subagent_type": "advisor-l", "model": ""}, "deny"),
+        ({"subagent_type": "advisor-md", "model": "inherit"}, "deny"),
+        ({"subagent_type": "advisor-xh", "model": "cursor-grok-4.6-xhigh"}, "allow"),
+        ({"subagent_type": "advisor-h", "model": "claude-fable-5-thinking-xhigh"}, "allow"),
+        ({"subagent_type": "advisor-l", "resume": "abc"}, "allow"),
     ]
     failed = 0
     for tool_input, expected in decide_cases:
@@ -311,11 +336,11 @@ def _self_test() -> int:
                 failed += 1
 
     extract_cases = [
-        ({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor", "model": "inherit"}}, {"subagent_type", "model"}),
-        ({"subagent_type": "fable-advisor", "model": "inherit", "prompt": "x"}, {"subagent_type", "model"}),
-        ({"tool_name": "Task", "toolInput": {"subagent_type": "fable-advisor", "model": "inherit"}}, {"subagent_type", "model"}),
-        ({"tool_name": "Task", "arguments": {"subagent_type": "fable-advisor", "model": "inherit"}}, {"subagent_type", "model"}),
-        ({"tool_name": "Task", "tool_input": json.dumps({"subagent_type": "fable-advisor", "model": "inherit"})}, {"subagent_type", "model"}),
+        ({"tool_name": "Task", "tool_input": {"subagent_type": "advisor-md", "model": "inherit"}}, {"subagent_type", "model"}),
+        ({"subagent_type": "advisor-xh", "model": "inherit", "prompt": "x"}, {"subagent_type", "model"}),
+        ({"tool_name": "Task", "toolInput": {"subagent_type": "advisor-h", "model": "inherit"}}, {"subagent_type", "model"}),
+        ({"tool_name": "Task", "arguments": {"subagent_type": "advisor-l", "model": "inherit"}}, {"subagent_type", "model"}),
+        ({"tool_name": "Task", "tool_input": json.dumps({"subagent_type": "advisor-md", "model": "inherit"})}, {"subagent_type", "model"}),
         (
             {
                 "tool_name": "Task",
@@ -347,7 +372,7 @@ def _self_test() -> int:
                 {
                     "tool_name": "Task",
                     "tool_input": {
-                        "subagent_type": "fable-advisor",
+                        "subagent_type": "advisor-xh",
                         "model": "inherit",
                         "description": "v4 收口裁决",
                     },
@@ -365,7 +390,7 @@ def _self_test() -> int:
                 {
                     "tool_name": "Task",
                     "tool_input": {
-                        "subagent_type": "fable-advisor",
+                        "subagent_type": "advisor-h",
                         "model": "claude-fable-5-thinking-xhigh",
                     },
                 }
@@ -378,7 +403,7 @@ def _self_test() -> int:
                 {
                     "tool_name": "Task",
                     "tool_input": {
-                        "subagent_type": "fable-advisor",
+                        "subagent_type": "advisor-l",
                         "model": "claude-fable-5-thinking-low",
                     },
                 }
@@ -391,7 +416,7 @@ def _self_test() -> int:
                 {
                     "tool_name": "Task",
                     "tool_input": {
-                        "subagent_type": "fable-advisor",
+                        "subagent_type": "advisor-md",
                         "model": "inherit",
                     },
                 }
@@ -399,11 +424,11 @@ def _self_test() -> int:
             "deny",
         ),
         (
-            json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor", "resume": "abc"}}).encode(),
+            json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "advisor-xh", "resume": "abc"}}).encode(),
             "allow",
         ),
         (
-            b'{"tool_name":"Task","tool_input":{"subagent_type":"fable-advisor","model":"cursor-grok-"4.6"-medium"}}',
+            b'{"tool_name":"Task","tool_input":{"subagent_type":"advisor-h","model":"cursor-grok-"4.6"-medium"}}',
             "allow",
         ),
         (
@@ -411,7 +436,7 @@ def _self_test() -> int:
             "allow",
         ),
         (
-            b'{"tool_name":"Task","tool_input":{"prompt":"use `cwd` and "quotes"","model":"claude-fable-5-thinking-low","subagent_type":"fable-advisor"}}',
+            b'{"tool_name":"Task","tool_input":{"prompt":"use `cwd` and "quotes"","model":"claude-fable-5-thinking-low","subagent_type":"advisor-l"}}',
             "allow",
         ),
         (
@@ -419,7 +444,7 @@ def _self_test() -> int:
                 {
                     "tool_name": "Task",
                     "tool_input": {
-                        "subagent_type": "fable-advisor",
+                        "subagent_type": "advisor-md",
                         "model": "cursor-grok-4.6-xhigh",
                     },
                 }
@@ -427,7 +452,7 @@ def _self_test() -> int:
             "allow",
         ),
         (
-            json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "fable-advisor"}}).encode(),
+            json.dumps({"tool_name": "Task", "tool_input": {"subagent_type": "advisor-xh"}}).encode(),
             "deny",
         ),
         (

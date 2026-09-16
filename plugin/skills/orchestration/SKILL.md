@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: Routing doctrine for the role pool (explorer / worker / advisor at light / standard / senior tiers) and the grok, codex, claude and handoff lanes. USE WHEN acting as architect or orchestrating implementation work or a multi-ticket build, routing tasks to lanes (grok/codex runners in Claude Code, pinned-model dispatches in Cursor), writing a five-part delivery contract, verifying or accepting lane work, consulting the advisor, or managing session cost.
+description: Roles (explorer / worker / advisor), tiers, lanes and posture for delegated work. Use when deciding how to carry out a deliverable change, dispatching or accepting any subagent or CLI lane, or consulting the advisor.
 ---
 
 # Orchestration — roles, tiers, lanes, posture
@@ -9,9 +9,9 @@ The main agent, whatever model runs it, owns requirements, decomposition, delive
 
 ## Cost discipline — the prime directive
 
-**Spend judgment where it is scarce.** Judgment is what no contract captures: decomposition, interfaces, reserved constraints, routing, acceptance. A code block longer than an interface signature is a contract not yet delegated. A lane debugs its own defect; the main agent supplies the reproducible failure, and a hypothesis only when the defect's owner is unknown.
+**Spend judgment where it is scarce.** Judgment is what no contract captures: decomposition, interfaces, reserved constraints, routing, acceptance. A lane debugs its own defect; the main agent supplies the reproducible failure, and a hypothesis only when the defect's owner is unknown.
 
-**Keep volume out of the main agent's context.** A full-file read here bills twice: re-read every turn, and re-read by the lane. Exploration, searches, and log-grepping go to an explorer; take the map and the conclusions, then read only the lines the contract will quote.
+**Keep volume out of the main agent's context.** Dispatch an explorer when the reading is wide, can run independently in parallel, or only its conclusion belongs in the main thread; a bounded lookup in a known file the main agent reads itself. Code-block length and fitting one tool call are not dispatch criteria.
 
 **In the orchestrating posture every deliverable change has a reader other than its author.** The worker writes; the main agent or advisor reads; a self-written, self-accepted change has left the review chain.
 
@@ -22,11 +22,11 @@ Posture is the main agent's relation to deliverables. Two postures, differing in
 - **Orchestrating posture**: deliverables change only through a worker; the main agent (the architect, in this posture) writes contracts, dispatches, accepts.
 - **Implementing posture**: the main agent may edit deliverables directly.
 
-Every role is dispatchable in both; the decision-type gate binds both; implementing never means "no dispatches".
+Every role is dispatchable in both; implementing never means "no dispatches".
 
 **Selector.** A user declaration or an upstream instruction wins; with neither, an existing upstream task artifact (issue, spec, task file) means orchestrating, otherwise implementing. Model identity never selects posture.
 
-Posture is relative to a dispatch: a lane is implementing for its own contract and orchestrating toward any subagents it spawns. Depth is not limited.
+Posture is relative to a dispatch: a lane is implementing for its own contract and orchestrating toward any subagents it spawns. Depth is not limited. Claude Code caps subagent nesting at three layers below the main session.
 
 ## The delegation boundary — by artifact class
 
@@ -37,7 +37,7 @@ In the orchestrating posture, whether the architect may edit a file depends on w
 
 The repo's path mapping lives in its AGENTS.md or equivalent. An unclear class is a deliverable.
 
-**Same-model dispatch** is a dial of the claude lane: the model is pinned to the session model. It serves one artifact class in the orchestrating posture, the plugin's own doctrine prose (skill and agent text); the class triggers it, not how central the text feels. Cursor: `generalPurpose` with no `model` (inherit). Claude Code: the `worker` agent with per-dispatch `model` set to the session model.
+**Same-model dispatch** is a dial of the claude lane: the model is pinned to the session model. It serves one artifact class in the orchestrating posture, the plugin's own doctrine prose (skill and agent text); the class triggers it, not how central the text feels. Cursor: `generalPurpose` with no `model` (inherit). Claude Code: a `worker-*` agent with per-dispatch `model` set to the session model.
 
 ## Roles and tiers
 
@@ -59,14 +59,12 @@ A lane answers how a vendor is reached; roles and tiers answer what is dispatche
 |---|---|
 | grok lane | the Grok family through the grok runner (Claude Code) or a pinned dispatch (Cursor) |
 | codex lane | the GPT family through the codex runner; model and effort selectable from its whitelist |
-| claude lane | Claude subagents (`worker`, `fable-advisor`, the harness explorer); no external CLI. From a Claude main agent disclose: same family (no cross-vendor review), shared Anthropic quota, highest unit price |
+| claude lane | Claude subagents, one agent file per (role, effort): effort comes only from that file, the per-dispatch `model` picks the fill. Unpinned, Explore runs the session model (Opus-capped on the Claude API) with no effort dial. No external CLI. From a Claude main agent disclose: same family (no cross-vendor review), shared Anthropic quota |
 | handoff lane | the user carries a spec file to a harness of their own; see [handoff-lane.md](handoff-lane.md) |
-
-The **fill table**, (role, tier) → candidate lanes and dials (a `dial` is model plus effort inside a lane), lives in the user's rules.
 
 ### Harness mechanics
 
-A Task/subagent tool with a per-dispatch model means Cursor; running `scripts/run-*.mjs` runners means Claude Code. Before your first dispatch, read the matching file:
+Identify the harness by the host you run in and its tools' parameter structure, never by one tool name or the presence of a `model` parameter; the main agent then reads the matching lanes file before its first dispatch:
 
 - Claude Code (runners, receipts, receipt gate, report mode): [lanes-claude-code.md](lanes-claude-code.md)
 - Cursor (pinned dispatches, codex runner through Shell, lifecycle): [lanes-cursor.md](lanes-cursor.md)
@@ -75,19 +73,19 @@ A Task/subagent tool with a per-dispatch model means Cursor; running `scripts/ru
 
 ## Routing — two stages
 
-**Stage 1 — (role, tier) by judgment dependence.** Role by output: evidence → explorer, a change → worker, a commitment or acceptance → advisor. Tier by how much the outcome depends on judgment the contract cannot capture: little → light or standard (verify anyway); a lot, with costly mistakes → senior, or a race of two fills on one contract. In the orchestrating posture every branch ends in a worker, never in the architect implementing.
+**Stage 1 — (role, tier) by judgment dependence.** Role by output: evidence → explorer, a change → worker, a commitment or acceptance → advisor. Tier by how much the outcome depends on judgment the contract cannot capture: little → light or standard (verify anyway); a lot, with costly mistakes → senior, or a race of two fills on one contract.
 
-**Stage 2 — Pareto inside the cell.** Among that cell's fills in the fill table, trade speed, price, capability, and specialty against the user's declared profile. Specialty is a tie-breaker; it never overturns stage 1. With no declarations, take the cheapest adequate fill, each lane priced at its default dial; dial positions never enter the lane-level comparison, and a lane's cheaper model or lower effort is reached only by user declaration, or when the task is simple and that family is wanted anyway. The handoff lane is a *conditional member*: it joins only after the user's declaration for this task or session.
+**Stage 2 — Pareto inside the cell.** Among that cell's fills in the fill table, trade speed, price, capability, and specialty against the user's declared profile. Specialty is a tie-breaker; it never overturns stage 1. With no declarations, take the cheapest adequate fill, each lane priced at its default dial; dial positions never enter the lane-level comparison.
 
-**Re-routing.** An unavailable or timed-out lane gets the same contract re-routed to another fill in the cell, disclosed. Both CLI lanes down → the claude lane, stating the downgrade (no cross-vendor review). Availability is decided by dispatch, not probes.
+**Re-routing.** An unavailable or timed-out lane gets the same contract re-routed to another fill in the cell, disclosed. Both CLI lanes down → the claude lane, stating any loss of cross-vendor review. Availability is decided by dispatch, not probes.
 
-**Escalation.** One failed acceptance gets a rework ticket (lane-owned defect; never a hand fix) or a corrected contract (contract gap). When the rework ticket also fails, attribute: capability → a higher-tier worker in a fresh session under a takeover contract (original contract, prior report, receipt); contract gap → a corrected contract on the same lane session. A senior tier may also be a first choice.
+**Escalation.** One failed acceptance gets a rework ticket (lane-owned defect; never a hand fix) or a corrected contract (contract gap). When the rework ticket also fails, attribute: capability → a higher-tier worker in a fresh session under a takeover contract (original contract, prior report, receipt); contract gap → a corrected contract on the same lane session.
 
 ## User routing profile
 
-Stage 2 runs on inputs the main agent cannot probe; they enter only as declarations, in two layers.
+Stage 2 inputs enter only as declarations, in two layers.
 
-**Persistent judgments** (the fill table, specialty notes) live in the user's rules, not this repo. Each entry carries a precondition, a voiding condition, a model generation and a date, so a generation swap retires it.
+**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in the user routing profile the caller's instructions name, not this repo. Read it before the first model assignment; re-read it when it changes or has slid out of context; if none is named or it cannot be read, report the gap and assume nothing. A `dial` is written `model[first-round options | escalation-only]`, `*` marks the default; options after `|` are reached by a worker only through escalation after a failed rework ticket, and by any role only on user declaration.
 
 **Volatile state** (quota balance, deadline pressure) is declared verbally when the work starts, holds for that session only, and is never written to disk.
 
@@ -102,10 +100,10 @@ Lanes share none of your context. Every dispatch carries five parts:
 1. **Objective**: the outcome and its acceptance criteria, not the steps
 2. **Files**: the owned scope (paths or directories); new files inside it are allowed
 3. **Interfaces**: shared or external contracts the result must match; may be none
-4. **Constraints**: the reserved items: what must not change, choices fixed upstream
-5. **Verification**: commands whose output is acceptance evidence, including one check that fails when the goal is not met
+4. **Constraints**: the reserved items: what must not change, choices fixed upstream, and the operations the caller keeps in its own session; these bind the lane, its subagents, and its verification commands
+5. **Verification**: for a worker, commands whose output is acceptance evidence, including at least one check that fails when the goal is not met; for an explorer or advisor, the expected evidence or verdict shape, possibly empty
 
-Everything Constraints leaves open is the lane's decision; "the contract doesn't say how" is not a gap. Steps are not written by default: only when an upstream decision already fixed a sequence, or as targeted direction after a failed rework ticket.
+Everything Constraints leaves open is the lane's decision. Steps are not written by default: only when an upstream decision already fixed a sequence, or as targeted direction after a failed rework ticket.
 
 **Contract gap versus implementation choice.** A contract gap (unclear expected behaviour, conflicting requirements, a reserved interface that would have to change, no way to tell what passes) comes back as a report and gets a corrected contract. An unspecified implementation choice (internal function boundaries, an equivalent data structure, test organisation, in-scope error handling) is the lane's, neither reported nor waited on.
 
@@ -115,7 +113,7 @@ Everything Constraints leaves open is the lane's decision; "the contract doesn't
 
 ## Parallelism
 
-Independent contracts (no shared files, no ordering dependency) launch as parallel lanes in a single message; sequential chains and single-file surgery stay serial. For high-stakes work, race two fills on one contract and pick the stronger diff; two non-Anthropic fills buy a *third* perspective for one extra lane's cost.
+Independent contracts (no shared files, no ordering dependency) launch as parallel lanes in a single message; sequential chains and single-file surgery stay serial. For high-stakes work, race two fills on one contract and pick the stronger diff; two fills from families other than the main agent's buy a *third* perspective for one extra lane's cost. Two executors in one working tree overwrite each other; a race isolates each fill's working directory and execution records (see the lanes file).
 
 ## Decision-type gate
 
@@ -126,9 +124,8 @@ Consult the advisor at these decision types; the list binds any main agent, at a
 - changing a public interface or a cross-module dependency
 - relaxing acceptance criteria
 - the same problem failing twice
-- before declaring a multi-step deliverable done: this one takes the advisor's **acceptance** shape
 
-The others take the **decision** shape: pass the decision, constraints, and options; the advisor reads the code itself. Act on the verdict or surface the disagreement; never silently ignore it. No mechanical enforcement, no per-diff review.
+All take the **decision** shape: pass the decision, constraints, and options; the advisor reads the code itself. The **acceptance** shape arrives through Verification's Tier 3, never by step count. Act on the verdict or surface the disagreement; never silently ignore it. No mechanical enforcement, no per-diff review.
 
 ## Verification
 
@@ -136,6 +133,6 @@ Reports are claims, not evidence; the object of review is the contract. Three ti
 
 1. **Tier 1 — every lane by default.** Accept on the lane's verification evidence (command, exit code, output tail, spot-checked against the working tree) plus `git diff --stat`. A full unscoped `git diff` never enters the main agent's context.
 2. **Tier 2 — specific doubt.** On a specific doubt from the report, stat, or verification output, read a path-scoped `git diff <file>`. When the lane authored the acceptance test, read it: it is part of the claim, not evidence.
-3. **Tier 3 — correctness-critical work, and same-family diffs.** The advisor in its acceptance shape (context-clean, read-only, reads the diff plus the receipt) returns a verdict plus flagged hunks; read only those. Prefer a cross-vendor fill for a same-family diff. A verdict is still a claim; the main agent keeps final judgment.
+3. **Tier 3 — correctness-critical work, same-family diffs, and the user asking for review.** The advisor in its acceptance shape (context-clean, read-only, reads the diff plus the receipt) returns a verdict plus flagged hunks; read only those. Prefer a cross-vendor fill for a same-family diff. A verdict is still a claim; the main agent keeps final judgment.
 
-"Should work", "tests should pass", or a report with no command output means not done. A subagent idle without its report is not a blocker: verify the workspace evidence and move on.
+"Should work", "tests should pass", or a report with no command output means not done.

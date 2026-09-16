@@ -24,17 +24,19 @@ Version bump (two files) → push to `origin` → per-side `claude plugin` updat
 
 Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule live under `cursor-hooks/` (not `plugin/hooks/`). See `docs/agents/cursor-lane-gate.md`.
 
-### User-level fill table
+### User routing profile
 
-English live copies of the Claude and Cursor user rules (posture selector, fill table, Pareto inputs) are archived under `user-rules/`. Chinese backups of those documents, plus the pin rule, live in `user-rules/zh/` — they are not installed. A third working copy lives in `D:\Development\Local\prompts\current-prompts\rules\` (WSL: `/mnt/d/Development/Local/prompts/current-prompts/rules/`). Copy only the English files to the live paths. `python3 tests/test_user_level_archive.py` checks English-vs-live drift and that the Chinese twins exist.
+Canonical profile: `docs/agents/fable-advisor-routing.md` (Chinese backup `docs/agents/fable-advisor-routing.zh.md`, not installed). Live copy: `~/.claude/docs/fable-advisor-routing.md` on both sides. The prompts-repo files under `current-prompts/docs/` are a byte-identical backup, not an edit source. The skill still reads whichever path the caller names; this fork's `AGENTS.md` names the live path. See [ADR 0017](docs/adr/0017-routing-profile-edit-source.md).
+
+Edit here, then copy onto both live paths and the prompts backup. Run `python3 tests/test_user_level_archive.py`. The Cursor Task pin rule stays a separate user-level artifact: canonical `cursor-hooks/fable-lane-pin.mdc`, Chinese backup `cursor-hooks/zh/fable-lane-pin.mdc`.
 
 ### Delegation boundary by artifact class
 
 Per [ADR 0013](docs/adr/0013-delivery-contract-not-build-instructions.md) and [ADR 0014](docs/adr/0014-role-pool-posture.md), in the **orchestrating posture** the main agent never edits deliverables, whatever the size — they go through a `worker`; coordination artifacts it writes directly in either posture. In the implementing posture (no upstream task artifact, or the user said so) the main agent may edit deliverables itself. In this repo:
 
-- Deliverables (worker only while orchestrating): `plugin/**`, `tests/**`, `cursor-hooks/**`, `user-rules/**`, `README.md`, `docs/zh/**`.
+- Deliverables (worker only while orchestrating): `plugin/**`, `tests/**`, `cursor-hooks/**`, `README.md`, `docs/zh/**`.
 - Coordination artifacts (main agent may write): `.scratch/**`, `docs/adr/**`, `CONTEXT.md`, `AGENTS.md`, `docs/agents/**`, `.fable-advisor/**`, and the two version fields named in `docs/agents/plugin-release.md`.
 
 ### Chinese mirror of runtime docs
 
-Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship. User-level Chinese backups stay in `user-rules/zh/`, not under `docs/zh/`.
+Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship. The Chinese backup of the Cursor pin rule stays in `cursor-hooks/zh/`; the Chinese backup of the routing profile stays in `docs/agents/fable-advisor-routing.zh.md`. Neither lives under `docs/zh/`.
