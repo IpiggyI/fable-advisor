@@ -55,7 +55,7 @@ agent 定义**没写** `effort:` 时，档位跟它实际运行其上的那个�
 - `resume_session_id` — 先前的 codex session id；见下文「返工票」。
 - `mode` — `implement`（默认）或 `report`；见下文「报告模式」。
 
-**回退。** 若 astra 在会话建立之前失败（`preparation_stalled`，或尚无 session id 的 `codex_failed`），runner 按 luna 的默认 effort 在 luna 上重试一次；receipt 显示 `model_requested: gpt-6-astra`、`model_used: gpt-5.6-luna`，以及非空的 `fallback_reason`。一旦会话已存在则不回退——半成品运行不会在另一模型上重做。sol 与 luna 从不回退。验收一次发生过回退的运行时，用你自己的话复述降级；receipt 负责披露，你负责承认。
+**回退。** 若 astra 在会话建立之前失败（`preparation_stalled`，或尚无 session id 的 `codex_failed`），执行器确认前一进程已退出或启动失败后，按 Luna 的默认推理强度在 Luna 上重试一次；receipt 显示 `model_requested: gpt-6-astra`、`model_used: gpt-5.6-luna`，以及非空的 `fallback_reason`。一旦会话已存在则不回退——半成品运行不会在另一模型上重做。sol 与 luna 从不回退。验收一次发生过回退的运行时，用你自己的话复述降级；receipt 负责披露，你负责承认。
 
 ## 2. 运行 runner
 
@@ -74,6 +74,10 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 
 完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。绝不要用 `sleep N` 再 `ls .fable-advisor/pending/` 充当等待——固定睡眠会在 runner 已经退出之后继续烧完整段间隔。对于并行车道，逐条 block 每个后台任务，或在同一条消息里前台运行各 runner。
 
+CLI 主进程退出后，执行器停止运行计时器，最多等待两秒来排空后代继承的输出管道。到期后，执行器释放剩余管道、记录诊断，并依据已观察到的退出状态继续核验和生成收据。预检、Git 检查和核验命令使用同样的排空期限；仍在运行的核验命令不因此获得总运行时限。
+
+超时或中断会先启动独立的两秒收尾期限，再尝试终止进程树。Windows 的 `taskkill` 另有两秒运行上限和两秒收尾期限。即使终止失败，两处等待也会结束。若诊断说明尚未观察到退出，恢复会话或派发另一个写入任务前，先确认并停止存活进程；失败收据不证明进程树已清理。
+
 有三个互相独立的时钟压在一次派发上，每一个都能单独结束它：
 
 - **runner 自己的静默截止**（`idle_timeout_sec`，默认 600 秒）在事件流静默这么久之后杀掉 CLI 子进程、跳过核验，并留下一份 `idle_timeout` receipt。显式给出的 `timeout_sec` 在其之上再加一道绝对上限，留下 `timeout` receipt；不给则 runner 不设任何总量限制。
@@ -88,13 +92,15 @@ runner 把 receipt 打印到 stdout，并写入 `.fable-advisor/receipts/<spec_h
 
 - `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | unexpected_diff | empty_report | git_status_failed`。
 - `codex_session_id` — 绑定到所拉起进程的事件流，不受并发会话串扰；在恢复运行上它等于被恢复的 id。
-- `model_requested`、`model_used`、`fallback_reason`（无回退时为 null）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程 close；未见终止事件时为 null——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是诊断，不是门禁：一次 `idle_timeout` 之后它说明静默截止是不是定得太紧，正常跑完的运行上它显示还剩多少余量）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。三层，不是两层：`model_requested` 是 spec 请求的值；`model_used` 与 `effort` 是 runner 提交给 CLI 的值（发生回退时，是重试那次的值）；runner 不读取 CLI 运行事件来获知实际执行的配置，因此那一层仍未知——引用 receipt 的 model 或 effort 时，写 "submitted, not observed"。
+- `model_requested`、`model_used`、`fallback_reason`（无回退时为 null）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程自然触发 `close` 的时长；未见终止事件或管道被强制释放时为 `null`——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是诊断，不是门禁：一次 `idle_timeout` 之后它说明静默截止是不是定得太紧，正常跑完的运行上它显示还剩多少余量）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。三层，不是两层：`model_requested` 是 spec 请求的值；`model_used` 与 `effort` 是 runner 提交给 CLI 的值（发生回退时，是重试那次的值）；runner 不读取 CLI 运行事件来获知实际执行的配置，因此那一层仍未知——引用 receipt 的 model 或 effort 时，写 "submitted, not observed"。
 - `dirty_baseline` — 开跑前一次 `git status --porcelain` 非空为 `true`，空为 `false`，该次 `git status` 本身失败为 `null`（运行继续）。两种模式、两条 runner 都记录。
 - `changed_files`，外加核验命令的实际退出码与输出尾部。
 
-`no_diff` 意味着 `files` 非空且 implement 模式下没有任何变更；pending 文件保留。在普通 spec 上这是一次静默空跑——去查。在返工票上，当车道发现缺陷无法复现时，这是预期答案：读报告、删除 pending 文件，并说明。`git_status_failed` 意味着 runner 无法判定改了什么；它不是 `complete`。
+`no_diff` 意味着 `files` 非空且 implement 模式下没有任何变更；pending 文件保留。在普通 spec 上这是一次静默空跑——去查。在返工票上，当车道发现缺陷无法复现时，这是预期答案：读报告、删除 pending 文件，并说明。`git_status_failed` 意味着 implement 模式下 runner 无法判定改了什么；它不是 `complete`。报告模式不抛这个类：运行后的 `git status` 失败时 `changed_files` 为空，并保留已记下的 `dirty_baseline`，随后仍按 `empty_report` 与 `complete` 判定。
 
 `idle_timeout` 与 `timeout` 意味着某个时钟切断了这条车道，而不是它的工作有错——而且因为两条路径都跳过核验，receipt 里没有可供裁决的核验证据。被切断会话的数据在磁盘上完好，所以干净的恢复方式是一张返工票，在 `resume_session_id` 中携带该 receipt 的 session id：车道恢复运行并跑完它自己的核验。由你自己手工核验一条被切断车道的工作树，不是恢复路径。
+
+runner 是契约检查列表的执行者：CLI 退出之后由它自己跑 `verification`，所以车道被告知不要重复跑，receipt 里的输出就是那一次执行。`complete` receipt 是它自己那张契约的证据——既不是对该契约的验收，也不是对整个任务的验收。
 
 CLI 车道验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。第 3 层是 `advisor` 的 acceptance 形状；由哪种填充来答，是填充表中 `advisor` 那一行。
 
@@ -114,8 +120,9 @@ receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fabl
 - CLI 由报告前言交代，而不是 `worker` 前言。
 - 工作树无变更是正常结果，且为 `complete`；receipt 额外携带 `mode` 与 `report`（CLI 的最终消息，即车道的答案）。
 - 开跑前干净、跑完后脏的工作树是错误类 `unexpected_diff`，绝不是 `complete`：只读角色写了文件是失败，不是彩头。当 `dirty_baseline` 为 `true` 时不判 `unexpected_diff`；`empty_report` 与 `complete` 的判定照常，`changed_files` 仍记录运行后的观察值。此时只读工具集是唯一防线。
-- 工作树干净但收集到的报告文本为空或仅空白，是错误类 `empty_report`，绝不是 `complete`：只读角色什么都没说，就还没有作答。pending spec 保留。
-- 报告模式下的优先级：先 `unexpected_diff`（车道弄脏的树），再 `empty_report`，然后 `complete`。
+- 运行后的 `git status` 失败在报告模式下不是 `git_status_failed`。`dirty_baseline` 保持开跑前那次检查的记录（那次也失败时为 `null`，例如没有 git 仓库的树）。`empty_report` 与 `complete` 照常判定。只读工具集是写保护。
+- 收集到的报告文本为空或仅空白，是错误类 `empty_report`，绝不是 `complete`：只读角色什么都没说，就还没有作答。pending spec 保留。git 不可用时这条仍然成立。
+- 报告模式下的优先级：先 `unexpected_diff`（车道弄脏的树），再 `empty_report`，然后 `complete`。`git_status_failed` 不在此列。
 - receipt gate 照常适用：没有 `complete` receipt 的 report-mode pending spec 与其他任何 pending 一样阻塞会话。
 
 未知的 `mode` 值是 `spec_invalid`。pending/receipt 流程、等待协议和 `resume_session_id` 不变。

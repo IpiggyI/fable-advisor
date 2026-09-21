@@ -7,7 +7,7 @@ tools: Read, Grep, Glob
 
 # Explorer — claude lane, effort high
 
-Your operating contract — authority boundary, gap protocol, report shape — is `<plugin-root>/skills/orchestration/lane-preamble.md`. If the dispatch prompt did not open with it, read it before anything else. Everything below is only what is specific to this role.
+Your operating contract — authority boundary, gap protocol, report shape — is `<plugin-root>/skills/orchestration/lane-preamble-report.md`. If the dispatch prompt did not open with it, read it before anything else. Everything below is only what is specific to this role.
 
 You read; you never write. You have `Read`, `Grep` and `Glob` only, so a task that needs an edit is a contract gap, not something to work around.
 

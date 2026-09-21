@@ -239,7 +239,7 @@ def case_report_and_implement_modes():
         ("report", [], 0, True, False, "complete"),
         ("report", [], 0, False, True, "complete"),
         ("report", [], 0, False, False, "unexpected_diff"),
-        ("report", [], 1, False, False, "git_status_failed"),
+        ("report", [], 1, False, False, "complete"),
         ("report", [], 0, False, False, "verification_failed"),
         ("report", [], 0, False, False, "verification_diff"),
         ("implement", [], 0, False, False, "complete"),
@@ -323,6 +323,60 @@ def case_report_and_implement_modes():
                     assert receipt["fallback_reason"] == "codex_failed"
     print("ASSERT report: both runners readonly argv, text, clean/dirty, empty scope/checks, resume, fallback, pending")
     print("ASSERT implement: explicit/omitted defaults and no_diff unchanged")
+
+
+def case_runner_owns_verification_list():
+    new_sentence = (
+        "The runner runs these commands itself after you exit and records their "
+        "exit codes and output in the receipt; a non-zero exit is your failure. "
+        "Run what you need while you work; do not repeat this list as a closing step."
+    )
+    retired = "Run the verification command and include its actual output in your final message."
+    empty_fence = "# Verification\n\n```bash\n\n```"
+    for binary in ("codex", "grok"):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            prompt_log = Path(tmp) / "prompt"
+            counter = Path(tmp) / "verify-count"
+            spec = base_spec(verification=["echo ran >> %s" % counter])
+            result, receipt = run_runner(
+                runner, cwd, spec, bin_dir,
+                {"CALL_LOG": str(Path(tmp) / "calls"), "PROMPT_LOG": str(prompt_log)},
+            )
+            assert result.returncode == 0, result.stderr
+            assert receipt["error_class"] == "complete", receipt
+            prompt = prompt_log.read_text()
+            assert new_sentence in prompt
+            assert retired not in prompt
+            assert counter.read_text().splitlines() == ["ran"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            prompt_log = Path(tmp) / "prompt"
+            spec = base_spec(mode="report", verification=[])
+            result, receipt = run_runner(
+                runner, cwd, spec, bin_dir,
+                {"CALL_LOG": str(Path(tmp) / "calls"), "PROMPT_LOG": str(prompt_log)},
+            )
+            assert result.returncode == 0, result.stderr
+            assert receipt["error_class"] == "complete", receipt
+            prompt = prompt_log.read_text()
+            assert new_sentence not in prompt
+            assert retired not in prompt
+            assert empty_fence in prompt
+    print("ASSERT runner owns verification: both runners new sentence iff non-empty; retired gone; list runs once")
 
 
 def case_empty_report():
@@ -1217,8 +1271,18 @@ def case_dirty_baseline():
             base_spec(mode="report", verification=[]),
             [(0, ""), (1, "")],
         )
-        assert receipt["error_class"] == "git_status_failed", receipt
+        assert result.returncode == 0, result.stderr
+        assert receipt["error_class"] == "complete", receipt
         assert receipt["dirty_baseline"] is False
+
+        _, receipt = run_case(
+            binary,
+            base_spec(mode="report", verification=[]),
+            [(1, ""), (1, "")],
+            {"REPORT_CHUNKS": json.dumps([])},
+        )
+        assert receipt["error_class"] == "empty_report", receipt
+        assert receipt["dirty_baseline"] is None
 
         _, receipt = run_case(
             binary,
@@ -1262,7 +1326,7 @@ def case_dirty_baseline():
         )
         assert receipt["error_class"] == "complete", receipt
         assert receipt["dirty_baseline"] is False
-    print("ASSERT dirty_baseline: report skips unexpected_diff iff true; clean-then-dirty still unexpected_diff; implement unchanged; pre-fail=null")
+    print("ASSERT dirty_baseline: report skips unexpected_diff iff true; clean-then-dirty still unexpected_diff; report git fail is complete or empty_report; implement unchanged; pre-fail=null")
 
 
 def case_title():
@@ -1355,6 +1419,7 @@ def case_last_terminal_event_drives_timing():
 CASES = [
     ("mode validation", case_mode_validation),
     ("report and implement modes", case_report_and_implement_modes),
+    ("runner owns verification list", case_runner_owns_verification_list),
     ("empty report", case_empty_report),
     ("dirty baseline", case_dirty_baseline),
     ("spec title", case_title),

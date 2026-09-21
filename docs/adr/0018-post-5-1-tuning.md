@@ -3,7 +3,7 @@
 - **Status**: accepted（2026-09-16 用户经 grilling 两轮确认；senior 门取"两次失败"为推荐值，用户未单独否决）
 - **Date**: 2026-09-16
 - **影响范围**: `plugin/scripts/run-grok.mjs`、`plugin/scripts/run-codex.mjs`、`plugin/skills/orchestration/`（`SKILL.md`、`lanes-claude-code.md`、`lanes-cursor.md`、新增 `lane-preamble-report.md`）、`docs/zh/**` 孪生、新增 `scripts/install-user-level.py` 与其测试、`tests/test_user_level_archive.py`、`tests/test_runner_contract.py`、`docs/agents/fable-advisor-routing.md`（+ `.zh.md`）、`docs/agents/plugin-release.md`、`docs/agents/cursor-lane-gate.md`、根目录 `AGENTS.md` / `CONTEXT.md`、`README.md`、新增 `docs/manuals/5.2.0.html`；版本 5.2.0。
-- **关联**: [ADR 0011](./0011-cursor-lane-family-gate-user-level.md)（本次修订决策 2 的"活体手动拷"）；[ADR 0013](./0013-delivery-contract-not-build-instructions.md)（前言单源——本次按 `mode` 分成两份单源）；[ADR 0014](./0014-role-pool-posture.md)（决策 11 "sol 不加回"——本次撤销；报告模式 `unexpected_diff`——本次加脏基线例外）；[ADR 0015](./0015-global-orchestration-entry.md)（决策 4 的 `|` 记法——本次退役；决策 1 的档案读取契约不变）；[ADR 0017](./0017-routing-profile-edit-source.md)（编辑源在本仓、不进 `plugin/`——本次保持，活体改由安装器写）。任务件 `.scratch/post-5-1-tuning/`。
+- **关联**: [ADR 0011](./0011-cursor-lane-family-gate-user-level.md)（本次修订决策 2 的"活体手动拷"）；[ADR 0013](./0013-delivery-contract-not-build-instructions.md)（前言单源——本次按 `mode` 分成两份单源）；[ADR 0014](./0014-role-pool-posture.md)（决策 11 "sol 不加回"——本次撤销；报告模式 `unexpected_diff`——本次加脏基线例外）；[ADR 0015](./0015-global-orchestration-entry.md)（决策 4 的 `|` 记法——本次退役；决策 1 的档案读取契约不变）；[ADR 0017](./0017-routing-profile-edit-source.md)（编辑源在本仓、不进 `plugin/`——本次保持，活体改由安装器写）；[ADR 0019](./0019-report-mode-skips-git-status-failed.md)（报告模式不再因运行后 `git status` 失败抛 `git_status_failed`）。任务件 `.scratch/post-5-1-tuning/`。
 
 ## 背景
 
@@ -13,7 +13,7 @@
 
 ## 决策
 
-1. **脏基线取"跳过"而非"差集"。** runner 在 spawn 前跑一次 `git status --porcelain`，receipt 记布尔 `dirty_baseline`（失败为 `null`）。报告模式且开跑前已脏时不判 `unexpected_diff`，只读沙箱是唯一防线；implement 模式语义不变，"先干净再派"只对 implement 模式成立。未采纳内容哈希差集（见未采纳）。
+1. **脏基线取"跳过"而非"差集"。** runner 在 spawn 前跑一次 `git status --porcelain`，receipt 记布尔 `dirty_baseline`（失败为 `null`）。报告模式且开跑前已脏时不判 `unexpected_diff`，只读沙箱是唯一防线；implement 模式语义不变，"先干净再派"只对 implement 模式成立。未采纳内容哈希差集（见未采纳）。报告模式下运行后 `git status` 失败是否仍抛 `git_status_failed`，见 [ADR 0019](./0019-report-mode-skips-git-status-failed.md)（本条原写「仍抛」，已撤销）。
 2. **spec 新增可选键 `title`。** prompt 首行是标题原文，缺省用 slug；`[fable-advisor] <slug>` 行退役。只改 runner；Cursor 的 Task 派发已有 `description`，不加句子。
 3. **前言按 `mode` 分成两份单源。** implement 前置 `lane-preamble.md`，report 前置 `lane-preamble-report.md`（只读、Files 是读取范围、回答 Objective、以证据或 verdict 形状结尾）；runner 内联的 report overlay 删除；任一缺失 fail-loud。承接工单 `role-pool-posture/issues/10`。Cursor 侧 explorer / advisor 派发首行指向报告前言。
 4. **`gpt-5.6-sol` 回 codex 白名单**，默认 `high`，不回退（astra → luna 回退不变）。撤销 ADR 0014 决策 11；理由是用户为即将到来的 gpt-6-sol 铺路，届时只改型号名。
@@ -39,7 +39,7 @@
 ## 复盘条件
 
 - implement 模式因脏工作树误报 `no_diff` 或 `changed_files` 混入既有脏文件 ≥2 次 → 重议内容哈希基线。
-- 报告模式在 `dirty_baseline: true` 下车道实际写了文件（沙箱失守）→ 恢复脏检测，改用差集。
+- 报告模式在 `dirty_baseline: true` 或 git 不可用下车道实际写了文件（沙箱失守）→ 恢复脏检测，改用差集。见 [ADR 0019](./0019-report-mode-skips-git-status-failed.md)。
 - 安装器覆盖了用户手改的活体导致丢失 ≥1 次 → 重议覆盖策略或加 `--dry-run`。
 - Cursor allowlist 出现 sonnet / haiku / luna 变体 → 补 Cursor 表对应格。
 - gpt-6-sol 上线 → 改白名单型号名与默认 effort；ADR 不另记。

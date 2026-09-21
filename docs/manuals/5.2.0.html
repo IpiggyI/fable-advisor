@@ -5,113 +5,230 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>fable-advisor 5.2.0 版本说明书</title>
 <style>
+
   :root {
-    --ink: #1c1914;
-    --paper: #f4efe4;
-    --card: #fffdf8;
-    --line: #d7cfc0;
-    --muted: #6b6358;
-    --accent: #b45309;
-    --ok: #3f6b3a;
-    --warn: #9a3412;
-    --lane: #1e3a5f;
+    --ink: #22352e; --paper: #f7f8f4; --card: #fff;
+    --line: #dfe5dd; --muted: #627268; --accent: #32694e;
+    --ok: #32694e; --warn: #925522; --lane: #32694e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color-scheme: light; scroll-behavior: smooth; scroll-padding-top: 36px;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font: 16px/1.55 "Iowan Old Style", "Palatino Linotype", Palatino, "Source Han Serif SC", "Noto Serif SC", serif;
-    color: var(--ink);
-    background: var(--paper);
+  body { margin: 0; color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.85; }
+  a { color: var(--accent); text-underline-offset: 4px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid #aa671f; outline-offset: 5px;
   }
-  header {
-    padding: 2.2rem 1.4rem 1.4rem;
-    max-width: 980px;
-    margin: 0 auto;
-  }
-  header h1 { font-size: 1.7rem; margin: 0 0 .4rem; letter-spacing: -.02em; }
-  header .meta { margin: 0; color: var(--muted); }
-  .lead {
-    margin-top: 1rem;
-    padding: .9rem 1rem;
-    background: #fff7ed;
-    border-left: 4px solid var(--accent);
-  }
-  section {
-    max-width: 980px;
-    margin: 0 auto 2.4rem;
-    padding: 0 1.4rem;
-  }
-  h2 { font-size: 1.15rem; margin: 0 0 .8rem; border-bottom: 1px solid var(--line); padding-bottom: .35rem; }
-  h3 { font-size: 1rem; margin: 1.1rem 0 .45rem; }
-  .grid { display: grid; gap: .7rem; }
+  .skip-link { position: fixed; left: 20px; top: -100px; z-index: 10; background: white; padding: 10px 20px; }
+  .skip-link:focus { top: 12px; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: 254px; padding: 32px 23px 22px; border-right: 1px solid var(--line); background: #f0f3ec; display: flex; flex-direction: column; z-index: 3; }
+  .brand { display: flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font-weight: 750; font-size: 18px; letter-spacing: -.5px; }
+  .brand-mark { display: grid; place-items: center; width: 34px; height: 36px; background: var(--accent); border-radius: 10px 10px 10px 2px; color: white; font: italic 27px Georgia, serif; }
+  .edition { margin: 18px 0 24px; font-size: 12px; color: var(--muted); }
+  .edition span { padding: 4px 9px; border: 1px solid #cbd6c8; border-radius: 5px; margin-right: 7px; color: var(--accent); font-weight: 650; }
+  .toc { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .toc summary { list-style: none; font-size: 11px; letter-spacing: .16em; color: var(--muted); margin-bottom: 12px; pointer-events: none; }
+  .toc summary::-webkit-details-marker { display: none; }
+  .nav-group { color: var(--muted); font-size: 11px; padding: 18px 10px 6px; letter-spacing: .12em; }
+  .toc a { display: flex; gap: 11px; padding: 7px 10px; margin: 2px 0; border-radius: 6px; font-size: 12px; text-decoration: none; line-height: 1.6; color: #526158; }
+  .toc a span { color: #7b897e; font-size: 10px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .toc a:hover { background: #e6ece1; color: var(--ink); }
+  .toc a[aria-current="location"] { background: #e0eadb; color: #214b34; font-weight: 650; }
+  .sidebar-foot { margin-top: auto; padding-top: 22px; color: var(--muted); font-size: 11px; }
+  .sidebar-foot a { color: inherit; }
+  .workspace { margin-left: 254px; padding: 0 56px; }
+  .topbar { max-width: 1100px; margin: auto; display: flex; justify-content: space-between; align-items: center; padding: 25px 0; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .topbar span:last-child { display: flex; align-items: center; gap: 9px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #61845c; }
+  main { max-width: 1100px; margin: auto; }
+  .hero { padding: 54px 0 40px; }
+  .eyebrow { display: flex; align-items: center; gap: 12px; margin: 0 0 20px; color: var(--accent); font-size: 12px; font-weight: 650; letter-spacing: .1em; }
+  .eyebrow::before { content: ""; width: 25px; height: 1px; background: var(--accent); }
+  .hero-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 36px; align-items: center; }
+  h1 { margin: 0 0 22px; font-size: clamp(38px, 4.2vw, 62px); line-height: 1.12; letter-spacing: -.055em; font-weight: 680; }
+  h1 span { display: block; color: #75936a; font-size: .62em; letter-spacing: -.025em; margin-top: 16px; }
+  .hero-description { max-width: 520px; font-size: 15px; color: var(--muted); line-height: 1.9; margin: 0; }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 25px; }
+  .button { display: inline-flex; align-items: center; gap: 18px; min-height: 44px; padding: 9px 18px; border: 1px solid var(--line); background: #fff; border-radius: 6px; text-decoration: none; color: var(--ink); font-size: 13px; font-weight: 600; }
+  .button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .button:hover { box-shadow: 0 3px 10px #22352e12; transform: translateY(-1px); }
+  .system-map { background: #eaf0e4; border: 1px solid #d9e3d2; padding: 23px; border-radius: 14px; position: relative; }
+  .map-heading { display: flex; justify-content: space-between; font-size: 11px; color: #53694b; margin-bottom: 17px; }
+  .map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .map-item { padding: 16px 14px; background: #fafcf7; border: 1px solid #dce5d5; border-radius: 8px; }
+  .map-item b { display: block; font-size: 17px; margin: 7px 0 2px; font-weight: 600; }
+  .map-item small { font-size: 11px; color: var(--muted); }
+  .map-index { font-size: 10px; color: #7d9070; font-family: ui-monospace, monospace; }
+  .map-caption { font-size: 11px; color: #53694b; margin: 14px 0 0; text-align: center; }
+  .release-meta { display: flex; flex-wrap: wrap; gap: 10px 25px; margin-top: 32px; color: var(--muted); font-size: 11px; }
+  .release-meta b { color: var(--ink); font-weight: 600; margin-right: 7px; }
+  .highlights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 0 0 44px; }
+  .highlight { padding: 20px 22px; border: 1px solid var(--line); border-radius: 9px; background: #fff; text-decoration: none; color: inherit; }
+  .highlight:hover { border-color: #91aa82; }
+  .highlight small { font: 11px ui-monospace, monospace; color: #6c845e; }
+  .highlight strong { display: block; margin: 9px 0 6px; font-size: 15px; }
+  .highlight p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+  .part-heading { display: flex; align-items: center; gap: 15px; margin: 42px 0 24px; }
+  .part-heading span { color: var(--accent); font: 11px ui-monospace, monospace; border: 1px solid #cddbc5; padding: 4px 8px; border-radius: 4px; }
+  .part-heading h2 { margin: 0; font-size: 13px; letter-spacing: .08em; font-weight: 600; white-space: nowrap; }
+  .part-heading::after { content: ""; height: 1px; background: var(--line); width: 100%; }
+  .manual-section { padding: 32px 36px 36px; margin: 0 0 22px; background: white; border: 1px solid var(--line); border-radius: 12px; scroll-margin-top: 24px; }
+  .manual-section > h2 { display: flex; align-items: baseline; gap: 16px; font-size: 23px; line-height: 1.5; letter-spacing: -.025em; margin: 0 0 20px; }
+  .section-number { color: #779168; font: 14px ui-monospace, monospace; flex-shrink: 0; }
+  h3 { margin: 30px 0 12px; font-size: 16px; line-height: 1.65; }
+  p { margin: 12px 0; }
+  .manual-section > p { color: #43554a; }
+  .manual-section > h2 + p { color: var(--muted); }
+  strong { font-weight: 650; }
+  .grid { display: grid; gap: 14px; }
   .cols-2 { grid-template-columns: 1fr 1fr; }
   .cols-3 { grid-template-columns: repeat(3, 1fr); }
   .cols-5 { grid-template-columns: repeat(5, 1fr); }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: .75rem .85rem;
+  .card { background: #f7f9f4; border: 1px solid #e1e8dc; border-radius: 8px; padding: 20px; font-size: 14px; }
+  .card strong { display: block; margin-bottom: 7px; color: var(--ink); }
+  .tag { display: inline-block; font: 10px ui-monospace, monospace; color: #3c6445; background: #e5edde; padding: 5px 8px; border-radius: 4px; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; margin: 16px 0; scrollbar-width: thin; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+  th { color: #56654f; background: #f1f5ed; font-size: 12px; font-weight: 600; }
+  th, td { padding: 13px 16px; vertical-align: top; border-bottom: 1px solid #e6ebe2; }
+  tr:last-child td { border-bottom: 0; }
+  tr:nth-child(odd) td { background: #fbfcf9; }
+  td:first-child { color: var(--ink); }
+  .mono, code { font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace; font-size: .87em; overflow-wrap: anywhere; }
+  code { color: #365d49; background: #eef3e9; padding: 2px 4px; border-radius: 3px; }
+  td.mono { font-size: 11px; }
+  pre.mono { white-space: pre-wrap; background: #253b30; color: #eff5e8; padding: 21px 24px; border-radius: 8px; font-size: 12px; line-height: 1.9; overflow-wrap: anywhere; }
+  .note { color: var(--muted); font-size: 12px; }
+  .box { margin-top: 22px; padding: 20px 24px; border: 1px solid #d5e1cc; border-left: 3px solid var(--accent); background: #f2f6ed; border-radius: 0 8px 8px 0; }
+  .box.warn { border-color: #e4d4bc; border-left-color: #ad7b40; background: #faf6ee; }
+  ul.tight { padding-left: 21px; margin: 14px 0; }
+  li { margin: 8px 0; padding-left: 3px; }
+  li::marker { color: #708b61; }
+  .changes > h3 { padding-top: 16px; margin-top: 24px; }
+  .changes > .card { border: 0; border-left: 2px solid #d4e0ca; border-radius: 0; padding: 2px 0 2px 22px; background: transparent; }
+  .changes > .card p { margin: 0 0 14px; }
+  .changes > .card strong { display: inline-block; margin: 0 12px 0 0; font-size: 11px; color: var(--accent); }
+  footer { max-width: 1100px; margin: auto; padding: 26px 0 36px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+  .footer-title { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 22px; margin-bottom: 14px; }
+  @media (min-width: 1600px) { .workspace { padding: 0 80px; } }
+  @media (max-width: 1150px) {
+    .sidebar { width: 220px; padding: 25px 16px; }
+    .workspace { margin-left: 220px; padding: 0 32px; }
+    .hero-layout { gap: 22px; }
+    .system-map { padding: 16px; }
+    .map-item { padding: 12px; }
+    .manual-section { padding: 28px; }
   }
-  .card strong { display: block; margin-bottom: .25rem; }
-  .tag {
-    display: inline-block;
-    font-size: .72rem;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    color: #fff;
-    background: var(--ink);
-    padding: .1rem .4rem;
-    border-radius: 3px;
+  @media (max-width: 900px) {
+    .sidebar { position: relative; width: auto; padding: 18px 24px; display: block; border-right: 0; border-bottom: 1px solid var(--line); }
+    .brand { font-size: 17px; }
+    .edition { position: absolute; top: 26px; right: 24px; margin: 0; }
+    .edition .edition-label { display: none; }
+    .toc { margin-top: 16px; }
+    .toc summary { pointer-events: auto; cursor: pointer; margin: 0; padding: 9px 0; font-size: 12px; letter-spacing: .04em; }
+    .toc summary::after { content: "展开 / 收起"; float: right; font-size: 11px; color: #627268; }
+    .toc nav { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .nav-group { grid-column: 1 / -1; }
+    .sidebar-foot { display: none; }
+    .workspace { margin: 0; padding: 0 28px; }
+    .hero { padding-top: 36px; }
   }
-  .tag.ok { background: var(--ok); }
-  .tag.warn { background: var(--warn); }
-  .tag.lane { background: var(--lane); }
-  table { width: 100%; border-collapse: collapse; font-size: .92rem; background: var(--card); }
-  th, td { border: 1px solid var(--line); padding: .45rem .55rem; text-align: left; vertical-align: top; }
-  th { background: #efe8d8; font-weight: 600; }
-  .mono { font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace; font-size: .86em; }
-  .note { color: var(--muted); font-size: .92rem; }
-  .box {
-    margin: 1rem 0 0;
-    padding: .85rem 1rem;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--lane);
-  }
-  .box.warn {
-    border-left-color: var(--accent);
-    background: #fff7ed;
-  }
-  ul.tight { margin: .3rem 0 0; padding-left: 1.1rem; }
-  ul.tight li { margin: .2rem 0; }
-  footer { max-width: 980px; margin: 0 auto; padding: 0 1.4rem 2.5rem; color: var(--muted); font-size: .88rem; }
-  @media (max-width: 760px) {
+  @media (max-width: 600px) {
+    body { font-size: 14px; }
+    .workspace { padding: 0 18px; }
+    .sidebar { padding: 16px 20px 8px; }
+    .edition { top: 22px; right: 18px; }
+    .topbar { font-size: 10px; padding: 17px 0; }
+    .hero { padding: 30px 0; }
+    .hero-layout { grid-template-columns: 1fr; gap: 26px; }
+    h1 { font-size: 45px; }
+    .hero-description { font-size: 14px; }
+    .release-meta { gap: 6px 20px; margin-top: 22px; }
+    .highlights { grid-template-columns: 1fr; gap: 10px; margin-bottom: 28px; }
+    .highlight { padding: 16px 18px; }
+    .highlight small { float: right; }
+    .highlight strong { margin-top: 0; }
+    .manual-section { padding: 24px 18px; border-radius: 9px; }
+    .manual-section > h2 { gap: 10px; font-size: 20px; }
     .cols-2, .cols-3, .cols-5 { grid-template-columns: 1fr; }
+    .table-wrap table { min-width: 560px; }
+    .table-wrap::before { content: "左右滑动查看完整表格"; display: block; padding: 8px 12px; color: var(--muted); font-size: 10px; }
+    .card { padding: 17px; }
+    .part-heading { margin-top: 28px; }
+    .box { padding: 17px; }
+    ol { padding-left: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) { :root { scroll-behavior: auto; } .button:hover { transform: none; } }
+  @media print {
+    :root { --ink: #000; --muted: #444; }
+    body { background: #fff; font-size: 10pt; }
+    .sidebar, .topbar, .hero-actions, .skip-link, .highlights, .footer-title a { display: none; }
+    .workspace { margin: 0; padding: 0; }
+    .hero { padding-top: 0; }
+    .hero-layout { grid-template-columns: 1.2fr 1fr; }
+    h1 { font-size: 32pt; }
+    .manual-section { padding: 18px 0; border: 0; border-radius: 0; }
+    .table-wrap { overflow: visible; border-radius: 0; }
+    .table-wrap table { min-width: 0; }
+    .table-wrap::before { display: none; }
+    h2, h3 { break-after: avoid; }
+    tr, .card, .box { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
   }
 </style>
 </head>
 <body>
-<header>
-  <p class="meta">fable-advisor · 版本 5.2.0 · 日期 2026-09-16 · 上一版本 5.1.0</p>
-  <h1>fable-advisor 5.2.0 版本说明书</h1>
-  <p class="note">自包含中文说明书。进仓库、不随插件目录发布。第一部分说明本版装上之后的完整行为；第二部分列出相对 5.1.0 的每一条改动。</p>
-  <div class="lead">
-    5.2.0 仍是角色池加姿态：任一模型都可以当主代理；一次派发是一个角色、一个档位、一条车道。本版让报告模式能在已有未提交改动的工作树上跑完，给 CLI 会话一个可读标题，把用户级正典交给伴生安装器写入活体，并把 senior 从首轮选择里拿掉、只经升级梯或用户声明到达。填充表的型号排序属于用户路由档案，不是插件行为。
-  </div>
-</header>
 
-<section>
-  <h2>1. 角色 × 档位 × 车道 × 姿态</h2>
+<a class="skip-link" href="#main">跳至正文</a>
+<aside class="sidebar" aria-label="说明书导航">
+  <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true">f</span>fable-advisor</a>
+  <p class="edition"><span>v5.2.0</span><span class="edition-label">版本说明书</span></p>
+  <details class="toc" open><summary>阅读目录</summary><nav aria-label="章节目录"><a href="#overview" aria-current="location"><span>00</span>版本概览</a><div class="nav-group">工作方式</div><a href="#section-1"><span>01</span>角色、档位与姿态</a><a href="#section-2"><span>02</span>两段式路由</a><a href="#section-3"><span>03</span>升级与重试</a><a href="#section-4"><span>04</span>决策与验证</a><a href="#section-5"><span>05</span>交付契约</a><div class="nav-group">运行与接入</div><a href="#section-6"><span>06</span>运行器与报告模式</a><a href="#section-7"><span>07</span>Claude 子代理</a><a href="#section-8"><span>08</span>Cursor 接入</a><div class="nav-group">配置与维护</div><a href="#section-9"><span>09</span>伴生安装器</a><a href="#section-10"><span>10</span>回执门禁</a><a href="#section-11"><span>11</span>测试覆盖</a><a href="#section-12"><span>12</span>路由档案</a><div class="nav-group">版本变化</div><a href="#section-13"><span>13</span>本版更新记录</a></nav></details>
+  <div class="sidebar-foot">本页支持离线阅读。<br>2026 年 9 月 · <a href="#upgrade">查看升级步骤</a></div>
+</aside>
+<div class="workspace">
+<div class="topbar"><span>文档 / 版本说明书</span><span><i class="status-dot" aria-hidden="true"></i>适用于 Claude Code 与 Cursor</span></div>
+<main id="main">
+<header class="hero" id="overview">
+  <p class="eyebrow">版本 5.2.0 · 使用指南与更新记录</p>
+  <div class="hero-layout">
+    <div>
+      <h1>fable-advisor<span>让协作各司其职。</span></h1>
+      <p class="hero-description">任一模型都可以担任主代理。用角色定义职责，用档位选择能力，用车道连接模型，再由姿态决定谁来动手。</p>
+      <div class="hero-actions"><a class="button primary" href="#section-13">查看本版更新 <span aria-hidden="true">↗</span></a><a class="button" href="#section-1">了解完整行为 <span aria-hidden="true">↓</span></a></div>
+    </div>
+    <div class="system-map" role="img" aria-label="四个独立维度：角色定义职责，档位选择能力，车道连接供应商，姿态决定主代理是否修改交付物。">
+      <div class="map-heading"><span>一次派发，四个维度</span><span aria-hidden="true">＋</span></div>
+      <div class="map-grid">
+        <div class="map-item"><span class="map-index">01 / 职责</span><b>角色</b><small>调查 · 实现 · 咨询</small></div>
+        <div class="map-item"><span class="map-index">02 / 能力</span><b>档位</b><small>轻量 · 标准 · 高阶</small></div>
+        <div class="map-item"><span class="map-index">03 / 连接</span><b>车道</b><small>到达模型的方式</small></div>
+        <div class="map-item"><span class="map-index">04 / 分工</span><b>姿态</b><small>编排或亲自实现</small></div>
+      </div>
+      <p class="map-caption">四个维度独立选择，模型身份不决定姿态。</p>
+    </div>
+  </div>
+  <div class="release-meta"><span><b>发布日期</b>2026-09-16</span><span><b>上一版本</b>5.1.0</span><span><b>本页内容</b>完整行为与逐项变更</span></div>
+</header>
+<div class="highlights" aria-label="本版重点">
+  <a class="highlight" href="#section-6"><small>01</small><strong>未提交，也能只读调查。</strong><p>报告模式识别已有改动，避免把脏工作树直接判为失败。</p></a>
+  <a class="highlight" href="#section-9"><small>02</small><strong>配置交给安装器同步。</strong><p>三份用户级文件从仓库统一安装，减少手工复制与漂移。</p></a>
+  <a class="highlight" href="#section-3"><small>03</small><strong>高阶档位有明确入口。</strong><p>首轮选择轻量或标准档位；高阶档位经升级条件或用户声明到达。</p></a>
+</div>
+<div class="part-heading"><span>01</span><h2>本版完整行为</h2></div>
+
+
+<section class="manual-section" id="section-1" aria-labelledby="heading-1">
+  <h2 id="heading-1"><span class="section-number">01</span>角色 × 档位 × 车道 × 姿态</h2>
   <p>这四轴互相正交。角色回答契约形状，档位回答能力等级，车道回答如何到达供应商，姿态回答主代理会不会亲手改交付物。型号不写进插件技能正文。</p>
 
   <h3>角色</h3>
-  <table>
-    <tr><th>角色</th><th>权限</th><th>返回</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">角色</th><th scope="col">权限</th><th scope="col">返回</th></tr>
     <tr><td class="mono">explorer</td><td>只读</td><td>证据：<code class="mono">file:line</code>、符号、原文</td></tr>
     <tr><td class="mono">worker</td><td>在契约的 <code class="mono">Files</code> 内可写</td><td>diff 与验证证据</td></tr>
     <tr><td class="mono">advisor</td><td>只读</td><td>不超过 300 词的 verdict。两种请求形状：决策（动工前）与验收（完工后：契约 + diff + receipt）</td></tr>
-  </table>
+  </table></div>
   <p>角色不含模型型号。卡住任务的接管是 worker 加一份接管契约，不是另一个角色。</p>
 
   <h3>档位与首轮池</h3>
@@ -138,8 +255,8 @@
   <p>编排姿态下，交付物只经 worker 改，与改动大小无关。协调件（任务件、ADR、词表、工作流状态、发布版本字段）任一姿态下主代理都可直接写。本仓路径映射写在 <code class="mono">AGENTS.md</code>。类别不明按交付物处理。</p>
 </section>
 
-<section>
-  <h2>2. 两段式路由与拨盘记法</h2>
+<section class="manual-section" id="section-2" aria-labelledby="heading-2">
+  <h2 id="heading-2"><span class="section-number">02</span>两段式路由与拨盘记法</h2>
   <p>主代理持有需求、分解、契约、路由与验收。一次派发先选（角色, 档位），再在该格的填充表里做帕累托选择。</p>
   <h3>第一段</h3>
   <p>角色按产物：证据走 explorer，改动走 worker，承诺或验收走 advisor。档位在首轮池的 <code class="mono">light</code> 与 <code class="mono">standard</code> 之间，按「契约抓不住的判断有多少」自由选择，无前置条件。<code class="mono">senior</code> 只经第 3 节的 senior 门或用户声明。</p>
@@ -151,21 +268,21 @@
   <p class="note">档案里的具体型号排序是用户判断，见第 12 节。本节只说明机制。</p>
 </section>
 
-<section>
-  <h2>3. 升级梯 R1–R4 与 senior 门</h2>
-  <table>
-    <tr><th>规则</th><th>含义</th></tr>
+<section class="manual-section" id="section-3" aria-labelledby="heading-3">
+  <h2 id="heading-3"><span class="section-number">03</span>升级梯 R1–R4 与 senior 门</h2>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">规则</th><th scope="col">含义</th></tr>
     <tr><td>R1</td><td>验收未过：返工票，同会话、同拨盘。契约缺口：修正后的契约，仍回同一条车道会话。</td></tr>
     <tr><td>R2</td><td>返工票也未过，且归因为能力：一次<strong>提升</strong>。新会话，接管契约 = 原契约 + 上轮报告 + receipt。一次提升要么同型号升 effort，要么换型号。</td></tr>
     <tr><td>R3</td><td>同一型号最多提升一次。再提升必须换型号，除非更高各格里没有别的型号。</td></tr>
     <tr><td>R4</td><td>执行时出现较大问题（工具反复失败、跑飞、触碰保留项）可跳过返工票，直接换型号，记一次失败。</td></tr>
-  </table>
+  </table></div>
   <p><strong>senior 门：</strong>首轮池内两次能力归因的失败，或用户声明。两次失败指：原拨盘的返工票失败，换型号重派后再失败。这与决策类型门的「同一问题两次失败」重合；advisor 的 verdict 顺带裁定是否上 senior。</p>
   <p>提升跑在接管契约下：那是契约形状，不是档位。契约缺口的路径不走升档：修正契约，仍回同一车道会话。</p>
 </section>
 
-<section>
-  <h2>4. 决策类型门与验证三层</h2>
+<section class="manual-section" id="section-4" aria-labelledby="heading-4">
+  <h2 id="heading-4"><span class="section-number">04</span>决策类型门与验证三层</h2>
   <p>决策类型门约束任何主代理、任一档位、两种姿态。它是技能正文规则，不是 hook。到点位咨询 advisor 的<strong>决策</strong>形状：传入决定、约束、备选；advisor 自己读代码。对 verdict 采取行动，或公开分歧；不得静默忽略。没有机械强制，也没有逐 diff 过审。</p>
   <ul class="tight">
     <li>承诺一种架构、数据迁移、API 形状或重构策略</li>
@@ -176,51 +293,51 @@
   </ul>
   <p>advisor 的<strong>验收</strong>形状由验证第 3 层到达，不按步数触发。从 5.1.0 起，「宣告多步交付物完成前」不再是门的一项。</p>
   <p>报告是声称，不是证据。审查对象是契约。三层：</p>
-  <table>
-    <tr><th>层级</th><th>何时</th><th>做什么</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">层级</th><th scope="col">何时</th><th scope="col">做什么</th></tr>
     <tr><td>第 1 层</td><td>每条车道默认</td><td>接受车道的验证证据（命令、退出码、输出尾、对照工作树抽查）加上 <code class="mono">git diff --stat</code>。完整无范围的 <code class="mono">git diff</code> 不进主代理上下文。</td></tr>
     <tr><td>第 2 层</td><td>报告、<code class="mono">git diff --stat</code> 或验证输出引起具体怀疑</td><td>读路径范围的 <code class="mono">git diff &lt;file&gt;</code>。车道自己写的验收测试是声称的一部分，要读它。</td></tr>
     <tr><td>第 3 层</td><td>正确性关键、同族 diff、或用户要求评审</td><td>advisor 以验收形状读 diff 与 receipt，返回 verdict 与标出的片段。同族 diff 优先换跨厂商填充。verdict 仍是声称，终裁在主代理。</td></tr>
-  </table>
+  </table></div>
   <p>「应该能工作」「测试应该过」或没有命令输出的报告，都不算完成。</p>
 </section>
 
-<section>
-  <h2>5. 五部交付契约与两份前言</h2>
+<section class="manual-section" id="section-5" aria-labelledby="heading-5">
+  <h2 id="heading-5"><span class="section-number">05</span>五部交付契约与两份前言</h2>
   <p>车道不共享主代理上下文。每次派发携带五部：</p>
-  <table>
-    <tr><th>部</th><th>键</th><th>内容</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">部</th><th scope="col">键</th><th scope="col">内容</th></tr>
     <tr><td>1. Objective</td><td class="mono">objective</td><td>结果与验收标准，不是步骤</td></tr>
     <tr><td>2. Files</td><td class="mono">files</td><td>授权范围（路径或目录）；范围内新建文件允许</td></tr>
     <tr><td>3. Interfaces</td><td class="mono">interfaces</td><td>结果必须匹配的共享或外部契约；可以为无</td></tr>
     <tr><td>4. Constraints</td><td class="mono">constraints</td><td>保留项：不得改什么、上游已钉死的选择、调用方留在自己会话里的操作。约束车道、其子代理与其验证命令</td></tr>
     <tr><td>5. Verification</td><td class="mono">verification</td><td>worker：其输出即验收证据的命令，至少一条在目标未达成时会失败。explorer / advisor：期望的证据或 verdict 形状，可为空</td></tr>
-  </table>
+  </table></div>
   <p>Constraints 未钉死的实现选择归车道：不上报、不等待。契约缺口（预期行为不明、要求冲突、必须改保留接口、无法判定什么算通过）上报，由架构师修正契约。</p>
   <p>存在上游任务件时，契约引用其路径，只内联验收标准、保留约束与验证命令，并标明哪些节有约束力。主代理不重述、不重规划。</p>
   <p>返工票是给同一车道的新契约，复用其会话：Objective 写缺陷（违反的要求、可复现失败、期望行为、证据）；Files 仍是原范围；Verification 是失败的那条检查。票内不写修复方案。</p>
 
   <h3>两份前言</h3>
   <p>前言是执行侧契约的单源，与 runner 同目录解析：<code class="mono">&lt;plugin-root&gt;/skills/orchestration/</code>。当前 <code class="mono">mode</code> 所需前言缺失时，runner 退出非零、不拉起子进程，stderr 指名文件；不写 receipt。</p>
-  <table>
-    <tr><th>文件</th><th>用于</th><th>执行侧约定</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">文件</th><th scope="col">用于</th><th scope="col">执行侧约定</th></tr>
     <tr><td class="mono">lane-preamble.md</td><td><code class="mono">mode: implement</code>（缺省）</td><td>执行者持有 Files 内的交付物。保留操作仍约束它及其子代理。以 <code class="mono">WORKER REPORT</code>（<code class="mono">OBJECTIVE / CHANGES / VERIFIED / GAPS</code>）结尾。</td></tr>
     <tr><td class="mono">lane-preamble-report.md</td><td><code class="mono">mode: report</code></td><td>只读的 explorer 或 advisor。<code class="mono">Files</code> 是读取范围，不是写权限。回答 Objective。explorer 以证据形状结尾，advisor 以 verdict 形状结尾。不含 <code class="mono">WORKER REPORT</code>。</td></tr>
-  </table>
+  </table></div>
   <p>Cursor 的 Task 不会自动前置前言。worker 派发的 prompt 首行指向 <code class="mono">lane-preamble.md</code>；explorer / advisor 派发的 prompt 首行指向 <code class="mono">lane-preamble-report.md</code>。不要在契约正文里复述前言。</p>
 </section>
 
-<section>
-  <h2>6. 两条 runner：spec、receipt、错误类与报告模式</h2>
+<section class="manual-section" id="section-6" aria-labelledby="heading-6">
+  <h2 id="heading-6"><span class="section-number">06</span>两条 runner：spec、receipt、错误类与报告模式</h2>
   <p>主代理把五部写成 JSON，放到目标仓 <code class="mono">.fable-advisor/pending/&lt;slug&gt;.json</code>，然后跑 runner。车道在 <strong>runner 进程退出</strong>时结束。receipt 打印到 stdout，并写入 <code class="mono">.fable-advisor/receipts/&lt;spec_hash&gt;.json</code>。<code class="mono">error_class: complete</code> 时 runner 自己删除 pending spec。</p>
-  <pre class="mono" style="white-space:pre-wrap;background:var(--ink);color:#f4efe4;padding:1rem;border-radius:6px;">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"
+  <pre class="mono">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"
 node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"</pre>
   <p>未知顶层键或越界值记 <code class="mono">spec_invalid</code>，永不静默改写。CLI 车道验收 = <code class="mono">error_class: complete</code> + 非空会话 id + 可对照工作树抽查的验证输出 + 技能正文的分层验收。引用 receipt 里的型号或 effort 时写「已提交，未观测」：那是 runner 提交给 CLI 的值，不是从运行事件读回来的。</p>
 
   <h3>spec 键</h3>
   <p>五部键：<code class="mono">objective</code>、<code class="mono">files</code>、<code class="mono">interfaces</code>、<code class="mono">constraints</code>、<code class="mono">verification</code>。implement 模式 <code class="mono">verification</code> 至少一条；report 模式可以为空数组。<code class="mono">files</code> 在 report 模式是读取范围，也可以为空。</p>
-  <table>
-    <tr><th>键</th><th>codex</th><th>grok</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">键</th><th scope="col">codex</th><th scope="col">grok</th></tr>
     <tr><td class="mono">mode</td><td colspan="2"><code class="mono">implement</code>（缺省）或 <code class="mono">report</code>。其他值 → <code class="mono">spec_invalid</code></td></tr>
     <tr><td class="mono">model</td><td>白名单 <code class="mono">gpt-6-astra</code>（缺省）、<code class="mono">gpt-5.6-luna</code>、<code class="mono">gpt-5.6-sol</code>。名单外 → <code class="mono">spec_invalid</code></td><td>可省略：省略则不传 <code class="mono">-m</code>，由 CLI 默认目录决定。目录可读时按目录校验；目录不可读时跳过校验，由实跑决定可用性，不是 <code class="mono">grok_unavailable</code></td></tr>
     <tr><td class="mono">effort</td><td><code class="mono">low | medium | high | xhigh | max</code>。省略时按型号：astra → <code class="mono">medium</code>，luna → <code class="mono">max</code>，sol → <code class="mono">high</code></td><td><code class="mono">low | medium | high | xhigh</code>。省略则不传 effort 旗标，CLI 用自己的默认；receipt 记提交值（省略为 null）</td></tr>
@@ -229,7 +346,7 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
     <tr><td class="mono">idle_timeout_sec</td><td colspan="2">静默截止，缺省 600。只切「最后一次事件之后的沉默」，跳过验证</td></tr>
     <tr><td class="mono">timeout_sec</td><td colspan="2">整次运行的绝对上限。无缺省；省略则不封顶</td></tr>
     <tr><td class="mono">resume_session_id</td><td>上次的 <code class="mono">codex_session_id</code>；调用 <code class="mono">codex exec resume &lt;id&gt;</code></td><td>上次的 <code class="mono">grok_session_id</code>；传 <code class="mono">--resume &lt;id&gt;</code></td></tr>
-  </table>
+  </table></div>
 
   <h3>白名单与回退</h3>
   <p>codex 目录是静态白名单。启动前回退只保留 astra → luna：条件是 <code class="mono">resume_session_id</code> 为空、请求型号是 <code class="mono">gpt-6-astra</code>、且首次结果为 <code class="mono">preparation_stalled</code>，或 <code class="mono">codex_failed</code> 且尚无会话 id。回退后 receipt 为 <code class="mono">model_requested: gpt-6-astra</code>、<code class="mono">model_used: gpt-5.6-luna</code>、<code class="mono">fallback_reason</code> 非空（值为第一次的错误类）。会话一旦建立不再回退。<code class="mono">gpt-5.6-sol</code> 与 luna 一样不回退：点名 sol 失败时 <code class="mono">model_used</code> 仍是 sol，<code class="mono">fallback_reason</code> 为 null。</p>
@@ -261,14 +378,14 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   </ul>
 </section>
 
-<section>
-  <h2>7. claude 车道的九份 agent 文件</h2>
+<section class="manual-section" id="section-7" aria-labelledby="heading-7">
+  <h2 id="heading-7"><span class="section-number">07</span>claude 车道的九份 agent 文件</h2>
   <p>一份文件对应一个（角色, effort）。以 <code class="mono">fable-advisor:&lt;name&gt;</code> 派发。文件名与 <code class="mono">name:</code> 用缩写（<code class="mono">l</code> / <code class="mono">md</code> / <code class="mono">h</code> / <code class="mono">xh</code>）；文首字段 <code class="mono">effort:</code> 写全称。effort 没有按次参数：文件钉死 effort，按次 <code class="mono">model</code> 选择填充。</p>
   <p>不要传 <code class="mono">name</code>（具名队友）：传了则文首字段 <code class="mono">effort:</code> 被忽略，静默落到该型号在 <code class="mono">~/.claude/settings.json</code> 里的档位。省略 <code class="mono">name</code> 才是后台子代理，文首 effort 生效。</p>
   <p>agent 文件只在会话启动时加载。中途新增或改名会得到 <code class="mono">Agent type '&lt;name&gt;' not found</code>。改池之后必须重启会话。</p>
   <p>解析顺序：按次 <code class="mono">model</code> → 文件的 <code class="mono">model:</code> → <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code> → 主会话模型。内置 <code class="mono">Explore</code> 仍可用作 light explorer，但没有自己的 effort；省略 <code class="mono">model</code> 时跑会话模型（Claude API 上限 Opus）。</p>
-  <table>
-    <tr><th>name</th><th>角色</th><th>effort</th><th>模型处理</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">name</th><th scope="col">角色</th><th scope="col">effort</th><th scope="col">模型处理</th></tr>
     <tr><td class="mono">explorer-h</td><td>explorer</td><td class="mono">high</td><td>无 <code class="mono">model:</code> 键。工具仅 <code class="mono">Read</code>、<code class="mono">Grep</code>、<code class="mono">Glob</code>。按次 <code class="mono">model</code> 必给；省略则回落到会话模型</td></tr>
     <tr><td class="mono">explorer-xh</td><td>explorer</td><td class="mono">xhigh</td><td>同上</td></tr>
     <tr><td class="mono">worker-md</td><td>worker</td><td class="mono">medium</td><td>无 <code class="mono">model:</code>。备用拨盘，只在调用方按名点到时到达</td></tr>
@@ -278,13 +395,13 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
     <tr><td class="mono">advisor-md</td><td>advisor</td><td class="mono">medium</td><td>同上</td></tr>
     <tr><td class="mono">advisor-h</td><td>advisor</td><td class="mono">high</td><td>同上</td></tr>
     <tr><td class="mono">advisor-xh</td><td>advisor</td><td class="mono">xhigh</td><td>同上</td></tr>
-  </table>
+  </table></div>
   <p>插件不固定 advisor 的缺省拨盘。缺省写在用户路由档案：决策形状用 <code class="mono">standard</code> 格，验收形状用 <code class="mono">light</code> 格；落到哪份 agent 文件由该格所选拨盘的 effort 决定（<code class="mono">advisor-l</code> / <code class="mono">advisor-md</code> / <code class="mono">advisor-h</code> / <code class="mono">advisor-xh</code>）。</p>
   <p>没有 <code class="mono">explorer-l</code>：haiku 没有 effort 维度，light explorer 用 <code class="mono">explorer-h</code> 加按次型号。从 Claude 主代理派本车道时须披露：同族（没有跨厂商复核）、共享 Anthropic 额度。Fable 作为 advisor 走用量额度，账户需要先启用。</p>
 </section>
 
-<section>
-  <h2>8. Cursor：钉派发、cursor lane、runner 经 Shell、用户级门禁</h2>
+<section class="manual-section" id="section-8" aria-labelledby="heading-8">
+  <h2 id="heading-8"><span class="section-number">08</span>Cursor：钉派发、cursor lane、runner 经 Shell、用户级门禁</h2>
   <p>Cursor 经 Claude 插件兼容路径加载本插件。grok lane、claude lane 与 cursor lane 是原生 Task 派发，各自钉模型。codex lane 不在 Task 枚举里。</p>
   <h3>钉模型的 Task</h3>
   <ul class="tight">
@@ -305,32 +422,32 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   <p>钉模型规则是用户级 Cursor 规则 <code class="mono">cursor-hooks/fable-lane-pin.mdc</code>（活体 <code class="mono">~/.cursor/rules/fable-lane-pin.mdc</code>）：提醒每次显式钉允许名单里的型号名；省略 <code class="mono">model</code> 的 <code class="mono">generalPurpose</code> 是同模派发，不是厂商车道。</p>
 </section>
 
-<section>
-  <h2>9. 用户级文件与伴生安装器</h2>
+<section class="manual-section" id="section-9" aria-labelledby="heading-9">
+  <h2 id="heading-9"><span class="section-number">09</span>用户级文件与伴生安装器</h2>
   <p>正典是仓内编辑源。活体是宿主实际读取的用户级副本。活体只由伴生安装器写入，安装时无条件覆盖，不留 <code class="mono">.bak</code>。中文备份不安装。</p>
-  <table>
-    <tr><th>正典</th><th>活体</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">正典</th><th scope="col">活体</th></tr>
     <tr><td class="mono">docs/agents/fable-advisor-routing.md</td><td class="mono">~/.claude/docs/fable-advisor-routing.md</td></tr>
     <tr><td class="mono">cursor-hooks/fable-lane-pin.mdc</td><td class="mono">~/.cursor/rules/fable-lane-pin.mdc</td></tr>
     <tr><td class="mono">cursor-hooks/fable-lane-family-gate.py</td><td class="mono">~/.cursor/hooks/fable-lane-family-gate.py</td></tr>
-  </table>
+  </table></div>
   <p>退役列表（存在即删除）：<code class="mono">~/.claude/rules/fable-advisor.md</code>、<code class="mono">~/.cursor/rules/fable-advisor.mdc</code>。</p>
   <p>伴生安装器是仓库检出内的 <code class="mono">scripts/install-user-level.py</code>。它不进 <code class="mono">plugin/</code>，不作为插件 hook，也不随 <code class="mono">claude plugin update</code> 自动运行。插件更新后由用户在每侧手动跑一次。</p>
-  <table>
-    <tr><th>旗标</th><th>行为</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">旗标</th><th scope="col">行为</th></tr>
     <tr><td>（无）</td><td>默认家目录为当前用户，写入三件活体，删除退役文件</td></tr>
     <tr><td class="mono">--home &lt;目录&gt;</td><td>可重复；逐个家目录写入</td></tr>
     <tr><td class="mono">--check</td><td>只比对，不写不删。任一活体缺失或字节不同 → 退出非零并列出。退役文件仍在只警告，不因此失败</td></tr>
     <tr><td class="mono">--also &lt;目录&gt;</td><td>把同一批英文正典按源文件名（不含目录）平铺写入该备份目录</td></tr>
-  </table>
+  </table></div>
   <p>每个目标打印动作前缀：<code class="mono">installed</code> / <code class="mono">unchanged</code> / <code class="mono">removed</code> / <code class="mono">warning</code>。</p>
   <p><code class="mono">~/.cursor/hooks.json</code>：只检测 <code class="mono">preToolUse</code> 里是否有包含 <code class="mono">fable-lane-family-gate.py</code> 的命令字段。文件不存在或没有该条目时打印 <code class="mono">warning</code>，退出码不变，不修改该文件。</p>
   <p>本机两侧一次写入：</p>
-  <pre class="mono" style="white-space:pre-wrap;background:var(--ink);color:#f4efe4;padding:1rem;border-radius:6px;">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</pre>
+  <pre class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</pre>
 </section>
 
-<section>
-  <h2>10. receipt gate</h2>
+<section class="manual-section" id="section-10" aria-labelledby="heading-10">
+  <h2 id="heading-10"><span class="section-number">10</span>receipt gate</h2>
   <p>插件 Stop hook，针对<strong>主会话自己</strong>：排了 spec 却不跑、或把非 <code class="mono">complete</code> 的 receipt 当完成。实现是 <code class="mono">plugin/hooks/hooks.json</code> 调 <code class="mono">plugin/hooks/receipt-gate.py</code>。</p>
   <ul class="tight">
     <li>扫描 <code class="mono">&lt;cwd&gt;/.fable-advisor/pending/*.json</code>。按 spec 文件 sha256 找 <code class="mono">.fable-advisor/receipts/&lt;digest&gt;.json</code>。</li>
@@ -342,28 +459,28 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   <p>门禁只强制 receipt 存在且为 <code class="mono">complete</code>；内容仍由主代理判断。放弃或改道时要亲手删 pending 文件并说明，不能只靠这扇门。handoff 目录在 <code class="mono">.fable-advisor/handoff/</code>，故意不在此视野内。Cursor 经 Shell 的 runner 按无此门设计。</p>
 </section>
 
-<section>
-  <h2>11. 测试套件</h2>
-  <table>
-    <tr><th>文件</th><th>证明什么</th></tr>
+<section class="manual-section" id="section-11" aria-labelledby="heading-11">
+  <h2 id="heading-11"><span class="section-number">11</span>测试套件</h2>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">文件</th><th scope="col">证明什么</th></tr>
     <tr><td class="mono">tests/test_runner_contract.py</td><td>两条 runner 在进程边界的契约：<code class="mono">mode</code> 校验；implement / report 分流与前言拼装；<code class="mono">empty_report</code>；字段约定的缺省与越界；grok <code class="mono">effort</code>；前言缺失则不拉起子进程；<code class="mono">*_unavailable</code> 字段；<code class="mono">no_diff</code> / <code class="mono">git_status_failed</code>；<code class="mono">resume</code> 调用；codex 单跳回退与边界（sol 不回退）；空闲诊断；中断与进程树；空闲截止与整段时限；<code class="mono">dirty_baseline</code>（报告模式已脏 → <code class="mono">complete</code>；开跑前干净且 CLI 写文件 → <code class="mono">unexpected_diff</code>；开跑前 <code class="mono">git status</code> 失败记 <code class="mono">null</code>）；<code class="mono">title</code> 首行与 <code class="mono">spec_invalid</code>；终端事件驱动计时。假 CLI、假 git、真实 spec 与 receipt。</td></tr>
     <tr><td class="mono">tests/test_install_user_level.py</td><td>安装器在命令行边界：空家目录装三件且逐字节一致；改活体后 <code class="mono">--check</code> 非零再安装覆盖；<code class="mono">retire</code> 路径被删；<code class="mono">--also</code> 按源文件名写出；<code class="mono">hooks.json</code> 缺失或无门禁条目时打印 <code class="mono">warning</code> 且退出 0、不改文件；有门禁条目则无 <code class="mono">warning</code>；两个 <code class="mono">--home</code> 都写。</td></tr>
     <tr><td class="mono">tests/test_user_level_archive.py</td><td>英文正典存在；钉模型规则中文备份存在、含中文、含「不是活体」；路由档案中文备份存在且含中文。每个存在的家目录调用 <code class="mono">install-user-level.py --check</code>。prompts 仓库不在比对里。</td></tr>
     <tr><td class="mono">tests/test_zh_mirror.py</td><td>每个 <code class="mono">plugin/**/*.md</code> 在 <code class="mono">docs/zh/</code> 有同一相对路径的孪生；没有孤儿孪生。只查存在，不查译文内容。</td></tr>
     <tr><td class="mono">tests/test_receipt_gate.py</td><td>Stop hook 进程边界：无 pending 目录放行；<code class="mono">complete</code> receipt 放行；无 receipt 或非 complete（含 <code class="mono">timeout</code>）拦住；<code class="mono">stop_hook_active</code> 放行；非法 JSON 失败时放行；报告模式 pending 同样拦住。</td></tr>
     <tr><td class="mono">tests/test_lane_family_gate.py</td><td>Cursor Task 钉模型门：advisor 缺 model / <code class="mono">inherit</code> / 空串则 <code class="mono">deny</code> 且文案不含 <code class="mono">family</code>；显式型号则 <code class="mono">allow</code>；<code class="mono">resume</code> 跳过；worker / <code class="mono">generalPurpose</code> / <code class="mono">explore</code> 不在范围内；未知 <code class="mono">advisor-*</code> 仍守；空 stdin 则 <code class="mono">deny</code>；父信封上的 model 不算子代理的钉。另比对仓内正典与两侧活体（若存在）。带 <code class="mono">--self-test</code>。</td></tr>
-  </table>
+  </table></div>
 </section>
 
-<section>
-  <h2>12. 路由档案</h2>
+<section class="manual-section" id="section-12" aria-labelledby="heading-12">
+  <h2 id="heading-12"><span class="section-number">12</span>路由档案</h2>
   <p>填充表是（角色, 档位）→ 候选车道与拨盘的有序表，属于用户判断，不是插件行为。插件技能只规定：调用方指令点名哪份档案就读哪份；首次分配模型前读；档案变化或滑出上下文时重读；未指定或读不到则报缺口、不假定内容。</p>
-  <table>
-    <tr><th>角色</th><th>路径</th></tr>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">角色</th><th scope="col">路径</th></tr>
     <tr><td>正典（唯一编辑源）</td><td class="mono">docs/agents/fable-advisor-routing.md</td></tr>
     <tr><td>活体（技能实际读取、由调用方指名）</td><td class="mono">~/.claude/docs/fable-advisor-routing.md</td></tr>
     <tr><td>中文备份（不安装）</td><td class="mono">docs/agents/fable-advisor-routing.zh.md</td></tr>
-  </table>
+  </table></div>
   <p>结构：声明日期与锚定模型 → 首轮池说明（前两列自由选，第三列有门）→ Claude Code 表 → Cursor 表 → 升级梯引用（指向技能，不复述梯子）→ 资源偏好（含基准数据与声明日期）→ 调整方法。advisor 的缺省也在档案里：决策形状用 <code class="mono">standard</code> 格，验收形状用 <code class="mono">light</code> 格；agent 文件跟着所选拨盘的 effort 走。</p>
   <p>表头形状是角色 ×（<code class="mono">light</code> / <code class="mono">standard</code> / <code class="mono">senior</code> 有门）。格内拨盘用 <code class="mono">model[a*, b, c]</code>。Cursor 表按机制映射同一份取值：GPT 行经 codex runner（Shell）；grok 的部分 effort 经 grok runner（Shell），其余可钉本轮允许名单里的型号名；Claude 行只取本轮允许名单有的型号名变体；Cursor 自家模型走 cursor lane。型号名来自该轮允许名单，档案不持久化可能过期的型号名。缺席的变体跳过，并在披露里说明。</p>
   <p>易变状态（额度、截止日期）只在开场口头声明，只对当次会话有效，不落盘。handoff lane 只在用户按任务或按会话声明后进入候选。</p>
@@ -376,8 +493,9 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   <p class="note">本说明书不复述档案里的型号排名。那些排序是用户在声明日写下的判断，随格子而变。</p>
 </section>
 
-<section>
-  <h2>13. 相对 5.1.0 的改动点</h2>
+<div class="part-heading"><span>02</span><h2>相对上一版的变化</h2></div>
+<section class="manual-section changes" id="section-13" aria-labelledby="heading-13">
+  <h2 id="heading-13"><span class="section-number">13</span>相对 5.1.0 的改动点</h2>
   <p>5.1.0 基线提交为 <code class="mono">83ce044</code>（2026-09-16）。5.2.0 是次版本：runner 契约与技能正文语义向后兼容。下面每一条写改了什么、为什么、依据。</p>
 
   <h3>脏基线 <code class="mono">dirty_baseline</code></h3>
@@ -464,7 +582,7 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
     <p><strong>依据</strong>ADR 0018 决策 10；工单 05。</p>
   </div>
 
-  <div class="box warn">
+  <div class="box warn" id="upgrade">
     <strong>升级后要做什么</strong>
     <ol>
       <li>两侧都跑插件更新：<code class="mono">claude plugin marketplace update fable-advisor</code>，然后 <code class="mono">claude plugin update fable-advisor@fable-advisor</code>。Windows 侧从 WSL 经 <code class="mono">cmd.exe</code> 执行同等命令（先 <code class="mono">cd /mnt/c</code>）。</li>
@@ -474,8 +592,39 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   </div>
 </section>
 
+</main>
 <footer>
+  <div class="footer-title"><span>fable-advisor · 5.2.0 版本说明书</span><a href="#overview">回到顶部 ↑</a></div>
   真源：<code class="mono">plugin/skills/orchestration/</code>、<code class="mono">plugin/scripts/run-*.mjs</code>、<code class="mono">plugin/agents/</code>、<code class="mono">plugin/hooks/</code>、<code class="mono">scripts/install-user-level.py</code>、<code class="mono">cursor-hooks/</code>、<code class="mono">tests/*.py</code>、<code class="mono">docs/adr/0018-post-5-1-tuning.md</code>、<code class="mono">CONTEXT.md</code>。填充表取值以活体路由档案为准，本页不将其当作插件行为。
 </footer>
+</div>
+<script>
+  const toc = document.querySelector('.toc');
+  const mobile = window.matchMedia('(max-width: 900px)');
+  const syncMenu = () => { toc.open = !mobile.matches; };
+  syncMenu();
+  mobile.addEventListener('change', syncMenu);
+  const links = [...document.querySelectorAll('.toc a')];
+  const sections = links.map(link => document.querySelector(link.getAttribute('href')));
+  let scheduled = false;
+  function updateCurrent() {
+    let current = 0;
+    sections.forEach((section, index) => {
+      if (section.getBoundingClientRect().top <= 140) current = index;
+    });
+    links.forEach((link, index) => {
+      if (index === current) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+    scheduled = false;
+  }
+  document.addEventListener('scroll', () => {
+    if (!scheduled) { scheduled = true; requestAnimationFrame(updateCurrent); }
+  }, { passive: true });
+  links.forEach(link => link.addEventListener('click', () => {
+    if (mobile.matches) toc.open = false;
+  }));
+  updateCurrent();
+</script>
 </body>
 </html>

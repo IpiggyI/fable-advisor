@@ -3,7 +3,7 @@
 - **Status**: accepted（2026-09-11 用户确认 Q1–Q22 共识并批准工单拆分）
 - **Date**: 2026-09-11
 - **影响范围**: `plugin/skills/orchestration/`（五个英文 md）、`plugin/agents/`（`implementer.md` → `worker.md`，`fable-advisor.md` 改写）、`plugin/scripts/run-grok.mjs`（`effort`）、两条 runner（`mode: "report"`）、`tests/test_runner_contract.py`、`cursor-hooks/**` 与 `tests/test_lane_family_gate.py`、`README.md`、`docs/zh/**`、根目录 `CONTEXT.md`（已改写）、`AGENTS.md`；版本 5.0.0；用户私有规则（仓外）
-- **关联**: [ADR 0005](./0005-model-routing-and-receipt-gate.md)（架构师层按系列判定——本次退役）、[ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由与 profile 分层——本次保留机制、改索引对象）、[ADR 0011](./0011-cursor-lane-family-gate-user-level.md)（家族门——本次放宽为只查显式 pin）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（词数预算与分支文件——本次沿用）、[ADR 0013](./0013-delivery-contract-not-build-instructions.md)（产物类别边界与前言单源——本次边界改随姿态、前言瘦身）；讨论记录 `docs/chatgpt_模型编排模式比较_6aa2cfb9.md`；spec 与工单 `.scratch/role-pool-posture/`
+- **关联**: [ADR 0005](./0005-model-routing-and-receipt-gate.md)（架构师层按系列判定——本次退役）、[ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由与 profile 分层——本次保留机制、改索引对象）、[ADR 0011](./0011-cursor-lane-family-gate-user-level.md)（家族门——本次放宽为只查显式 pin）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（词数预算与分支文件——本次沿用）、[ADR 0013](./0013-delivery-contract-not-build-instructions.md)（产物类别边界与前言单源——本次边界改随姿态、前言瘦身）；讨论记录 `docs/issues/chatgpt_模型编排模式比较_6aa2cfb9.md`（本地，不入库）；spec 与工单 `.scratch/role-pool-posture/`
 
 ## 背景
 

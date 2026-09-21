@@ -24,7 +24,7 @@ Posture is the main agent's relation to deliverables. Two postures, differing in
 
 Every role is dispatchable in both; implementing never means "no dispatches".
 
-**Selector.** A user declaration or an upstream instruction wins; with neither, an existing upstream task artifact (issue, spec, task file) means orchestrating, otherwise implementing. Model identity never selects posture.
+**Selector.** A user declaration or an upstream instruction wins; with neither, an existing upstream task artifact (issue, spec, task file) means orchestrating, otherwise implementing.
 
 Posture is relative to a dispatch: a lane is implementing for its own contract and orchestrating toward any subagents it spawns. Depth is not limited. Claude Code caps subagent nesting at three layers below the main session.
 
@@ -101,7 +101,7 @@ Lanes share none of your context. Every dispatch carries five parts:
 2. **Files**: the owned scope (paths or directories); new files inside it are allowed
 3. **Interfaces**: shared or external contracts the result must match; may be none
 4. **Constraints**: the reserved items: what must not change, choices fixed upstream, and the operations the caller keeps in its own session; these bind the lane, its subagents, and its verification commands
-5. **Verification**: for a worker, commands whose output is acceptance evidence, including at least one check that fails when the goal is not met; for an explorer or advisor, the expected evidence or verdict shape, possibly empty
+5. **Verification**: for a worker, the checks that decide *this* contract — at least one that fails when the Objective's named behaviour is not met, never held back — with anything held for a later batch named in the contract and its task artifact, and kept out of this list; for an explorer or advisor, the expected evidence or verdict shape, possibly empty
 
 Everything Constraints leaves open is the lane's decision. Steps are not written by default: only when an upstream decision already fixed a sequence, or as targeted direction after a failed rework ticket.
 
@@ -129,10 +129,12 @@ All take the **decision** shape: pass the decision, constraints, and options; th
 
 ## Verification
 
-Reports are claims, not evidence; the object of review is the contract. Three tiers:
+Reports are claims, not evidence; the object of review is the contract, and accepting one closes that contract, not the task. Three tiers:
 
 1. **Tier 1 — every lane by default.** Accept on the lane's verification evidence (command, exit code, output tail, spot-checked against the working tree) plus `git diff --stat`. A full unscoped `git diff` never enters the main agent's context.
 2. **Tier 2 — specific doubt.** On a specific doubt from the report, stat, or verification output, read a path-scoped `git diff <file>`. When the lane authored the acceptance test, read it: it is part of the claim, not evidence.
 3. **Tier 3 — correctness-critical work, same-family diffs, and the user asking for review.** The advisor in its acceptance shape (context-clean, read-only, reads the diff plus the receipt) returns a verdict plus flagged hunks; read only those. Prefer a cross-vendor fill for a same-family diff. A verdict is still a claim; the main agent keeps final judgment.
 
-"Should work", "tests should pass", or a report with no command output means not done.
+**Run each check once.** A contract's check list has one executor — the lane's file names which — and is not run again to close. Contracts that share costly setup are verified together once the last has landed; keep a mid-point check where deferring would blur attribution, leave an unverified prerequisite under later work, or block a contract that depends on this one. The main agent may hand a batch's execution to a lane; the verdict stays its own. Evidence holds as long as the code, inputs and environment behind it hold: a changed role or session is not a reason to re-run. After a rework, acceptance re-verifies the failed scenario and whatever the fix touched.
+
+"Should work", "tests should pass", or an acceptance with no command output behind it means not done.

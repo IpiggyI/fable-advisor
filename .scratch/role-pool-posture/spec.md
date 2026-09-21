@@ -2,13 +2,13 @@
 
 Status: ready-for-agent
 
-关联：讨论记录 `docs/chatgpt_模型编排模式比较_6aa2cfb9.md`；本次 grilling 会话 Q1–Q22；被改写的前提见 [ADR 0005](../../docs/adr/0005-model-routing-and-receipt-gate.md)（架构师层按系列判定）、[ADR 0006](../../docs/adr/0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由、In-house 升格）、[ADR 0013](../../docs/adr/0013-delivery-contract-not-build-instructions.md)（产物类别边界、前言单源）。术语以根目录 `CONTEXT.md` 为准（本次已改写 `角色与档位` / `车道` / `姿态` 三节）。决策记录待落 ADR 0014。
+关联：讨论记录 `docs/issues/chatgpt_模型编排模式比较_6aa2cfb9.md`（本地，不入库）；本次 grilling 会话 Q1–Q22；被改写的前提见 [ADR 0005](../../docs/adr/0005-model-routing-and-receipt-gate.md)（架构师层按系列判定）、[ADR 0006](../../docs/adr/0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由、In-house 升格）、[ADR 0013](../../docs/adr/0013-delivery-contract-not-build-instructions.md)（产物类别边界、前言单源）。术语以根目录 `CONTEXT.md` 为准（本次已改写 `角色与档位` / `车道` / `姿态` 三节）。决策记录待落 ADR 0014。
 
 ## Problem Statement
 
 插件从 v1 到 v4.2 的组织哲学是"一强带弱"：会话模型身份决定模式——Fable / Opus 系列进架构师层（只写契约、派活、验收，不碰交付物），其余模型进 advisor-only（自己实现，只在承诺边界问顾问）。这套划分有三个已经暴露的问题：
 
-1. **前提没被遵守。** 用户实际最常用的架构师是 Opus 而不是 Fable（单价原因）；"主代理必须是最强模型"这个假设在实践里已经松动。与 GPT 的两轮讨论（`docs/chatgpt_模型编排模式比较_6aa2cfb9.md`）也得出：没有哪一种"谁当主代理"的固定组合天然胜出，任务结构比组织形式更重要。
+1. **前提没被遵守。** 用户实际最常用的架构师是 Opus 而不是 Fable（单价原因）；"主代理必须是最强模型"这个假设在实践里已经松动。与 GPT 的两轮讨论（`docs/issues/chatgpt_模型编排模式比较_6aa2cfb9.md`，本地，不入库）也得出：没有哪一种"谁当主代理"的固定组合天然胜出，任务结构比组织形式更重要。
 2. **grok build 的意外观察。** grok build 继承 Claude Code 配置（`grok inspect` 一手证实：读 `~/.claude/CLAUDE.md`、`~/.claude/rules/*.md`、插件与 hooks），本插件在其中直接可用。一个 grok-4.6 主代理在现行规则下本应被判进 advisor-only，却表现得像架构师：主线程推进判断、派子代理调查、派子代理执行、不时问顾问。模式门挡的是模型身份，挡不住能力，也挡不住用户的真实用法。
 3. **五个平行分类各自绑死型号。** 用户设想的下一步是"预先划分好多个角色，让主代理自行调用"。但若把 轻量工作 / 常规实现 / 高级实现 / 高级顾问 / 审查员 五类各自钉上型号写进仓库，型号每几个月换代一次，公开 fork 会承载一名用户的排名，与 ADR 0006 "机制入库、判断入用户规则" 的分层冲突。
 
@@ -149,6 +149,6 @@ Status: ready-for-agent
 - advisor 验收形状对 runner 合并 diff：ACCEPT；发现契约空白（空报告可 `complete`）→ 02b 新增 `empty_report`。
 - 四个测试脚本全绿（15/15、16/16、7/7、8/8）；旧名清扫零命中（README 历史段落除外）。
 - `/code-review`（基点 `25ddc8d`）：Standards 轴一条硬违规——运行时 md 与中文孪生未落同一提交（HEAD 配对完整，提交未 push，是否压缩由用户定）；Divergent Change → 后续票 10（报告模式前言分流，`needs-triage`）。Spec 轴：`CONTEXT.md` 残留"承诺边界"、`AGENTS.md` 首句旧定位——已修；`unexpected_diff` 覆盖 `*_failed` 记作已知（见 02 票评论）。
-- 范围外披露：06 车道把门脚本与 pin 规则同步到了 WSL / Windows live 路径（为保 ADR 0011 漂移用例绿）；`docs/chatgpt_模型编排模式比较_6aa2cfb9.md` 作为讨论记录随规划提交入库。
+- 范围外披露：06 车道把门脚本与 pin 规则同步到了 WSL / Windows live 路径（为保 ADR 0011 漂移用例绿）；`docs/issues/chatgpt_模型编排模式比较_6aa2cfb9.md` 为本地讨论记录，不入库。
 - 未做：push、两侧 `claude plugin update`、两个姿态的真实场景（须在更新后的插件上跑）——等用户授权。
 

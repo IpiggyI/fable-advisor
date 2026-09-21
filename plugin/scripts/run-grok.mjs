@@ -14,6 +14,8 @@ const interruption = new AbortController();
 const PREPARATION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const PROCESS_GRACE_MS = 2_000;
+let forcedCleanup = false;
 const PREAMBLE_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -169,8 +171,7 @@ function normalizeSpec(value) {
 function renderPrompt(spec) {
   const files = spec.files.map((file) => `- ${file}`).join("\n");
   const verification = spec.verification.join("\n");
-
-  return [
+  const sections = [
     "# Objective",
     spec.objective,
     "# Files",
@@ -181,8 +182,13 @@ function renderPrompt(spec) {
     spec.constraints,
     "# Verification",
     `\`\`\`bash\n${verification}\n\`\`\``,
-    "Run the verification command and include its actual output in your final message.",
-  ].join("\n\n");
+  ];
+  if (spec.verification.length > 0) {
+    sections.push(
+      "The runner runs these commands itself after you exit and records their exit codes and output in the receipt; a non-zero exit is your failure. Run what you need while you work; do not repeat this list as a closing step.",
+    );
+  }
+  return sections.join("\n\n");
 }
 
 function parseModelCatalog(stdout) {
@@ -211,26 +217,78 @@ function createDeadlineTimer(delayMs, callback) {
   return () => clearTimeout(handle);
 }
 
-function captureProcess(command, args, options = {}) {
-  return new Promise((resolve) => {
-    let child;
-    try {
-      child = spawn(command, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
-    } catch (error) {
-      resolve({ code: null, stdout: "", stderr: "", error });
-      return;
+function monitorProcess(child, onExit = () => {}) {
+  const result = { code: null, signal: null, spawnError: null, stopped: false, closedAt: null };
+  let drainTimer;
+  let settled = false;
+  let resolveDone;
+  const done = new Promise((resolve) => { resolveDone = resolve; });
+  const finish = (closedAt = null) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(drainTimer);
+    result.closedAt = closedAt;
+    if (closedAt === null) {
+      forcedCleanup = true;
+      diagnostic(`process ${child.pid ?? "unstarted"} cleanup deadline reached; exit observed: ${result.stopped}; closing pipes, later output will be discarded`);
+      for (const stream of child.stdio) stream?.destroy();
+      child.unref();
     }
-
-    let stdout = "";
-    let stderr = "";
-    let spawnError = null;
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
-    child.once("error", (error) => { spawnError = error; });
-    child.once("close", (code) => resolve({ code, stdout, stderr, error: spawnError }));
+    resolveDone(result);
+  };
+  const stop = () => {
+    // A descendant can retain pipes after exit, or survive a tree-kill attempt.
+    if (!settled && drainTimer === undefined) {
+      drainTimer = setTimeout(() => finish(), PROCESS_GRACE_MS);
+    }
+  };
+  child.once("exit", (code, signal) => {
+    result.code = code;
+    result.signal = signal;
+    result.stopped = true;
+    onExit();
+    stop();
   });
+  child.once("error", (error) => {
+    result.spawnError = error;
+    if (!child.pid) {
+      result.stopped = true;
+      onExit();
+      stop();
+    }
+  });
+  child.once("close", (code, signal) => {
+    result.code = code;
+    result.signal = signal;
+    finish(Date.now());
+  });
+  return { done, stop };
+}
+
+async function captureProcess(command, args, options = {}, timeoutMs = null) {
+  let child;
+  try {
+    child = spawn(command, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    return { code: null, stdout: "", stderr: "", error };
+  }
+
+  let stdout = "";
+  let stderr = "";
+  let timeoutError = null;
+  const lifecycle = monitorProcess(child);
+  const timer = timeoutMs === null ? null : setTimeout(() => {
+    timeoutError = new Error(`${command} termination deadline reached`);
+    lifecycle.stop();
+    child.kill("SIGKILL");
+  }, timeoutMs);
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  const result = await lifecycle.done;
+  clearTimeout(timer);
+  return { code: result.code, stdout, stderr, error: timeoutError ?? result.spawnError };
 }
 
 async function killProcessTree(child) {
@@ -239,7 +297,9 @@ async function killProcessTree(child) {
   }
 
   if (process.platform === "win32") {
-    const result = await captureProcess("taskkill", ["/pid", String(child.pid), "/T", "/F"]);
+    const result = await captureProcess(
+      "taskkill", ["/pid", String(child.pid), "/T", "/F"], {}, PROCESS_GRACE_MS,
+    );
     if (result.error || result.code !== 0) {
       diagnostic(`taskkill failed: ${errorMessage(result.error ?? result.stderr.trim())}`);
     }
@@ -308,6 +368,7 @@ function observeGrokEvents(child, state, onEvent) {
       }
     }
   });
+  return lines;
 }
 
 async function executeGrok(spec, cwd, promptPath) {
@@ -353,9 +414,16 @@ async function executeGrok(spec, cwd, promptPath) {
   let termination = Promise.resolve();
   let clearIdleTimer = () => {};
   let clearPreparationTimer = () => {};
+  const lifecycle = monitorProcess(child, () => {
+    exited = true;
+    clearWallTimer();
+    clearIdleTimer();
+    clearPreparationTimer();
+  });
   const failAndKill = (errorClass) => {
     if (failure !== null || exited) return;
     failure = errorClass;
+    lifecycle.stop();
     termination = killProcessTree(child);
   };
   const armIdleTimer = () => {
@@ -385,25 +453,23 @@ async function executeGrok(spec, cwd, promptPath) {
     );
   }
 
-  observeGrokEvents(child, state, () => {
+  const events = observeGrokEvents(child, state, () => {
     clearPreparationTimer();
     armIdleTimer();
   });
   child.stderr.pipe(process.stderr);
 
-  const result = await new Promise((resolve) => {
-    let spawnError = null;
-    child.once("error", (error) => { spawnError = error; });
-    child.once("close", (code, signal) => resolve({ code, signal, spawnError }));
-  });
+  const result = await lifecycle.done;
+  events.close();
+  child.stderr.unpipe(process.stderr);
   exited = true;
   interruption.signal.removeEventListener("abort", onInterrupt);
   clearWallTimer();
   clearIdleTimer();
   clearPreparationTimer();
-  const endToCloseMs = state.terminalEventAt === null
+  const endToCloseMs = state.terminalEventAt === null || result.closedAt === null
     ? null
-    : Math.max(0, Date.now() - state.terminalEventAt);
+    : Math.max(0, result.closedAt - state.terminalEventAt);
   await termination;
 
   if (failure === null && result.spawnError?.code === "ENOENT") {
@@ -417,6 +483,7 @@ async function executeGrok(spec, cwd, promptPath) {
   return {
     ...state,
     childExitCode: result.code,
+    processStopped: result.stopped,
     errorClass: failure,
     endToCloseMs,
   };
@@ -453,28 +520,23 @@ function appendTail(current, chunk) {
     : combined.slice(-OUTPUT_TAIL_LENGTH);
 }
 
-function runVerificationCommand(command, cwd) {
-  return new Promise((resolve) => {
-    let child;
-    try {
-      child = spawn(command, { cwd, shell: true, stdio: ["ignore", "pipe", "pipe"] });
-    } catch (error) {
-      resolve({ command, exit_code: 1, output_tail: errorMessage(error) });
-      return;
-    }
+async function runVerificationCommand(command, cwd) {
+  let child;
+  try {
+    child = spawn(command, { cwd, shell: true, stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    return { command, exit_code: 1, output_tail: errorMessage(error) };
+  }
 
-    let outputTail = "";
-    let spawnError = null;
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => { outputTail = appendTail(outputTail, chunk); });
-    child.stderr.on("data", (chunk) => { outputTail = appendTail(outputTail, chunk); });
-    child.once("error", (error) => { spawnError = error; });
-    child.once("close", (code) => {
-      if (spawnError) outputTail = appendTail(outputTail, errorMessage(spawnError));
-      resolve({ command, exit_code: code ?? 1, output_tail: outputTail });
-    });
-  });
+  let outputTail = "";
+  const lifecycle = monitorProcess(child);
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { outputTail = appendTail(outputTail, chunk); });
+  child.stderr.on("data", (chunk) => { outputTail = appendTail(outputTail, chunk); });
+  const result = await lifecycle.done;
+  if (result.spawnError) outputTail = appendTail(outputTail, errorMessage(result.spawnError));
+  return { command, exit_code: result.code ?? 1, output_tail: outputTail };
 }
 
 async function runVerification(commands, cwd) {
@@ -692,14 +754,14 @@ async function main() {
       changedFilesResult = await collectChangedFiles(state.cwd);
       state.changedFiles = changedFilesResult.files;
     }
-    // shortcut: report mode skips the unexpected_diff check when the tree was dirty at start; ceiling: a lane write on an already-dirty tree goes undetected (the read-only sandbox is the only guard); replace when: a report-mode lane writes under dirty_baseline true, or implement mode misreports because of pre-existing dirt twice (ADR 0018 review conditions).
+    // shortcut: report mode skips unexpected_diff when the tree was dirty at start, and never raises git_status_failed; ceiling: a lane write on an already-dirty or non-git tree goes undetected (the read-only sandbox is the only guard); replace when: a report-mode lane writes under dirty_baseline true or when git is unavailable, or implement mode misreports because of pre-existing dirt twice (ADR 0018 / 0019 review conditions).
     if (spec.mode === "report" && state.changedFiles.length > 0 && state.dirtyBaseline !== true) {
       state.errorClass = "unexpected_diff";
     }
     if (state.errorClass === null) {
       if (!state.verification.every((result) => result.exit_code === 0)) {
         state.errorClass = "verification_failed";
-      } else if (changedFilesResult.failed) {
+      } else if (changedFilesResult.failed && spec.mode !== "report") {
         state.errorClass = "git_status_failed";
       } else if (spec.mode === "report" && !(state.grokFinalMessage ?? "").trim()) {
         state.errorClass = "empty_report";
@@ -741,4 +803,13 @@ try {
 } finally {
   process.removeListener("SIGTERM", onInterrupt);
   process.removeListener("SIGINT", onInterrupt);
+}
+
+if (process.platform === "win32" && forcedCleanup) {
+  // Windows can retain a pending stdin shutdown after its pipe is destroyed.
+  // Flush the receipt and diagnostics after main finishes all file cleanup.
+  await Promise.all([process.stdout, process.stderr].map((stream) => new Promise(
+    (resolve, reject) => stream.write("", (error) => error ? reject(error) : resolve()),
+  )));
+  process.exit(process.exitCode);
 }

@@ -3,7 +3,7 @@
 - **Status**: accepted（2026-09-06 用户确认 Q1–Q27 共识）
 - **Date**: 2026-09-06
 - **影响范围**: `plugin/skills/orchestration/SKILL.md`、`lanes-claude-code.md`、`lanes-cursor.md`、新增 `lane-preamble.md`；`plugin/agents/implementer.md`、`plugin/agents/fable-advisor.md`；`plugin/scripts/run-codex.mjs`、`run-grok.mjs`（`resume_session_id`、前言加载；其余 runner 变更见 ADR 0003 / 0009 追记）；`README.md`、`docs/zh/`；根目录 `CONTEXT.md`、`AGENTS.md`；版本 4.0.0；用户私有规则（仓外）
-- **关联**: [ADR 0005](./0005-model-routing-and-receipt-gate.md)（架构师层按系列判定）、[ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由、profile 分层）、[ADR 0008](./0008-context-discipline.md)（三级验收，本次保留并加一条 Tier 2 触发）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（第 6 条引入的经济豁免，本次撤回）、[ADR 0003](./0003-codex-lane-param-policy.md) 与 [ADR 0009](./0009-grok-lane-dewrapper-runner.md) 的同批追记；讨论记录 `docs/chatgpt_插件架构调整建议.md`
+- **关联**: [ADR 0005](./0005-model-routing-and-receipt-gate.md)（架构师层按系列判定）、[ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由、profile 分层）、[ADR 0008](./0008-context-discipline.md)（三级验收，本次保留并加一条 Tier 2 触发）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（第 6 条引入的经济豁免，本次撤回）、[ADR 0003](./0003-codex-lane-param-policy.md) 与 [ADR 0009](./0009-grok-lane-dewrapper-runner.md) 的同批追记；讨论记录 `docs/issues/chatgpt_插件架构调整建议.md`（本地，不入库）
 
 ## 背景
 
@@ -15,7 +15,7 @@
 2. 经济豁免（ADR 0012 第 6 条，「spec 比 diff 还贵的改动才亲手改」）在实践里被用成「架构师自判小改动就 inline」，改动脱离了委派—执行—评审链，没人评审。什么算小由模型自判，这是泄漏点。
 3. 执行侧姿态只到达 in-house lane：两条 runner 的 `renderPrompt` 只原样转发五部（`run-codex.mjs:148`、`run-grok.mjs:123`）；Cursor 侧 frontmatter 被忽略、`implementer` 不在 Task 枚举，没有任何车道读 `implementer.md`。
 
-与 GPT 的两轮讨论（`docs/chatgpt_插件架构调整建议.md`）先扩到「组长 + 任务负责人 + 独立审查员」的全面组队，再被用户收回到：上游已有规划工作流（`.scratch/` issue 与 spec、Trellis task），插件只负责让既定方案落地；硬骨架（强制委派、执行边界、评审闭环）不动，只收缩「老师对实现细节的控制」。本 ADR 记录这条收敛后的路线及其边界。
+与 GPT 的两轮讨论（`docs/issues/chatgpt_插件架构调整建议.md`，本地，不入库）先扩到「组长 + 任务负责人 + 独立审查员」的全面组队，再被用户收回到：上游已有规划工作流（`.scratch/` issue 与 spec、Trellis task），插件只负责让既定方案落地；硬骨架（强制委派、执行边界、评审闭环）不动，只收缩「老师对实现细节的控制」。本 ADR 记录这条收敛后的路线及其边界。
 
 ## 选项对比
 

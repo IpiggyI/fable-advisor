@@ -9,6 +9,13 @@ Issues and specs (you may know a spec as a PRD) for this repo live as markdown f
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` — never a single combined tickets file
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- Checks the ticket's contract held for a later batch go under a `## Held for batch acceptance` heading, one line each
+
+## Held for batch acceptance
+
+A delivery contract carries only the checks that decide that contract; an expensive check shared with sibling tickets is held for one batch run after the last of them lands (`CONTEXT.md`, "批次验收"). The held check has no mechanical keeper — the receipt gate does not see it and no runner records it — so the ticket file is where it lives.
+
+Write each held check as one line under `## Held for batch acceptance` when the ticket is written, and record the batch's actual result there when it runs. A ticket whose checklist is fully ticked while that section still names an unrun check is not accepted.
 
 ## When a skill says "publish to the issue tracker"
 
