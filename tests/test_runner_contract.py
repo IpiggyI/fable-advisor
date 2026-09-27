@@ -123,9 +123,7 @@ mode = os.environ.get("CODEX_MODE", "success")
 model = args[args.index("--model") + 1]
 if mode == "fail_before_session":
     raise SystemExit(1)
-if mode == "second_preparation":
-    if model == "gpt-6-astra":
-        raise SystemExit(1)
+if mode == "no_events":
     raise SystemExit(0)
 prompt = sys.stdin.read()
 if prompt:
@@ -186,7 +184,7 @@ if args == ["models"]:
     print("* grok-test (default)")
     raise SystemExit(0)
 codex = "exec" in args
-if codex and os.environ.get("REPORT_FALLBACK") and args[args.index("--model") + 1] == "gpt-6-astra":
+if codex and os.environ.get("REPORT_PRE_SESSION_FAILURE"):
     raise SystemExit(1)
 prompt = sys.stdin.read() if codex else Path(args[args.index("--prompt-file") + 1]).read_text()
 Path(os.environ["PROMPT_LOG"]).write_text(prompt)
@@ -248,7 +246,7 @@ def case_report_and_implement_modes():
         (None, ["owned.txt"], 0, False, False, "no_diff"),
     ]
     for binary in ("codex", "grok"):
-        for mode, files, git_exit, resume, fallback, expected in scenarios:
+        for mode, files, git_exit, resume, pre_session_failure, expected in scenarios:
             with tempfile.TemporaryDirectory() as tmp:
                 bin_dir = Path(tmp) / "bin"
                 bin_dir.mkdir()
@@ -274,23 +272,37 @@ def case_report_and_implement_modes():
                     expected = "unexpected_diff"
                 if resume:
                     spec["resume_session_id"] = "resume-123"
+                if pre_session_failure and binary == "codex":
+                    expected = "codex_failed"
                 result, receipt = run_runner(
                     runner, cwd, spec, bin_dir,
                     {"CALL_LOG": str(call_log), "PROMPT_LOG": str(prompt_log),
-                     "REPORT_FALLBACK": "1" if fallback else ""},
+                     "REPORT_PRE_SESSION_FAILURE": "1" if pre_session_failure else ""},
                     pending=True,
                 )
                 assert receipt["error_class"] == expected, receipt
                 assert (result.returncode == 0) == (expected == "complete"), result.stderr
                 assert receipt["mode"] == (mode or "implement")
-                assert receipt["report"] == ("Report findings." if mode == "report" else None)
-                assert receipt[binary + "_final_message"] == "Report findings."
+                failed_before_session = pre_session_failure and binary == "codex"
+                assert receipt["report"] == (
+                    "" if failed_before_session else
+                    "Report findings." if mode == "report" else None
+                )
+                assert receipt[binary + "_final_message"] == (
+                    None if failed_before_session else "Report findings."
+                )
                 assert (cwd / ".fable-advisor" / "pending" / "job.json").exists() == (expected != "complete")
                 receipt_path = cwd / ".fable-advisor" / "receipts" / (receipt["spec_hash"] + ".json")
                 assert json.loads(receipt_path.read_text()) == receipt
                 calls = [json.loads(line) for line in call_log.read_text().splitlines()]
                 attempts = calls[1:]
-                assert len(attempts) == (2 if binary == "codex" and fallback else 1), calls
+                assert len(attempts) == 1, calls
+                if failed_before_session:
+                    assert receipt["model_requested"] == "gpt-6-astra"
+                    assert receipt["model_used"] == "gpt-6-astra"
+                    assert receipt["fallback_reason"] is None
+                    assert not prompt_log.exists()
+                    continue
                 prompt = prompt_log.read_text()
                 assert "[fable-advisor]" not in prompt
                 assert "Files defines the read scope" not in prompt
@@ -317,11 +329,7 @@ def case_report_and_implement_modes():
                         assert args[args.index("--sandbox") + 1] == (
                             "danger-full-access" if os.name == "nt" else "workspace-write"
                         )
-                if fallback and binary == "codex":
-                    assert receipt["model_used"] == "gpt-5.6-luna"
-                    assert receipt["effort"] == "max"
-                    assert receipt["fallback_reason"] == "codex_failed"
-    print("ASSERT report: both runners readonly argv, text, clean/dirty, empty scope/checks, resume, fallback, pending")
+    print("ASSERT report: both runners readonly argv, text, clean/dirty, empty scope/checks, resume, pre-session failure, pending")
     print("ASSERT implement: explicit/omitted defaults and no_diff unchanged")
 
 
@@ -434,15 +442,28 @@ def case_schema_defaults_and_validation():
             "gpt-6-astra", "gpt-6-astra", "medium",
         )
 
-        _, luna = run_runner(codex, cwd, base_spec(model="gpt-5.6-luna"), bin_dir)
-        assert luna["effort"] == "max"
+        _, luna = run_runner(codex, cwd, base_spec(model="gpt-6-luna"), bin_dir)
+        assert (luna["error_class"], luna["model_requested"], luna["model_used"], luna["effort"]) == (
+            "codex_unavailable", "gpt-6-luna", "gpt-6-luna", "max",
+        )
 
-        _, sol = run_runner(codex, cwd, base_spec(model="gpt-5.6-sol"), bin_dir)
-        assert sol["error_class"] == "codex_unavailable"
-        assert sol["effort"] == "high"
-        assert sol["model_requested"] == "gpt-5.6-sol"
-        assert sol["model_used"] == "gpt-5.6-sol"
+        _, sol = run_runner(codex, cwd, base_spec(model="gpt-6-sol"), bin_dir)
+        assert (sol["error_class"], sol["model_requested"], sol["model_used"], sol["effort"]) == (
+            "codex_unavailable", "gpt-6-sol", "gpt-6-sol", "high",
+        )
         assert sol["fallback_reason"] is None
+
+        fake_codex(bin_dir)
+        fake_git(bin_dir)
+        call_log = Path(tmp) / "retired-model-calls"
+        cli_env = {
+            "CALL_LOG": str(call_log),
+            "PROMPT_LOG": str(Path(tmp) / "retired-model-prompt"),
+        }
+        for retired in ("gpt-5.6-luna", "gpt-5.6-sol"):
+            _, receipt = run_runner(codex, cwd, base_spec(model=retired), bin_dir, cli_env)
+            assert receipt["error_class"] == "spec_invalid", receipt
+            assert not call_log.exists(), "%s spawned codex" % retired
 
         _, terra = run_runner(codex, cwd, base_spec(model="gpt-5.6-terra"), bin_dir)
         assert terra["error_class"] == "spec_invalid"
@@ -480,8 +501,9 @@ def case_schema_defaults_and_validation():
             )
             assert bad_timeout["error_class"] == "spec_invalid"
         print(
-            "ASSERT schema: terra=spec_invalid unknown_key=spec_invalid "
-            "empty_resume=spec_invalid idle_timeout_sec=spec_invalid"
+            "ASSERT schema: gpt-6 defaults accepted retired=spec_invalid+spawn-free "
+            "terra=spec_invalid unknown_key=spec_invalid empty_resume=spec_invalid "
+            "idle_timeout_sec=spec_invalid"
         )
 
 
@@ -695,7 +717,7 @@ def case_resume_invocations_and_preamble():
             )
 
 
-def case_codex_single_hop_fallback():
+def case_codex_no_model_switch():
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir = Path(tmp) / "bin"
         bin_dir.mkdir()
@@ -718,16 +740,17 @@ def case_codex_single_hop_fallback():
         )
         calls = [json.loads(line) for line in call_log.read_text().splitlines()]
         attempts = [args for args in calls if args != ["--version"]]
-        assert len(attempts) == 2
+        assert len(attempts) == 1
         assert receipt["model_requested"] == "gpt-6-astra"
-        assert receipt["model_used"] == "gpt-5.6-luna"
-        assert receipt["model"] == "gpt-5.6-luna"
-        assert receipt["effort"] == "max"
-        assert receipt["fallback_reason"] == "codex_failed"
+        assert receipt["model_used"] == "gpt-6-astra"
+        assert receipt["model"] == "gpt-6-astra"
+        assert receipt["effort"] == "medium"
+        assert receipt["fallback_reason"] is None
         assert receipt["error_class"] == "codex_failed"
+        assert "model_reasoning_effort=medium" in attempts[0]
         print(
-            "ASSERT fallback: model_used=gpt-5.6-luna "
-            "fallback_reason=codex_failed attempts=2 second_error=codex_failed"
+            "ASSERT no fallback: error=codex_failed model_used=gpt-6-astra "
+            "fallback_reason=null attempts=1"
         )
 
 
@@ -756,26 +779,29 @@ def run_codex_mode(tmp, spec, mode):
     return receipt, attempts
 
 
-def case_codex_fallback_boundaries():
+def case_codex_no_model_switch_boundaries():
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(
             tmp,
-            base_spec(model="gpt-5.6-luna"),
+            base_spec(model="gpt-6-luna"),
             "fail_before_session",
         )
         assert len(attempts) == 1
-        assert receipt["model_used"] == "gpt-5.6-luna"
+        assert receipt["model_requested"] == "gpt-6-luna"
+        assert receipt["model_used"] == "gpt-6-luna"
+        assert receipt["effort"] == "max"
         assert receipt["fallback_reason"] is None
+        assert "model_reasoning_effort=max" in attempts[0]
 
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(
             tmp,
-            base_spec(model="gpt-5.6-sol"),
+            base_spec(model="gpt-6-sol"),
             "fail_before_session",
         )
         assert len(attempts) == 1
-        assert receipt["model_requested"] == "gpt-5.6-sol"
-        assert receipt["model_used"] == "gpt-5.6-sol"
+        assert receipt["model_requested"] == "gpt-6-sol"
+        assert receipt["model_used"] == "gpt-6-sol"
         assert receipt["effort"] == "high"
         assert receipt["fallback_reason"] is None
         assert "model_reasoning_effort=high" in attempts[0]
@@ -794,14 +820,16 @@ def case_codex_fallback_boundaries():
         receipt, attempts = run_codex_mode(
             tmp,
             base_spec(),
-            "second_preparation",
+            "no_events",
         )
-        assert len(attempts) == 2
-        assert receipt["fallback_reason"] == "codex_failed"
+        assert len(attempts) == 1
+        assert receipt["model_requested"] == "gpt-6-astra"
+        assert receipt["model_used"] == "gpt-6-astra"
+        assert receipt["fallback_reason"] is None
         assert receipt["error_class"] == "preparation_stalled"
         print(
-            "ASSERT fallback boundaries: direct_luna=1 direct_sol=1 "
-            "session_established=1 second_error=preparation_stalled"
+            "ASSERT no fallback boundaries: direct_luna=1 direct_sol=1 "
+            "session_established=1 preparation_stalled=1"
         )
 
 
@@ -862,7 +890,7 @@ def case_idle_diagnostic():
             for mode in ("initial_gap", "event_gap", "no_events"):
                 result, receipt = run_runner(
                     runner, cwd,
-                    base_spec(**({"model": "gpt-5.6-luna"} if binary == "codex" else {})),
+                    base_spec(**({"model": "gpt-6-luna"} if binary == "codex" else {})),
                     bin_dir, {"STREAM_MODE": mode},
                 )
                 assert receipt["receipt_version"] == 1
@@ -1055,7 +1083,7 @@ def run_deadline(binary, spec, env_extra, *, pending=True, timeout=8, dirty=Fals
 def case_idle_and_wall_deadlines():
     idle = 0.5
     for binary in ("codex", "grok"):
-        spec_model = {"model": "gpt-5.6-luna"} if binary == "codex" else {}
+        spec_model = {"model": "gpt-6-luna"} if binary == "codex" else {}
         live_env = {
             "DEADLINE_MODE": "live",
             "DEADLINE_INTERVAL": "0.08",
@@ -1430,8 +1458,8 @@ CASES = [
     ("unavailable receipt fields", case_unavailable_receipt_fields),
     ("no_diff and git_status_failed", case_no_diff_and_git_status_failed),
     ("resume invocations and preamble", case_resume_invocations_and_preamble),
-    ("codex single-hop fallback", case_codex_single_hop_fallback),
-    ("codex fallback boundaries", case_codex_fallback_boundaries),
+    ("codex no model switch", case_codex_no_model_switch),
+    ("codex no model switch boundaries", case_codex_no_model_switch_boundaries),
     ("last terminal event drives timing", case_last_terminal_event_drives_timing),
     ("idle diagnostic", case_idle_diagnostic),
     ("interrupted receipt and process tree", case_interrupted_receipt_and_process_tree),

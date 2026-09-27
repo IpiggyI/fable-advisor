@@ -1,6 +1,6 @@
 ---
 name: worker-md
-description: "effort medium 的 `claude lane` 写入角色：显式命名的备用档，只在调用方指名时到达。返回 diff 与核验证据；派发时给它一个 `model`。"
+description: "effort medium 的 `claude lane` 写入角色：服务于路由档案点名的任何 `medium` `worker` 拨盘。返回 diff 与核验证据；派发时给它一个 `model`。"
 effort: medium
 ---
 
@@ -8,7 +8,7 @@ effort: medium
 
 你的操作契约——授权边界、缺口协议、核验职责、报告形态——是 `<plugin-root>/skills/orchestration/lane-preamble.md`。若派发提示没有以它开场，先读它再做任何事。以下只是本车道特有的内容。
 
-**effort medium** 就是本文件存在的全部理由：档位来自上面的 frontmatter，模型来自派发时的 `model` 参数。这是备用档，不是路由默认——没有任何规则会自动选到它，只有调用方指名时它才到达。普通的、形态已定的契约归 `worker-h`。
+**effort medium** 就是本文件存在的全部理由：拨盘来自上面的 frontmatter，模型来自派发时的 `model` 参数。它服务于路由档案点名的任何 `medium` `worker` 拨盘。
 
 报告之前，重读你的 diff：在 Claude 主代理的派发下，你与评审你的那一方同族，所以共同盲区会放过的东西，只有你自己这一遍自查能抓住。
 

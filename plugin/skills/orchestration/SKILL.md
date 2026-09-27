@@ -49,7 +49,7 @@ A role is a contract shape (input, permissions, output) and names no model; a ti
 | `worker` | writes inside the contract's Files | a diff plus verification evidence |
 | `advisor` | read-only | a verdict under 300 words, in two request shapes: **decision** (before committing: decision, constraints, options) or **acceptance** (after: contract, diff, receipt → criteria met?) |
 
-Tiers: `light`, `standard`, `senior`; any role at any tier. A raise (ladder R2) runs under a takeover contract: contract shape, not tier. The advisor's authority comes from the code it reads, not its tier.
+Tiers: `mainstay`, `crux`, `rescue`; any role at any tier. Tiers split by model; effort only subdivides a tier. Most work ends in `mainstay`; `rescue` is rare. A raise (ladder R2) runs under a takeover contract: contract shape, not tier. The advisor's authority comes from the code it reads, not its tier.
 
 ## Lanes
 
@@ -73,19 +73,19 @@ Two executor-side contracts: [lane-preamble.md](lane-preamble.md) for a worker, 
 
 ## Routing — two stages
 
-**Stage 1 — (role, tier) by judgment dependence.** Role by output. Tier: `light` and `standard` form the first-round pool, chosen freely by the outcome's dependence on judgment the contract cannot capture, no precondition; `senior` only through the senior gate below or a user declaration.
+**Stage 1 — (role, tier).** Role by output. Tier: new work starts in `mainstay`; an identified key difficulty or mutually constraining conditions may send a first round straight to `crux`, no usage ratio; a first-round `rescue` only by user declaration.
 
-**Stage 2 — Pareto inside the cell.** Among the cell's fills, trade speed, price, capability, and specialty against the declared profile; specialty only breaks ties, never overturns stage 1. No declarations → the cheapest adequate fill, lanes compared at their default dials only.
+**Stage 2 — choosing inside the cell.** The first candidate is the default, at its `*` dial absent declarations. Pick another when the task falls on a specialty the profile declares for it (price counts). Equal fits and replacements follow the profile's lane order.
 
-**Re-routing.** An unavailable or timed-out lane's contract goes unchanged to another fill in the cell, disclosed; both CLI lanes down → the claude lane, stating any lost cross-vendor review. Availability is decided by dispatch, not probes.
+**Re-routing.** An unavailable or timed-out candidate (whole lane, single candidate, or codex runner start failure) hands its contract unchanged to another in the cell, in the profile's lane order, disclosed; not a capability failure. Both CLI lanes down → the claude lane, stating any lost cross-vendor review. Availability is decided by dispatch, not probes.
 
-**Escalation — the ladder.** R1: a failed acceptance gets a rework ticket, same session, same dial; a contract gap gets a corrected contract, same lane session. R2: the rework ticket fails too, cause capability → a raise: fresh session, takeover contract (original contract, prior report, receipt); one raise is the same model at higher effort or another model. R3: a model is raised at most once; the next raise changes model unless the higher cells hold no other. R4: a major execution problem (repeated tool failures, runaway, a reserved item touched) may skip the rework ticket and change model at once, counted as one failure. **Senior gate:** two capability-attributed failures in the first-round pool, or a user declaration — the decision-type gate's "the same problem failing twice", whose advisor verdict also rules on going senior.
+**Escalation — the ladder.** R1: a failed acceptance gets a rework ticket, same session, same dial; a contract gap gets a corrected contract, same lane session. R2: the rework ticket fails too, cause capability → a capability failure: raise to the next tier (`mainstay` → `crux` → `rescue` → user), fresh session, takeover contract (original contract, prior report, receipt). Pick its model by the task, not below the failed model in the profile's ranking unless no other candidate exists; the same model must raise effort; effort names never compare across models. R3: a model is raised at most once, counted by full model id. R4: a major execution problem (repeated tool failures, runaway, a reserved item touched) may skip the rework ticket, counting as a capability failure (next tier). Environment problems and contract gaps are not failures. A task started in `crux` reaches `rescue` after one failure there; a `rescue` failure goes to the user.
 
 ## User routing profile
 
 Stage 2 inputs enter only as declarations.
 
-**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in the user routing profile the caller's instructions name, never this repo. Read it before the first model assignment, again when it changes or slides out of context; none named or readable → report the gap, assume nothing. A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, all first-round, `*` the default; a model without an effort dimension is written bare.
+**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in the user routing profile the caller's instructions name, never this repo. Read it before the first model assignment, again when it changes or slides out of context; none named or readable → report the gap, assume nothing. A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, `*` the default, else the first listed; a model without an effort dimension is written bare.
 
 **Volatile state** (quota balance, deadline pressure) is declared verbally at kickoff, holds for that session only, never written to disk.
 

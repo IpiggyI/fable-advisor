@@ -142,3 +142,9 @@ advisor 同时确认：`plugin/agents/**`、`lanes-cursor.md` 未发现新增重
 - ADR 0020 记录本批决定与已知能力上限。
 
 基线（2026-09-20，改动前）：`test_runner_contract` 18/18、`test_zh_mirror` 15/15、`test_receipt_gate` 8/8、`test_lane_family_gate` 18/18、`test_install_user_level` 8/8、`test_runner_lifecycle` 无 FAIL；`test_user_level_archive` 5/6——Windows 侧活体路由档案漂移，与本次无关，需椰椰跑一次伴生安装器。
+
+## Comments
+
+### 2026-09-26 — 发布安排
+
+- 本批（ADR 0019、0020，提交 `e5d65a4`）不单独发布 5.3.0，随 6.0.0 发布：说明书见 `.scratch/tiers-and-routing-6-0/issues/04-version-manual-6-0-0.md`，发布见 `issues/05-release-6-0-0.md`（依据 `.scratch/tiers-and-routing-6-0/spec.md` 决定 N1）。

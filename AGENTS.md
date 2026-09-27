@@ -1,6 +1,6 @@
 # fable-advisor
 
-A Claude Code / Cursor plugin that ships a role pool (explorer / worker / advisor at light / standard / senior tiers) reached through the grok, codex, claude and handoff lanes; any model can run the main agent, and a posture (orchestrating or implementing) decides whether it edits deliverables itself — see [ADR 0014](docs/adr/0014-role-pool-posture.md). This is a fork of [`DannyMac180/fable-advisor`](https://github.com/DannyMac180/fable-advisor) carrying local hardening commits — see [ADR 0001](docs/adr/0001-upstream-sync-fork.md) before syncing upstream.
+A Claude Code / Cursor plugin that ships a role pool (explorer / worker / advisor at `mainstay` / `crux` / `rescue` tiers) reached through the grok, codex, claude and handoff lanes; any model can run the main agent, and a posture (orchestrating or implementing) decides whether it edits deliverables itself — see [ADR 0014](docs/adr/0014-role-pool-posture.md). This is a fork of [`DannyMac180/fable-advisor`](https://github.com/DannyMac180/fable-advisor) carrying local hardening commits — see [ADR 0001](docs/adr/0001-upstream-sync-fork.md) before syncing upstream.
 
 ## Agent skills
 
@@ -32,7 +32,7 @@ Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule li
 
 Canonical profile: `docs/agents/fable-advisor-routing.md` (Chinese backup `docs/agents/fable-advisor-routing.zh.md`, not installed). Live copy: `~/.claude/docs/fable-advisor-routing.md` on both sides. The prompts-repo copy is an optional `--also` snapshot, not an edit source and not checked. The skill still reads whichever path the caller names; this fork's `AGENTS.md` names the live path. See [ADR 0017](docs/adr/0017-routing-profile-edit-source.md).
 
-Edit here, then run the companion installer (`python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy` on this machine) and `python3 tests/test_user_level_archive.py`. The profile's light and standard columns are the first-round pool; senior is gated by the escalation ladder (see `CONTEXT.md`). The Cursor Task pin rule stays a separate user-level artifact: canonical `cursor-hooks/fable-lane-pin.mdc`, Chinese backup `cursor-hooks/zh/fable-lane-pin.mdc`.
+Edit here, then run the companion installer (`python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy` on this machine) and `python3 tests/test_user_level_archive.py`. The profile's columns are the three tiers: new work starts in `mainstay`, may start in `crux` when a key difficulty is already identified, and reaches `rescue` only after a capability failure in `crux` or a user declaration (see `CONTEXT.md`). The Cursor Task pin rule stays a separate user-level artifact: canonical `cursor-hooks/fable-lane-pin.mdc`, Chinese backup `cursor-hooks/zh/fable-lane-pin.mdc`.
 
 ### Delegation boundary by artifact class
 

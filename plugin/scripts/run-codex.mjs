@@ -12,8 +12,8 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_MODEL = "gpt-6-astra";
 const DEFAULT_EFFORTS = new Map([
   ["gpt-6-astra", "medium"],
-  ["gpt-5.6-luna", "max"],
-  ["gpt-5.6-sol", "high"],
+  ["gpt-6-luna", "max"],
+  ["gpt-6-sol", "high"],
 ]);
 const DEFAULT_IDLE_TIMEOUT_SEC = 600;
 const interruption = new AbortController();
@@ -754,26 +754,7 @@ async function main() {
     const prompt = `${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
     promptPath = await writePromptFile(prompt);
     const promptContents = await readFile(promptPath);
-    let attemptSpec = spec;
-    let codexResult = await executeCodex(attemptSpec, state.cwd, promptContents);
-    const shouldFallback = spec.resume_session_id === null
-      && codexResult.processStopped
-      && spec.model === DEFAULT_MODEL
-      && (codexResult.errorClass === "preparation_stalled"
-        || (codexResult.errorClass === "codex_failed"
-          && codexResult.codexSessionId === null));
-    if (shouldFallback) {
-      state.fallbackReason = codexResult.errorClass;
-      attemptSpec = {
-        ...spec,
-        model: "gpt-5.6-luna",
-        effort: DEFAULT_EFFORTS.get("gpt-5.6-luna"),
-      };
-      codexResult = await executeCodex(attemptSpec, state.cwd, promptContents);
-    }
-    state.model = attemptSpec.model;
-    state.modelUsed = attemptSpec.model;
-    state.effort = attemptSpec.effort;
+    const codexResult = await executeCodex(spec, state.cwd, promptContents);
     state.codexSessionId = codexResult.codexSessionId;
     state.codexFinalMessage = codexResult.codexFinalMessage;
     state.childExitCode = codexResult.childExitCode;

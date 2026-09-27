@@ -76,7 +76,7 @@ raise SystemExit(7 if mode == "nonzero" else 0)
             result, receipt = run_runner(
                 runner, cwd,
                 base_spec(
-                    model=("gpt-6-astra" if mode == "kill_failed" else "gpt-5.6-luna")
+                    model=("gpt-6-astra" if mode == "kill_failed" else "gpt-6-luna")
                     if binary == "codex" else "grok-test",
                     **({"timeout_sec": 0.3} if mode == "timeout" else {}),
                     **({"idle_timeout_sec": 0.3} if mode == "idle" else {}),
@@ -95,6 +95,10 @@ raise SystemExit(7 if mode == "nonzero" else 0)
             }.get(mode, "complete")
             assert (result.returncode == 0) == (expected == "complete"), (result.stderr, receipt)
             assert receipt["error_class"] == expected, receipt
+            if binary == "codex":
+                assert receipt["model_used"] == (
+                    "gpt-6-astra" if mode == "kill_failed" else "gpt-6-luna"
+                ), receipt
             if mode == "nonzero":
                 assert receipt["exit_status"] == 7, receipt
             elif expected == "complete":

@@ -66,7 +66,7 @@ async function run(binary, killMode) {
   fs.mkdirSync(path.dirname(specPath), {recursive:true});
   fs.writeFileSync(specPath, JSON.stringify({
     objective:'native pipes', files:[], interfaces:'none', constraints:'none',
-    mode:'report', verification:[], model:binary === 'codex' ? 'gpt-5.6-luna' : 'grok-test',
+    mode:'report', verification:[], model:binary === 'codex' ? 'gpt-6-luna' : 'grok-test',
     ...(killMode ? {timeout_sec:0.3} : {}),
   }));
   const pids = path.join(dir, 'pids');
@@ -86,6 +86,7 @@ async function run(binary, killMode) {
     const receipt = JSON.parse(stdout);
     assert.equal(code, killMode ? 1 : 0, stderr);
     assert.equal(receipt.error_class, killMode ? 'timeout' : 'complete', stderr);
+    if (binary === 'codex') assert.equal(receipt.model_used, 'gpt-6-luna');
     assert(elapsed < 6500, elapsed);
     assert.equal(receipt.report, 'x'.repeat(262144));
     const receiptDir = path.join(cwd, '.fable-advisor', 'receipts');
