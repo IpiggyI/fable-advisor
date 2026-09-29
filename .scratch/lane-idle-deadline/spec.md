@@ -1,6 +1,6 @@
 # 车道静默截止：用 `max_idle_ms` 分布取代总墙钟
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

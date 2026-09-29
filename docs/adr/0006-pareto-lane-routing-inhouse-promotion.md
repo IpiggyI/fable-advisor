@@ -1,6 +1,6 @@
 # 0006 — 路由目标函数从成本最小改为胜任集合内帕累托选择；In-house lane 升格
 
-- **Status**: accepted
+- **Status**: accepted（决策 2 中"持久判断写用户级规则文件"已被 [ADR 0023](./0023-routing-profile-in-plugin.md) 取代；决策 1 已被 [ADR 0014](./0014-role-pool-posture.md) 决策 5 与 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 3 修订；决策 2 的落点先经 [ADR 0015](./0015-global-orchestration-entry.md) 决策 1 修订；决策 3 的车道名已被 [ADR 0014](./0014-role-pool-posture.md) 决策 4 停用）
 - **Date**: 2026-07-26
 - **影响范围**: `skills/orchestration/SKILL.md`、根目录 `CONTEXT.md`、`agents/implementer.md`、`README.md`、`.claude-plugin/plugin.json`；用户侧 profile 在私有规则 `~/.claude/rules/fable-advisor.md`（仓外）
 - **关联**: [ADR 0005](./0005-model-routing-and-receipt-gate.md)（`Fallback` lane 默认改 opus 及其上下文隔离论证）；[ADR 0001](./0001-upstream-sync-fork.md)（分叉纪律）；spec 归档 `.scratch/pareto-lane-routing/spec.md`

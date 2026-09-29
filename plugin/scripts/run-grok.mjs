@@ -754,7 +754,7 @@ async function main() {
       changedFilesResult = await collectChangedFiles(state.cwd);
       state.changedFiles = changedFilesResult.files;
     }
-    // shortcut: report mode skips unexpected_diff when the tree was dirty at start, and never raises git_status_failed; ceiling: a lane write on an already-dirty or non-git tree goes undetected (the read-only sandbox is the only guard); replace when: a report-mode lane writes under dirty_baseline true or when git is unavailable, or implement mode misreports because of pre-existing dirt twice (ADR 0018 / 0019 review conditions).
+    // shortcut: report mode skips unexpected_diff when the tree was dirty at start, and never raises git_status_failed; ceiling: a lane write on an already-dirty or non-git tree goes undetected (the read-only sandbox is the only guard); replace when: a report-mode lane writes under dirty_baseline true or when git is unavailable, or implement mode misreports because of pre-existing dirt twice.
     if (spec.mode === "report" && state.changedFiles.length > 0 && state.dirtyBaseline !== true) {
       state.errorClass = "unexpected_diff";
     }

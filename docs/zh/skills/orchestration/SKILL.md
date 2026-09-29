@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与姿态，用于委派工作。在决定如何落实一次交付物改动、派发或验收任一子代理或 CLI 车道、或咨询 `advisor` 时使用。
+description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与姿态，用于委派工作。在以下情况使用：用户要求编排或委派；没有姿态指令时，编辑受 issue、spec 或任务文件约束的交付物之前；范围很宽、可独立并行、或只需结论进入主线程的读取之前；派发或验收任一子代理或车道之前；或到达下列决策点之一：架构、迁移、API 或重构策略，推翻计划，修改公共接口或跨模块依赖，放宽验收标准，同一问题第二次失败。
 ---
 
 # 编排 —— 角色、档位、车道、姿态
@@ -26,7 +26,7 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 
 **选择器。** 用户声明或上层指示优先；两者都没有时，存在上游任务件（issue、spec、任务文件）即为编排姿态，否则为实现姿态。
 
-姿态相对一次派发而言：车道对自己的契约处于实现姿态，对它拉起的任何子代理处于编排姿态。深度不限。Claude Code 把主会话之下的 subagent 嵌套限制为三层。
+姿态相对一次派发而言：车道对自己的契约处于实现姿态，对它拉起的任何子代理处于编排姿态。深度不限。
 
 ## 委派边界 —— 按产物类别
 
@@ -37,7 +37,7 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 
 仓库的路径映射写在其 AGENTS.md 或等价物中。类别不清则按交付物处理。
 
-**同模派发** 是 `claude lane` 的一个拨盘：模型钉为会话模型。它在编排姿态下服务一类产物：插件自身的准则散文（skill 与 agent 文本）；由类别触发，不由文本显得多核心触发。Cursor：`generalPurpose` 且不带 `model`（inherit）。Claude Code：某个 `worker-*` agent，每次派发的 `model` 设为会话模型。
+**同模派发** 是 `claude lane` 的一个拨盘：模型钉为会话模型。仓库的 AGENTS.md 写明它服务哪一类产物。Cursor：`generalPurpose` 且不带 `model`（inherit）。Claude Code：某个 `worker-*` agent，每次派发的 `model` 设为会话模型。
 
 ## 角色与档位
 
@@ -59,7 +59,7 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 |---|---|
 | `grok lane` | 经 grok runner（Claude Code）或钉死派发（Cursor）到达 Grok 家族 |
 | `codex lane` | 经 codex runner 到达 GPT 家族；model 与 effort 从其白名单可选 |
-| `claude lane` | Claude 子代理，按（角色，effort）每组一份 agent 文件：effort 只从该文件来，派发时的 `model` 选定填充。未钉死时 `Explore` 跑在会话模型上（Claude API 上封顶为 Opus），且它没有 effort 拨盘。无外部 CLI。从 Claude 主代理出发时披露：同族（无跨厂评审）、共享 Anthropic 额度 |
+| `claude lane` | Claude 子代理，按（角色，effort）每组一份 agent 文件：effort 只从该文件来，派发时的 `model` 选定填充。无外部 CLI。从 Claude 主代理出发时披露：同族（无跨厂评审）、共享 Anthropic 额度 |
 | `handoff lane` | 用户把 spec 文件带到自选 harness；见 [handoff-lane.md](handoff-lane.md) |
 
 ### Harness 机制
@@ -85,7 +85,7 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 
 阶段 2 的输入只作为声明进入。
 
-**持久判断。** **填充表**，（角色, 档位）→ 候选车道与拨盘，以及专长备注，写在调用方指令指定的用户路由档案里，从不在本仓库。首次分配模型前阅读，档案变化或滑出上下文时再读；未点名或读不到 → 上报缺口，不做任何假设。`dial` 记作 `model[a*, b, c]`：该格内这一型号可选的 effort，`*` 标默认，没有 `*` 时以第一个列出的为默认；没有 effort 维度的型号裸写。
+**持久判断。** **填充表**，（角色, 档位）→ 候选车道与拨盘，以及专长备注，写在 [routing-profile.md](routing-profile.md) 里，这是随本技能发布的用户路由档案。首次分配模型前阅读，档案变化或滑出上下文时再读；读不到 → 上报缺口，不做任何假设。`dial` 记作 `model[a*, b, c]`：该格内这一型号可选的 effort，`*` 标默认，没有 `*` 时以第一个列出的为默认；没有 effort 维度的型号裸写。
 
 **易变状态**（额度余额、时限压力）在开工时口头声明，只对该会话有效，从不写入磁盘。
 

@@ -1,6 +1,6 @@
 # 0017 — 用户路由档案的编辑源改到本分叉协调件；prompts 仓库降为备份
 
-- **Status**: accepted（2026-09-16 用户声明本仓为主、`D:\Development\Local\prompts` 仅作备份，并选定路径 `docs/agents/`）
+- **Status**: accepted（2026-09-16 用户声明本仓为主、`D:\Development\Local\prompts` 仅作备份，并选定路径 `docs/agents/`；决策 1、2、4、5 已被 [ADR 0023](./0023-routing-profile-in-plugin.md) 取代）
 - **Date**: 2026-09-16
 - **影响范围**: `docs/agents/fable-advisor-routing.md`（+ `.zh.md`）、根目录 `AGENTS.md` / `CONTEXT.md`、`tests/test_user_level_archive.py`；不改 `plugin/`、不改 runner / hook。活体仍是 `~/.claude/docs/fable-advisor-routing.md`。
 - **关联**: [ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md) 决策 2（判断不进仓库 doctrine——本次保持：不进 `plugin/`）；[ADR 0011](./0011-cursor-lane-family-gate-user-level.md)（仓内存档、活体用户级、漂移检测——本次把同一模式扩到路由档案）；[ADR 0015](./0015-global-orchestration-entry.md) 决策 1（本仓不留填充表副本——本次修订为：本分叉留编辑源，调用方仍指名活体路径）。

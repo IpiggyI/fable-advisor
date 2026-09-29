@@ -1,6 +1,6 @@
 ---
 name: worker-xh
-description: "effort xhigh 的 `claude lane` 写入角色：用于实现选择本身就难、而不只是量大的契约。返回 diff 与核验证据；派发时给它一个 `model`。"
+description: "effort xhigh 的 `claude lane` 写入角色：接收按五部交付契约移交的一次交付物改动，在其 Files 范围内拥有实现，返回 diff 与核验证据。由哪个 `worker` 强度来答，由路由档案决定；派发时给它一个 `model`。"
 effort: xhigh
 ---
 
@@ -8,7 +8,7 @@ effort: xhigh
 
 你的操作契约——授权边界、缺口协议、核验职责、报告形态——是 `<plugin-root>/skills/orchestration/lane-preamble.md`。若派发提示没有以它开场，先读它再做任何事。以下只是本车道特有的内容。
 
-**effort xhigh** 就是本文件存在的全部理由：档位来自上面的 frontmatter，模型来自派发时的 `model` 参数。当契约在 Files 范围内留下了真正难的选择时用本文件——契约无法写清的一处交互，或者原因仍未被点名的一个缺陷。已定型的契约归 `worker-h`，价格更低。
+**effort xhigh** 就是本文件存在的全部理由：强度来自上面的 frontmatter，模型来自派发时的 `model` 参数。哪个拨盘到达本文件，由路由档案决定。
 
 报告之前，重读你的 diff：在 Claude 主代理的派发下，你与评审你的那一方同族，所以共同盲区会放过的东西，只有你自己这一遍自查能抓住。
 

@@ -1,34 +1,30 @@
 # Claude Code 中的 CLI 车道 —— runner
 
-在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者，没有 subagent 启动成本。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner。两条 CLI 都缺失时，它让插件保持自包含。它的角色池按（角色，effort）每组一份 agent 文件随插件发布，派发时寻址为 `fable-advisor:<name>`，名字里的档位用缩写（`l`、`md`、`h`、`xh`）：`explorer-h`、`explorer-xh`、`worker-md`、`worker-h`、`worker-xh`、`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`。frontmatter 的 `effort:` 仍写全称，只有文件名与 `name:` 用缩写。因为 effort 没有按次参数而 model 有，拨盘被拆成两半：文件定死 effort，派发时的 `model` 选定具体填充。所以 `explorer-*` 与 `worker-*` 根本不带 `model:` 键——派发时省略 `model`，拿到的会是会话模型，而不是填充表点名的那一档。`advisor-*` 都写 `model: fable`。把一个 `worker` 的 `model` 钉为会话模型，即同模派发。宿主内置的 `Explore` agent 自己没有 effort——不给显式 `model` 时它跑在会话模型上（Claude API 上封顶为 Opus），因此未钉死的 `Explore` 按会话价格计费。`claude lane` 的报告在 `Task` 结果内返回；后台派发的报告从该任务的输出文件读取。
+在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者，没有 subagent 启动成本。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner。两条 CLI 都缺失时，它让插件保持自包含。它的角色池按（角色，effort）每组一份 agent 文件随插件发布，派发时寻址为 `fable-advisor:<name>`，名字里的强度用缩写（`l`、`md`、`h`、`xh`）：`explorer-h`、`explorer-xh`、`worker-md`、`worker-h`、`worker-xh`、`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`。frontmatter 的 `effort:` 仍写全称，只有文件名与 `name:` 用缩写。因为 effort 没有按次参数而 model 有，拨盘被拆成两半：文件定死 effort，派发时的 `model` 选定具体填充。所以 `explorer-*` 与 `worker-*` 根本不带 `model:` 键——派发时省略 `model`，拿到的会是会话模型，而不是填充表点名的那一档。`advisor-*` 都写 `model: fable`。把一个 `worker` 的 `model` 钉为会话模型，即同模派发。宿主内置的 `Explore` agent 自己没有 effort——不给显式 `model` 时它跑在会话模型上（Claude API 上封顶为 Opus），因此未钉死的 `Explore` 按会话价格计费。`claude lane` 的报告在 `Task` 结果内返回；后台派发的报告从该任务的输出文件读取。Claude Code 把主会话之下的 subagent 嵌套限制为三层。
 
 agent 文件只在会话启动时加载。会话中途新增或改名的文件无法派发——调用会以 `Agent type '<name>' not found` 失败——所以对这个角色池的改动只有在会话重启之后才生效。
 
-`claude lane` 上的 effort 不是每次派发的参数。`Agent` 工具的入参是 `description`、`prompt`、`subagent_type`、`model`、`isolation`，在以 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 启动的会话里再多一个 `name`；没有 `effort` 实参。因此档位只有两条路能到达一次派发：agent 定义的 frontmatter `effort:`（`low | medium | high | xhigh | max`；存在哪些级别取决于模型），或 CLI 启动时的 `--effort`，后者设定整个会话。
+`claude lane` 上的 effort 不是每次派发的参数。`Agent` 工具的入参是 `description`、`prompt`、`subagent_type`、`model`、`isolation`，在以 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 启动的会话里再多一个 `name`；没有 `effort` 实参。因此强度只有两条路能到达一次派发：agent 定义的 frontmatter `effort:`（`low | medium | high | xhigh | max`；存在哪些级别取决于模型），或 CLI 启动时的 `--effort`，后者设定整个会话。
 
-**传不传 `name` 是决定派发种类的唯一分流开关，也决定 frontmatter 的 effort 是否根本有效。** 不传 `name`，这次派发是后台子代理：frontmatter `effort:` 生效。传 `name`，它是具名 teammate：frontmatter `effort:` 被忽略，档位回落到该模型在 `~/.claude/settings.json` 里的档位，而且是静默回落——派发过程里没有任何东西提示声明值被丢掉了。同一会话、同样两个 agent、两条路径实测——用的是退役前的文件名 `worker` 与 `fable-advisor`，这两个名字现已不存在，所以今天照名字复现不了这一组对照：`worker`（当时声明 `medium`）作为 teammate 得到 xhigh，在后台得到 medium；`fable-advisor`（声明 `high`）配 `model: sonnet` 作为 teammate 得到 medium，在后台得到 high。派发这个角色池时不要传 `name`，否则它的全部意义就没了。
+**传不传 `name` 是决定派发种类的唯一分流开关，也决定 frontmatter 的 effort 是否根本有效。** 不传 `name`，这次派发是后台子代理：frontmatter `effort:` 生效。传 `name`，它是具名 teammate：frontmatter `effort:` 被忽略，强度回落到该模型在 `~/.claude/settings.json` 里设置的强度，而且是静默回落——派发过程里没有任何东西提示声明值被丢掉了。派发这个角色池时不要传 `name`，否则它的全部意义就没了。
 
-本角色池用到的四个档位都在后台路径上实测生效：`low` 配 fable、`medium` 配 opus、`high` 配 opus 与 sonnet、`xhigh` 配 sonnet。也就是说机制在四个取值上都已核实，但入口并不等价：经**插件级** agent 文件真正跑过的只有 `medium` 与 `high`，插件级的 `low` 与 `xhigh` 是从项目级 agent 文件的实测外推的，而那是另一条加载路径。会话重启之后，用本角色池把这两档补测一遍。覆盖是双向的——opus 的设置档位是 xhigh，声明 `high` 与声明 `medium` 都压过了它；sonnet 的设置档位是 medium，声明 `xhigh` 也压过了它——所以这是真的覆盖，不是声明值碰巧撞上了默认值。
+frontmatter 的 `effort:` 双向覆盖运行模型所设置的强度。
 
-agent 定义**没写** `effort:` 时，档位跟它实际运行其上的那个模型在 `settings.json` 里的档位走，不是跟会话的 effort 走；只有子代理模型与会话模型相同时两者才重合。`claude-haiku-4-5` 根本没有 effort 这一维——它的记录里没有该字段。
+agent 定义**没写** `effort:` 时，强度跟它实际运行其上的那个模型在 `settings.json` 里设置的强度走，不是跟会话的 effort 走；只有子代理模型与会话模型相同时两者才重合。`claude-haiku-4-5` 根本没有 effort 这一维——它的记录里没有该字段。
 
 观察点是 `~/.claude/projects/<项目>/<会话>/subagents/agent-*.jsonl`，其中每条 assistant 记录都带着实际生效的 `model` 与 `effort`。`/tasks` 不是这件事的观察点：它只列具名 teammate，显示成员名与状态，既不显示 model 也不显示 effort，而且完全不列后台子代理。
 
 模型解析顺序：按次 `model` 优先，然后是 agent 文件的 `model:`，然后是 `CLAUDE_CODE_SUBAGENT_MODEL`，最后是主会话模型。
 
-**Fable 作为 advisor 的计费走 usage credits，账户必须先启用它。** 已确立的有三件事。宿主自己这样说：`/advisor fable` 回答 "Fable 5.1 as the advisor bills to usage credits, which need to be set up for your account. Run /model fable to review and enable, then set it as the advisor."；`/model fable` 随后回答 "Set model to `Fable 5.1` … Draws from usage credits"，此后 `/advisor fable` 成功，`~/.claude/settings.json` 也多了一个 `advisorModel: "fable"` 键。启用之后，三次请求三次都整程跑在 `claude-fable-5-1` 上，没有 `model_changed` 标记。启用之前，九次请求里只有一次整程留在它上面；其余的要么起初跑 `claude-fable-5-1`、拿到工具结果后切到 `claude-sonnet-5`，要么从第一轮起就是 `claude-sonnet-5`。
-
-**未确立的是：这道门禁是否就是那些降级的成因。** 它最多只是相关：这道门禁不是作用于每次派发的确定性预检——启用之前有一次派发整程跑在 fable 上，它的首条记录比 credits 启用时刻早十八分钟；另有一次的开头一段先跑在 fable 上才切走。成因按未证处理，不要用猜出来的机制去顶替它。
-
-因此有两条未知仍然敞开。第一，那种「开头一段成功、随后切走」的模式没有解释。第二，启用之后的样本全是后台子代理：自启用 credits 起，具名 teammate 路径一个样本都没有，而启用前那次从第一轮就是 sonnet 的 teammate 运行不能沿用，所以 fable 在该路径上是否可达，目前未测。
-
-修好之后普适规则依然成立：模型是请求值，不是执行保证，所以引用时按 ADR 0015 的 receipt 措辞写——提交值，不是观测值。因此约束一个 `advisor` 答案边界的，是「它的权威来自它读到的代码，而不是它运行其上的模型」，从不是关于哪个模型实际服务了它的假定。
+Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时，把它当作不可用的候选，按 SKILL.md「改道」改道。模型是请求值，不是执行保证：引用 receipt 的模型时写提交值，不是观测值；实际运行的模型看子代理转写里的 `message.model`。
 
 两条 CLI 车道流程相同；以 codex 演练为典范，grok 的差异紧随其后。两条 runner 默认服务 `worker` 角色，并在 report mode 下服务只读角色（见下文「报告模式」）。
 
 ## 0. 前言到达每一条车道
 
 两条 runner 都读取其 `mode` 所点名的前言——`implement` 用 `lane-preamble.md`，`report` 用 `lane-preamble-report.md`（相对它们自己的目录 `<plugin-root>/scripts/` 解析）——并将其原文前置到车道提示，排在五个部分之前。当前模式所需的前言缺失会使 runner 在拉起任何东西之前以非零退出——执行侧契约从不被静默丢掉。
+
+`claude lane` 派发没有 runner 替它前置前言。它的提示以一条指令开场：先于其他一切，按绝对路径读取其角色所需的前言——`worker` 读 `lane-preamble.md`，`explorer` 或 `advisor` 读 `lane-preamble-report.md`——路径取自本 skill 的基础目录。只写一行裸路径标签不够。
 
 ## 1. 撰写 spec
 

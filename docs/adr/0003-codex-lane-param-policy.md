@@ -1,6 +1,6 @@
 # 0003 — codex 车道参数化（effort/model/service_tier）+ fail-loud 校验
 
-- **Status**: accepted（「决策落点」一行已被 [ADR 0004](./0004-adr-store-in-repo.md) 取代）
+- **Status**: accepted（「决策落点」一行已被 [ADR 0004](./0004-adr-store-in-repo.md) 取代；「2026-09-06 追记」第 2 点已被 [ADR 0014](./0014-role-pool-posture.md) 决策 5 作废；第 1 点中移出 `gpt-5.6-sol` 的部分已被 [ADR 0018](./0018-post-5-1-tuning.md) 决策 4 撤销；第 1、3 点（白名单、astra → luna 回退）已被 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 9 取代）
 - **Date**: 2026-07-15
 - **影响范围**: `scripts/run-codex.mjs`、`skills/orchestration/SKILL.md`、`README.md`
 - **关联决策**: [ADR 0002](./0002-codex-lane-dewrapper-receipt-gate.md)（去 wrapper 化后，runner 成为 codex 车道唯一入口，本决策扩展其入参）

@@ -1,6 +1,6 @@
 # Handoff lane（交接车道）：用户中介的第四条实现车道
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

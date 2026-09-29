@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """Canonical archives exist, Chinese twins present, live homes match via installer --check."""
 import os
+import re
 import subprocess
 import sys
+
+ADVISOR_NAME_RE = re.compile(r"`(advisor-[a-z]+)`")
+
+
+def advisor_agent_names(text):
+    return set(ADVISOR_NAME_RE.findall(text))
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INSTALLER = os.path.join(REPO_ROOT, "scripts", "install-user-level.py")
 
 ENGLISH = [
     os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-pin.mdc"),
-    os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.md"),
 ]
 
 CHINESE = [
     os.path.join(REPO_ROOT, "cursor-hooks", "zh", "fable-lane-pin.mdc"),
 ]
-
-# Routing zh is a profile translation, not a pin-rule backup: no 不是活体.
-ROUTING_ZH = os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.zh.md")
 
 HOMES = [
     os.path.expanduser("~"),
@@ -67,16 +70,24 @@ def main():
 
         check("chinese twin %s" % rel, zh_ok)
 
-    routing_zh_rel = os.path.relpath(ROUTING_ZH, REPO_ROOT)
+    def advisor_names_match(en_path=ENGLISH[0], zh_path=CHINESE[0]):
+        with open(en_path, encoding="utf-8") as fh:
+            en_body = fh.read()
+        with open(zh_path, encoding="utf-8") as fh:
+            zh_body = fh.read()
+        en_names = advisor_agent_names(en_body)
+        zh_names = advisor_agent_names(zh_body)
+        assert en_names, "%s names no advisor-* agents" % os.path.relpath(en_path, REPO_ROOT)
+        assert en_names == zh_names, "advisor-* name sets differ: en=%s zh=%s" % (
+            sorted(en_names),
+            sorted(zh_names),
+        )
+        assert "advisor-" in en_body, "%s missing advisor- prefix" % os.path.relpath(en_path, REPO_ROOT)
+        assert "advisor-" in zh_body, "%s missing advisor- prefix" % os.path.relpath(zh_path, REPO_ROOT)
+        assert "`fable-advisor`" not in en_body, "%s still names `fable-advisor`" % os.path.relpath(en_path, REPO_ROOT)
+        assert "`fable-advisor`" not in zh_body, "%s still names `fable-advisor`" % os.path.relpath(zh_path, REPO_ROOT)
 
-    def routing_zh_ok(path=ROUTING_ZH, name=routing_zh_rel):
-        assert os.path.isfile(path), "missing %s" % name
-        with open(path, encoding="utf-8") as fh:
-            body = fh.read()
-        assert body.strip(), "%s is empty" % name
-        assert has_cjk(body), "%s has no Chinese" % name
-
-    check("chinese twin %s" % routing_zh_rel, routing_zh_ok)
+    check("advisor-* names match, canonical en/zh", advisor_names_match)
 
     for home in HOMES:
         if not os.path.isdir(home):

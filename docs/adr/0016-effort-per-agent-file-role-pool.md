@@ -1,6 +1,6 @@
 # 0016 — 档位入文件名：claude 车道角色池落成 9 个 agent 定义，模型留给按次参数
 
-- **Status**: accepted（2026-09-16 用户口述路由表并指定落在 `plugin/agents/`；advisor 裁定 A′；同日用户追加三项裁定：档位后缀改缩写、新增 `worker-md`、退役两个裸名并把 Cursor 门改成守 advisor 系）
+- **Status**: accepted（2026-09-16 用户口述路由表并指定落在 `plugin/agents/`；advisor 裁定 A′；同日用户追加三项裁定：档位后缀改缩写、新增 `worker-md`、退役两个裸名并把 Cursor 门改成守 advisor 系；决策 1 中 `worker-md` 的到达条件已被 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 8 修订）
 - **Date**: 2026-09-16
 - **影响范围**: `plugin/agents/`（9 个文件，删除 `worker.md` 与 `fable-advisor.md`）、`plugin/skills/orchestration/{lanes-claude-code,SKILL,lanes-cursor}.md`、`cursor-hooks/**`、`tests/test_lane_family_gate.py`、`README.md`、对应 `docs/zh/**` 孪生；版本维持 5.1.0（两个字段不动）。不改 runner、`plugin/hooks/**`、其余测试。
 - **关联**: [ADR 0014](./0014-role-pool-posture.md)（角色池与姿态——本次把角色池从"概念加两个 agent"落成可派发的 8 格）、[ADR 0015](./0015-global-orchestration-entry.md)（填充表迁到用户档案、决策 6 的"submitted, not observed"措辞、决策 7 把 explorer agent 推给工单 08——本次定案）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（`SKILL.md` 词数预算，本次沿用）。核对记录 `.scratch/global-orchestration-handoff/issues/08-explorer-probe.md`（第四、五轮）。

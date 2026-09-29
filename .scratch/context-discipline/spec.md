@@ -1,6 +1,6 @@
 # 上下文纪律（context discipline）：分层 diff 验收 + 报告预算 + spec 前探针
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

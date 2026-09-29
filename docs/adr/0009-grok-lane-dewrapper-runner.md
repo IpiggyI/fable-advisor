@@ -1,6 +1,6 @@
 # 0009 — grok 车道去 wrapper 化：run-grok runner + 运行时模型目录
 
-- **Status**: accepted
+- **Status**: accepted（「2026-09-06 追记」的干净工作树要求已被 [ADR 0018](./0018-post-5-1-tuning.md) 决策 1 收窄到 implement 模式）
 - **Date**: 2026-07-31
 - **影响范围**: `scripts/run-grok.mjs`（新增）、`agents/grok-implementer.md`（删除）、`hooks/`（删 spawn 护栏、receipt gate 文案一般化）、`skills/orchestration/SKILL.md`、`README.md`
 - **关联决策**: [ADR 0002](./0002-codex-lane-dewrapper-receipt-gate.md)（复盘条件预埋"同法做 run-grok runner"）、[ADR 0003](./0003-codex-lane-param-policy.md)（fail-loud 参数律）

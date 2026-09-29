@@ -7,6 +7,6 @@ alwaysApply: true
 
 Omitting Task `model` inherits the parent session. Plugin frontmatter `model:` is ignored.
 
-- `fable-advisor`: pass an explicit, non-inherit `model` from this turn's allowlist. A `preToolUse` hook denies missing, empty, or `inherit`.
+- Any `advisor-*` agent (`advisor-l`, `advisor-md`, `advisor-h`, `advisor-xh`): pass an explicit, non-inherit `model` from this turn's allowlist. A `preToolUse` hook denies missing, empty, or `inherit`; it matches the `advisor-` prefix, so an `advisor-*` file added later is covered too.
 - Worker lanes: claim them with `generalPurpose` (or `explore` for read-only scouting) plus an explicit `model`. Omitting `model` is a same-model dispatch, not a vendor lane.
 - Use the live allowlist slug, not a skill example that may be absent.

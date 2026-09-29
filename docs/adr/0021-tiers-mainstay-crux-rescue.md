@@ -1,6 +1,6 @@
 # 0021 — 6.0.0：档位改为 mainstay / crux / rescue，换用新路由表，codex runner 不再自动换模型
 
-- **Status**: accepted
+- **Status**: accepted（决策 11 的词数上限已由 [ADR 0022](./0022-orchestration-load-on-events.md) 上调到 2210）
 - **Date**: 2026-09-27
 - **影响范围**: `plugin/skills/orchestration/`（`SKILL.md`、`lanes-claude-code.md`、`lanes-cursor.md`）、`plugin/agents/worker-md.md`、`plugin/agents/advisor-h.md` 与 `docs/zh/` 五份孪生、`plugin/scripts/run-codex.mjs`、`tests/test_runner_contract.py`、`tests/test_runner_lifecycle.py`、`tests/test_runner_lifecycle_windows.cjs`、`docs/agents/fable-advisor-routing.md` 与中文备份、`CONTEXT.md`、`AGENTS.md`、`README.md`、两个清单文件的描述与版本字段、`docs/manuals/6.0.0.html`（新建）。版本 6.0.0（不兼容）
 - **关联**: 修订 [ADR 0018](./0018-post-5-1-tuning.md) 决策 4、6、7、10、12 与 [ADR 0020](./0020-one-executor-per-check-list.md) 头部版本说明、决策 6；沿用 [ADR 0009](./0009-grok-lane-dewrapper-runner.md)（grok 跟随 CLI 默认型号）、[ADR 0015](./0015-global-orchestration-entry.md) 与 [ADR 0017](./0017-routing-profile-edit-source.md)（取值只在路由档案）。任务件 `.scratch/tiers-and-routing-6-0/`；讨论记录 `.agent-discuss/tiers-and-consult-iteration/final.md`

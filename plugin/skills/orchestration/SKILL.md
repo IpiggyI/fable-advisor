@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: Roles (explorer / worker / advisor), tiers, lanes and posture for delegated work. Use when deciding how to carry out a deliverable change, dispatching or accepting any subagent or CLI lane, or consulting the advisor.
+description: "Roles (explorer / worker / advisor), tiers, lanes and posture for delegated work. Use when orchestration or delegation is requested; before editing a deliverable governed by an issue, spec, or task file without a posture instruction; before wide reading, independently parallelizable reading, or reading whose conclusion alone belongs in the main thread; before dispatching or accepting any subagent or lane; or at any of these decision points: architecture, migration, API or refactor strategy, plan reversal, public-interface or cross-module dependency change, relaxed acceptance, a problem failing twice."
 ---
 
 # Orchestration — roles, tiers, lanes, posture
@@ -26,7 +26,7 @@ Every role is dispatchable in both; implementing never means "no dispatches".
 
 **Selector.** A user declaration or an upstream instruction wins; with neither, an existing upstream task artifact (issue, spec, task file) means orchestrating, otherwise implementing.
 
-Posture is relative to a dispatch: a lane is implementing for its own contract and orchestrating toward any subagents it spawns. Depth is not limited. Claude Code caps subagent nesting at three layers below the main session.
+Posture is relative to a dispatch: a lane is implementing for its own contract and orchestrating toward any subagents it spawns. Depth is not limited.
 
 ## The delegation boundary — by artifact class
 
@@ -37,7 +37,7 @@ In the orchestrating posture, whether the architect may edit a file depends on w
 
 The repo's path mapping lives in its AGENTS.md or equivalent. An unclear class is a deliverable.
 
-**Same-model dispatch** is a dial of the claude lane: the model is pinned to the session model. It serves one artifact class in the orchestrating posture, the plugin's own doctrine prose (skill and agent text); the class triggers it, not how central the text feels. Cursor: `generalPurpose` with no `model` (inherit). Claude Code: a `worker-*` agent with per-dispatch `model` set to the session model.
+**Same-model dispatch** is a dial of the claude lane: the model is pinned to the session model. The repo's AGENTS.md names the artifact class it serves. Cursor: `generalPurpose` with no `model` (inherit). Claude Code: a `worker-*` agent with per-dispatch `model` set to the session model.
 
 ## Roles and tiers
 
@@ -59,7 +59,7 @@ A lane answers how a vendor is reached; roles and tiers answer what is dispatche
 |---|---|
 | grok lane | the Grok family through the grok runner (Claude Code) or a pinned dispatch (Cursor) |
 | codex lane | the GPT family through the codex runner; model and effort selectable from its whitelist |
-| claude lane | Claude subagents, one agent file per (role, effort): effort comes only from that file, the per-dispatch `model` picks the fill. Unpinned, Explore runs the session model (Opus-capped on the Claude API) with no effort dial. No external CLI. From a Claude main agent disclose: same family (no cross-vendor review), shared Anthropic quota |
+| claude lane | Claude subagents, one agent file per (role, effort): effort comes only from that file, the per-dispatch `model` picks the fill. No external CLI. From a Claude main agent disclose: same family (no cross-vendor review), shared Anthropic quota |
 | handoff lane | the user carries a spec file to a harness of their own; see [handoff-lane.md](handoff-lane.md) |
 
 ### Harness mechanics
@@ -85,7 +85,7 @@ Two executor-side contracts: [lane-preamble.md](lane-preamble.md) for a worker, 
 
 Stage 2 inputs enter only as declarations.
 
-**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in the user routing profile the caller's instructions name, never this repo. Read it before the first model assignment, again when it changes or slides out of context; none named or readable → report the gap, assume nothing. A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, `*` the default, else the first listed; a model without an effort dimension is written bare.
+**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in [routing-profile.md](routing-profile.md), the user's routing profile shipped with this skill. Read it before the first model assignment, again when it changes or slides out of context; unreadable → report the gap, assume nothing. A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, `*` the default, else the first listed; a model without an effort dimension is written bare.
 
 **Volatile state** (quota balance, deadline pressure) is declared verbally at kickoff, holds for that session only, never written to disk.
 

@@ -1,6 +1,6 @@
 # Triage Labels
 
-The skills speak in terms of five canonical triage roles; this repo uses the same strings as labels.
+The skills speak in terms of five canonical triage roles; this repo uses the same strings as labels, plus one terminal state.
 
 | Label             | Meaning                                  |
 | ----------------- | ---------------------------------------- |
@@ -9,6 +9,7 @@ The skills speak in terms of five canonical triage roles; this repo uses the sam
 | `ready-for-agent` | Fully specified, ready for an AFK agent  |
 | `ready-for-human` | Requires human implementation            |
 | `wontfix`         | Will not be actioned                     |
+| `resolved`        | Terminal: the work has landed and passed acceptance |
 
 ## How labels are recorded
 
@@ -18,4 +19,4 @@ This repo's tracker is local markdown (see `issue-tracker.md`), so there are no 
 Status: ready-for-agent
 ```
 
-One role per issue. Changing triage state means editing that line, not adding a second one.
+One role per issue. Changing triage state means editing that line, not adding a second one. Set `resolved` when the work has landed and passed acceptance; it is the same string the Wayfinding operations in `issue-tracker.md` use. A spec's `resolved` covers its issues that carry no `Status:` line.

@@ -1,6 +1,6 @@
 ---
 name: advisor-h
-description: "effort high 的只读 `advisor`：服务于路由档案点名的任何 `high` `advisor` 拨盘，decision 与 acceptance 两种形状都适用。只顾问。"
+description: "effort high 的只读 `advisor`：在决策类型门（定案之前）或验收评审（交付之后）充当第二读者。由哪个 `advisor` 强度来答，由路由档案决定。只顾问。"
 model: fable
 effort: high
 tools: Read, Grep, Glob

@@ -1,6 +1,6 @@
 # 0002 — codex 车道去 wrapper 化 + receipt gate 选型
 
-- **Status**: accepted
+- **Status**: accepted（「2026-08-12 追记」的 prompt 首行已被 [ADR 0018](./0018-post-5-1-tuning.md) 决策 2 修订）
 - **Date**: 2026-07-15
 - **影响范围**: `scripts/run-codex.mjs`、`hooks/`、`skills/orchestration/SKILL.md`、`agents/`（codex-implementer 已删）
 - **Migrated**: 2026-07-25，从 `.memory/decisions/codex-lane-dewrapper-receipt-gate.md` 迁入（见 [ADR 0004](./0004-adr-store-in-repo.md)）

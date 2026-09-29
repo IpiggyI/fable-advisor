@@ -1,6 +1,6 @@
 # 0005 — 模型路由校准 + receipt gate 修复
 
-- **Status**: accepted
+- **Status**: accepted（决策 1 已被 [ADR 0014](./0014-role-pool-posture.md) 决策 1 退役）
 - **Date**: 2026-07-25
 - **影响范围**: `hooks/receipt-gate.py`、`tests/test_receipt_gate.py`、`agents/implementer.md`、`skills/orchestration/SKILL.md`、`README.md`、`.claude-plugin/plugin.json`、根目录 `CONTEXT.md`；判定式在用户私有规则（仓外）
 - **关联**: [ADR 0002](./0002-codex-lane-dewrapper-receipt-gate.md)（receipt gate 选型与"后续澄清"）；spec 归档 `.scratch/model-routing-and-receipt-gate/spec.md`

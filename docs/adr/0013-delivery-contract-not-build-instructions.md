@@ -1,6 +1,6 @@
 # 0013 — 交付契约取代施工说明：架构师控制面收缩、委派边界按产物类别、返工票与会话复用
 
-- **Status**: accepted（2026-09-06 用户确认 Q1–Q27 共识）
+- **Status**: accepted（2026-09-06 用户确认 Q1–Q27 共识；决策 1 已被 [ADR 0020](./0020-one-executor-per-check-list.md) 决策 2 修订；决策 4 已被 [ADR 0014](./0014-role-pool-posture.md) 决策 1 限定在编排姿态；决策 5 已被 [ADR 0014](./0014-role-pool-posture.md) 决策 4 修订；决策 8 已被 [ADR 0014](./0014-role-pool-posture.md) 决策 9、[ADR 0015](./0015-global-orchestration-entry.md) 决策 5、[ADR 0018](./0018-post-5-1-tuning.md) 决策 3、[ADR 0020](./0020-one-executor-per-check-list.md) 决策 1 依次修订）
 - **Date**: 2026-09-06
 - **影响范围**: `plugin/skills/orchestration/SKILL.md`、`lanes-claude-code.md`、`lanes-cursor.md`、新增 `lane-preamble.md`；`plugin/agents/implementer.md`、`plugin/agents/fable-advisor.md`；`plugin/scripts/run-codex.mjs`、`run-grok.mjs`（`resume_session_id`、前言加载；其余 runner 变更见 ADR 0003 / 0009 追记）；`README.md`、`docs/zh/`；根目录 `CONTEXT.md`、`AGENTS.md`；版本 4.0.0；用户私有规则（仓外）
 - **关联**: [ADR 0005](./0005-model-routing-and-receipt-gate.md)（架构师层按系列判定）、[ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由、profile 分层）、[ADR 0008](./0008-context-discipline.md)（三级验收，本次保留并加一条 Tier 2 触发）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（第 6 条引入的经济豁免，本次撤回）、[ADR 0003](./0003-codex-lane-param-policy.md) 与 [ADR 0009](./0009-grok-lane-dewrapper-runner.md) 的同批追记；讨论记录 `docs/issues/chatgpt_插件架构调整建议.md`（本地，不入库）
@@ -111,3 +111,4 @@
 - 与上游 v5.0.0 方向相反（上游钉死 Fable 5.1 当架构师、强制终审、六段 spec）；按 [ADR 0001](./0001-upstream-sync-fork.md) 纪律记为有意分叉。`docs/upstream-sync/2026-09-05-digest.md` 的两项吸收（空 diff 不得 complete、退出机器级编排默认）随本批落地，后者扩展为 `lane-preamble.md`。
 - 决策链见本会话 grilling Q1–Q26；用户在 GPT 讨论中的两条关键裁定：没有「组长自己出的方案」（方案来自上游任务件）；小任务例外破坏角色独立性，不设。
 - 术语已入 `CONTEXT.md`：架构师层（重写）、交付契约（spec）、契约缺口、未规定的实现选择、返工票、交付物、协调件、同模派发。
+- 2026-09-29 追记：决策 4 的路径映射已写进本仓 `AGENTS.md` 的 "Delegation boundary by artifact class" 一节，包括同模派发的触发类别：`plugin/skills/**`（`routing-profile.md` 除外，它记录用户声明的取值）与 `plugin/agents/**`。插件的 `SKILL.md` 只写机制，并指向所在仓库的 `AGENTS.md`。来源：`.scratch/doc-healthcheck-6-0/review.md` 的 P08、R09。

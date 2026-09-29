@@ -5,7 +5,7 @@
 **Blocked by:** None
 
 Type: task
-Status: ready-for-agent
+Status: resolved
 Date: 2026-08-18
 Harness: Cursor Windows（漏拦会话）
 

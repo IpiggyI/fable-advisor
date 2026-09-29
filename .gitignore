@@ -2,3 +2,4 @@ demo/
 .memory/
 .fable-advisor/
 docs/issues/
+__pycache__/

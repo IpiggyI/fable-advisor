@@ -1,6 +1,6 @@
 # 5.1.0 后续调整：报告模式脏基线、车道标题、伴生安装器、首轮池与 senior 门
 
-Status: ready-for-agent
+Status: resolved
 
 日期：2026-09-16。目标版本 5.2.0（runner 契约与 doctrine 语义均向后兼容，minor）。前置条件：工作树里未提交的 5.1.0 先提交、推送并在两侧安装；该步骤需用户单独授权，不属本 spec。词表见 `CONTEXT.md`（本轮已加：首轮档位、拨盘新记法、cursor lane、正典 / 活体、伴生安装器、升级梯）。
 

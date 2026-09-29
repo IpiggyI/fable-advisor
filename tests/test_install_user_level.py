@@ -11,10 +11,6 @@ SCRIPT = os.path.join(REPO_ROOT, "scripts", "install-user-level.py")
 
 MANIFEST = [
     (
-        os.path.join(REPO_ROOT, "docs", "agents", "fable-advisor-routing.md"),
-        (".claude", "docs", "fable-advisor-routing.md"),
-    ),
-    (
         os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-pin.mdc"),
         (".cursor", "rules", "fable-lane-pin.mdc"),
     ),
@@ -22,11 +18,6 @@ MANIFEST = [
         os.path.join(REPO_ROOT, "cursor-hooks", "fable-lane-family-gate.py"),
         (".cursor", "hooks", "fable-lane-family-gate.py"),
     ),
-]
-
-RETIRE = [
-    (".claude", "rules", "fable-advisor.md"),
-    (".cursor", "rules", "fable-advisor.mdc"),
 ]
 
 
@@ -69,6 +60,35 @@ def assert_byte_identical(home):
             len(got),
             len(expected),
         )
+
+
+def list_regular_files(root):
+    found = set()
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            found.add(os.path.relpath(full, root))
+    return found
+
+
+def assert_exact_files(home, plus=()):
+    expected = {os.path.join(*parts) for _src, parts in MANIFEST} | set(plus)
+    actual = list_regular_files(home)
+    assert actual == expected, "unexpected file set under %s: %r vs expected %r" % (
+        home,
+        actual,
+        expected,
+    )
+
+
+def assert_exact_also(also_dir):
+    expected = {os.path.basename(src) for src, _parts in MANIFEST}
+    actual = list_regular_files(also_dir)
+    assert actual == expected, "unexpected file set under %s: %r vs expected %r" % (
+        also_dir,
+        actual,
+        expected,
+    )
 
 
 def write_file(path, data):
@@ -118,13 +138,14 @@ def main():
                 r.stderr,
             )
             installed = prefixed(r.stdout, "installed")
-            assert len(installed) == 3, "expected 3 installed, got %r" % installed
+            assert len(installed) == 2, "expected 2 installed, got %r" % installed
             for src, parts in MANIFEST:
                 path = dest_path(home, parts)
                 assert any(path in line for line in installed), (
                     "no installed line for %s in %r" % (path, installed)
                 )
             assert_byte_identical(home)
+            assert_exact_files(home)
 
     def check_then_overwrite():
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy:
@@ -152,48 +173,14 @@ def main():
             installed = prefixed(f.stdout, "installed")
             unchanged = prefixed(f.stdout, "unchanged")
             assert len(installed) == 1 and pin in installed[0], installed
-            assert len(unchanged) == 2, unchanged
+            assert len(unchanged) == 1, unchanged
             for parts in (
-                (".claude", "docs", "fable-advisor-routing.md"),
                 (".cursor", "hooks", "fable-lane-family-gate.py"),
             ):
                 path = dest_path(home, parts)
                 assert any(path in line for line in unchanged), unchanged
             assert_byte_identical(home)
-
-    def retire_removed():
-        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy:
-            r = run_cli(["--home", home], decoy)
-            assert r.returncode == 0, "exit %s stdout=%r stderr=%r" % (
-                r.returncode,
-                r.stdout,
-                r.stderr,
-            )
-            retire_paths = [dest_path(home, parts) for parts in RETIRE]
-            for path in retire_paths:
-                write_file(path, b"old rule\n")
-            c = run_cli(["--check", "--home", home], decoy)
-            assert c.returncode == 0, "retire must not fail check: exit %s stdout=%r" % (
-                c.returncode,
-                c.stdout,
-            )
-            for path in retire_paths:
-                assert os.path.isfile(path), "--check deleted %s" % path
-                assert any(
-                    ln.startswith("warning ") and path in ln
-                    for ln in c.stdout.splitlines()
-                ), "check did not warn about %s in %r" % (path, c.stdout)
-            f = run_cli(["--home", home], decoy)
-            assert f.returncode == 0, "exit %s stdout=%r stderr=%r" % (
-                f.returncode,
-                f.stdout,
-                f.stderr,
-            )
-            removed = prefixed(f.stdout, "removed")
-            assert len(removed) == 2, removed
-            for path in retire_paths:
-                assert not os.path.exists(path), "still present %s" % path
-                assert any(path in line for line in removed), removed
+            assert_exact_files(home)
 
     def also_writes():
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy, tempfile.TemporaryDirectory() as also:
@@ -213,6 +200,8 @@ def main():
                     ln.startswith("installed ") and path in ln
                     for ln in r.stdout.splitlines()
                 ), "no installed line for %s in %r" % (path, r.stdout)
+            assert_exact_files(home)
+            assert_exact_also(also)
 
     def hooks_missing_warns():
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy:
@@ -229,6 +218,7 @@ def main():
             assert any(home in ln for ln in warnings), warnings
             hooks = dest_path(home, (".cursor", "hooks.json"))
             assert not os.path.exists(hooks), "installer created %s" % hooks
+            assert_exact_files(home)
 
     def hooks_without_gate_warns():
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy:
@@ -248,6 +238,7 @@ def main():
             with open(hooks, encoding="utf-8") as fh:
                 body = fh.read()
             assert "unrelated.py" in body, "installer modified hooks.json"
+            assert_exact_files(home, plus={os.path.join(".cursor", "hooks.json")})
 
     def hooks_with_gate_silent():
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy:
@@ -275,6 +266,7 @@ def main():
                 ln for ln in c.stdout.splitlines() if ln.startswith("warning ")
             ]
             assert check_warnings == [], "unexpected check warnings: %r" % check_warnings
+            assert_exact_files(home, plus={os.path.join(".cursor", "hooks.json")})
 
     def two_homes():
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b, tempfile.TemporaryDirectory() as decoy:
@@ -286,6 +278,7 @@ def main():
             )
             for home in (a, b):
                 assert_byte_identical(home)
+                assert_exact_files(home)
                 for src, parts in MANIFEST:
                     path = dest_path(home, parts)
                     assert any(
@@ -293,14 +286,50 @@ def main():
                         for ln in r.stdout.splitlines()
                     ), "no installed line for %s in %r" % (path, r.stdout)
 
-    check("fresh home installs three byte-identical files", fresh_home)
+    def pre_existing_files_preserved():
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as decoy:
+            notes_rel = (".claude", "docs", "notes.md")
+            other_rel = (".cursor", "rules", "other.mdc")
+            notes = dest_path(home, notes_rel)
+            other = dest_path(home, other_rel)
+            write_file(notes, b"neutral notes\n")
+            write_file(other, b"neutral rule\n")
+            neutral_plus = {os.path.join(*notes_rel), os.path.join(*other_rel)}
+            r = run_cli(["--home", home], decoy)
+            assert r.returncode == 0, "exit %s stdout=%r stderr=%r" % (
+                r.returncode,
+                r.stdout,
+                r.stderr,
+            )
+            assert not any(
+                ln.startswith("removed ") for ln in r.stdout.splitlines()
+            ), r.stdout
+            for path, data in ((notes, b"neutral notes\n"), (other, b"neutral rule\n")):
+                with open(path, "rb") as fh:
+                    assert fh.read() == data, "install run modified %s" % path
+            assert_exact_files(home, plus=neutral_plus)
+            c = run_cli(["--check", "--home", home], decoy)
+            assert c.returncode == 0, "exit %s stdout=%r stderr=%r" % (
+                c.returncode,
+                c.stdout,
+                c.stderr,
+            )
+            assert not any(
+                ln.startswith("removed ") for ln in c.stdout.splitlines()
+            ), c.stdout
+            for path, data in ((notes, b"neutral notes\n"), (other, b"neutral rule\n")):
+                with open(path, "rb") as fh:
+                    assert fh.read() == data, "--check run modified %s" % path
+            assert_exact_files(home, plus=neutral_plus)
+
+    check("fresh home installs two byte-identical files", fresh_home)
     check("modified live copy fails check then is overwritten", check_then_overwrite)
-    check("pre-created retire files are removed", retire_removed)
     check("--also writes source basenames", also_writes)
     check("missing hooks.json warns and exits 0", hooks_missing_warns)
     check("hooks.json without gate warns and exits 0", hooks_without_gate_warns)
     check("hooks.json with gate entry has no warning", hooks_with_gate_silent)
     check("two --home directories are both written", two_homes)
+    check("pre-existing neutral files survive install and --check", pre_existing_files_preserved)
 
     total = passed + failed
     print("%d/%d passed, %d failed" % (passed, total, failed))

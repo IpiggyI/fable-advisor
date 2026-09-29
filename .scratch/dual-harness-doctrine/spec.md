@@ -1,6 +1,6 @@
 # 双 harness 单源准则：Cursor 原生子代理车道
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

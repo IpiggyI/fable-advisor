@@ -388,7 +388,7 @@ Status: ready-for-agent
 - **TR-6 升级梯。** R1 不变。R2：返工也失败且归因能力，记一次能力失败，进入下一档（`mainstay` → `crux` → `rescue` → 用户），新会话加接管契约；在下一档里按任务特点选型号，下限是：下一拨盘的型号在档案排名中不低于失败拨盘的型号（除非没有别的候选），同一型号必须提高强度，不同型号之间不比较强度名。R3：同一型号只提升一次，按完整模型标识计数。R4：较大执行问题（工具反复失败、跑飞、触碰保留项）可跳过返工，记一次能力失败，进入下一档。环境问题和契约缺口不算失败。`rescue` 只经 `crux` 或用户声明进入；首轮就在 `crux` 的任务在 `crux` 失败一次即进 `rescue`；`rescue` 失败交给用户。（U10、C4、C5、D4）
 - **TR-7 删除 senior 门。** "Senior gate"整句删除，包括"advisor 的 verdict 顺带裁定是否上 senior"。决策类型门的五项清单及其文字不变。（N4）
 - **TR-8 正文不写取值。** `SKILL.md` 不新增型号名、型号排名或拨盘取值；排名与取值只在档案。（理由见第六节）
-- **TR-9 词数。** `SKILL.md` 改后不超过 2160 词（`wc -w`）；上调由 ADR 0021 记录；不为凑字数删除无关句子。（U15）
+- **TR-9 词数。** `SKILL.md` 改后不超过 2210 词（`wc -w`）；2160 由 ADR 0021 记录，2026-09-28 因技能描述扩写由 ADR 0022 上调到 2210；不为凑字数删除无关句子。（U15）
 - **TR-10 不加观察机制。** 本任务不增加任何为观察档位使用而设的标记、日志或统计。（C7）
 
 ### 路由档案（编辑源 `docs/agents/fable-advisor-routing.md` 与中文备份）
@@ -440,7 +440,7 @@ Status: ready-for-agent
 ### 版本说明书
 
 - **MAN-1 形态。** `docs/manuals/6.0.0.html`：自包含中文 HTML，两部分"本版完整行为"与"相对上一版的变化"，按 `docs/agents/plugin-release.md` 第 0 步。
-- **MAN-2 第一部分覆盖。** 角色、档位、车道、姿态；首轮准入、格内选择、换车道、升级梯；路由档案一节：位置（正典、活体、中文备份）、结构、调整方法、格内选择规则与 advisor 映射的含义，不复述逐格取值与排名（N8）；两条 runner 的 spec 键、回执字段（含恒为 `null` 的 `fallback_reason`）、错误类与报告模式语义（含 ADR 0019）；契约检查清单由 runner 执行一次（ADR 0020）；claude 车道 agent 文件与别名；用户级文件与伴生安装器；测试清单；已知限制（claude 车道只能按别名指定、grok 观测方式、Cursor slug 未核实等，按工单 02 的结果）。
+- **MAN-2 第一部分覆盖。** 角色、档位、车道、姿态；首轮准入、格内选择、换车道、升级梯；路由档案一节：位置（插件内 `plugin/skills/orchestration/routing-profile.md` 与中文孪生，见工单 06）、结构、调整方法、格内选择规则与 advisor 映射的含义，不复述逐格取值与排名（N8）；两条 runner 的 spec 键、回执字段（含恒为 `null` 的 `fallback_reason`）、错误类与报告模式语义（含 ADR 0019）；契约检查清单由 runner 执行一次（ADR 0020）；claude 车道 agent 文件与别名；用户级文件与伴生安装器；测试清单；已知限制（claude 车道只能按别名指定、grok 观测方式、Cursor slug 未核实等，按工单 02 的结果）。
 - **MAN-3 第二部分覆盖。** 相对 5.2.0（提交 `89b0b52`）的每项变化，写改了什么、为什么、对应 ADR 与工单：ADR 0019、ADR 0020 批次（提交 `e5d65a4`，含说明书样式改版）与 ADR 0021 的全部决定；写明原定 5.3.0 未单独发布；升级步骤。
 - **MAN-4 语言。** 全文中文；标识符、路径、型号名保持原文。
 - **MAN-5 视觉。** 按第十节。基准文件不改。
@@ -448,8 +448,8 @@ Status: ready-for-agent
 ### 发布
 
 - **REL-1 版本字段。** `plugin/.claude-plugin/plugin.json` 的 `version` 与 `.claude-plugin/marketplace.json` 的 `plugins[0].version` 都改为 `6.0.0`。
-- **REL-2 授权。** 提交、推送、两侧 `claude plugin` 更新、两侧运行伴生安装器，每一步都需要用户在当次请求中明确授权；没有授权就停在工作树并报告。
-- **REL-3 安装核对。** 两侧缓存出现 `6.0.0` 且抽查命中本版新增短语；两个家目录的 `--check` 通过。
+- **REL-2 授权。** 提交、推送、两侧 `claude plugin` 更新、两侧运行伴生安装器、删除全局提示词中的档案路径指令、手动删除两侧档案活体、删除 prompts 仓库的档案快照，每一步都需要用户在当次请求中明确授权；没有授权就停在工作树并报告。
+- **REL-3 安装核对。** 两侧缓存出现 `6.0.0` 且抽查命中本版新增短语；按工单 06 D5 的顺序完成档案迁移，逐侧记录证据：新会话读取插件缓存里的 `routing-profile.md`（Claude Code 与 Cursor 各一次，Cursor 经插件兼容路径），活体 `~/.claude/docs/fable-advisor-routing.md` 手动删除后已不存在（单独断言；安装器不处理这份文件，不以 `--check` 通过代替）；两个家目录的 `--check` 通过。
 - **REL-4 发布后逐拨盘实机核对（U14 ⑦）。** 用已安装的插件，新表每个拨盘各派发一次，报告模式或只读最小任务，记录实际型号：
   - codex 车道（codex runner）：`gpt-6-luna` 的 `high`、`xhigh`、`max`；`gpt-6-sol` 的 `high`、`xhigh`、`max`；`gpt-6-astra` 的 `low`、`medium`、`high`、`xhigh`。证据：Codex 会话记录（`~/.codex/sessions/**/rollout-*.jsonl`）中 `type` 为 `turn_context` 的 `payload.model` 与 `payload.effort`。
   - grok 车道（grok runner）：`grok-4.7` 的 `medium`、`high`、`xhigh`，按 PRB-1 的结果决定是否传 `model`。证据：grok 会话目录（`~/.grok/sessions/<cwd 编码>/<会话 id>/`）中的 `model_id` 与 `reasoning_effort`。
@@ -477,9 +477,9 @@ Status: ready-for-agent
 4. **中文镜像（现有接缝，`test_zh_mirror.py`）。** 每票改动运行时 Markdown 后运行。
 5. **文字扫描（票内命令，不新建测试文件）。**
    - 各票只扫自己拥有的文件；全仓扫描在工单 05 作为批次检查执行。
-   - 全仓扫描范围：`plugin/`、`docs/zh/`、`README.md`、`CONTEXT.md`、`AGENTS.md`、`docs/agents/`、两个清单文件。零命中：档位含义的 `light`、`standard`、`senior`，`first-round pool`、`senior gate`、`首轮池`、`senior 门`（`CONTEXT.md` 的 `_Avoid_` 条目、README 的历史升级描述、ADR 与旧说明书除外）；`gpt-5.6-`、`grok-4.6`（测试里的拒绝用例与 README 的历史升级描述除外）；`falls back (to luna)`、`retries once on luna`；`cheapest adequate`。中文副本（`docs/zh/`、`docs/agents/fable-advisor-routing.zh.md`）同样零命中现行中文译法：`首轮池`、`帕累托`、`专长只作决胜项`、`最便宜的充分填充`、`仍是 light`、`格内候选顺序即车道默认顺序`、`专长只作平手裁决`、`最便宜的够用候选`、`一格只列 allowlist 里有的变体`、`Fable 只出现在 senior 格`、`2026-09-16 的 allowlist`。`test_zh_mirror.py` 只查孪生是否存在，不查内容，所以中文副本靠这组扫描。
+   - 全仓扫描范围：`plugin/`、`docs/zh/`、`README.md`、`CONTEXT.md`、`AGENTS.md`、`docs/agents/`、两个清单文件。零命中：档位含义的 `light`、`standard`、`senior`，`first-round pool`、`senior gate`、`首轮池`、`senior 门`（`CONTEXT.md` 的 `_Avoid_` 条目、README 的历史升级描述、ADR 与旧说明书除外）；`gpt-5.6-`、`grok-4.6`（测试里的拒绝用例与 README 的历史升级描述除外）；`falls back (to luna)`、`retries once on luna`；`cheapest adequate`。中文副本（`docs/zh/`）同样零命中现行中文译法：`首轮池`、`帕累托`、`专长只作决胜项`、`最便宜的充分填充`、`仍是 light`、`格内候选顺序即车道默认顺序`、`专长只作平手裁决`、`最便宜的够用候选`、`一格只列 allowlist 里有的变体`、`Fable 只出现在 senior 格`、`2026-09-16 的 allowlist`。`test_zh_mirror.py` 只查孪生是否存在，不查内容，所以中文副本靠这组扫描。
    - `light`、`standard`、`senior` 也有非档位的用法（例如普通英文词）；扫描命中逐条判断，在 Comments 里列出保留的命中及理由。
-   - `SKILL.md` 词数 ≤ 2160。
+   - `SKILL.md` 词数 ≤ 2210（ADR 0022 上调）。
 6. **视觉对照（第十节）。**
 7. **实机核对（工单 02 的前置核对，工单 05 的 REL-4 逐拨盘核对）。** 证据来自会话记录，不来自回执。这些检查只证明派发与接线，不证明质量或成本；每次用最小提示。
 
@@ -524,7 +524,7 @@ Status: ready-for-agent
 - **S1** 新表的某个拨盘在其车道不能以该型号与强度运行（工单 05 的 REL-4）。不得换型号或改表；已发布的版本是否回退由用户决定。
 - **S2** claude 车道某个别名实际解析的型号不是表中型号（工单 02 的 PRB-2）。
 - **S3** grok 会话记录显示的型号不是 `grok-4.7`，且传 `model` 也不能使其成为 `grok-4.7`（工单 02 的 PRB-1）。
-- **S4** `SKILL.md` 改写后超过 2160 词。回报时附词数与候选删减。
+- **S4** `SKILL.md` 改写后超过 2210 词（ADR 0022 上调）。回报时附词数与候选删减。
 - **S5** 看起来必须改动某个已确认条目。
 - **S6** 说明书内容无法用基准的组件表达。
 - **S7** 某个发布步骤没有用户当次授权。
@@ -640,3 +640,10 @@ Status: ready-for-agent
 - 与规格假设不同的观测：claude 子代理记录带 `effort` 字段，claude 拨盘的强度可以观测（工单 02）。
 - 遗留（范围外，未改）：`SKILL.md` 车道表与 `lanes-cursor.md` 第 3 行把 Cursor 的 Grok 只写成钉型号派发（5.2.0 即如此）；`lanes-cursor.md` 第 14 行与中文车道文档多处用 tier/档位 指强度；`worker-h`、`worker-xh`、`advisor-md`、`advisor-xh`、`advisor-l`、`explorer-h` 仍有替档案做路由选择的句子；`CONTEXT.md` "worker 的高档位"；测试准备代码重复；`run-codex.mjs` 的 `processStopped` 已无读者；说明书侧栏在 900px 高度下不自动滚到当前项（基准脚本相同）。
 - `SKILL.md` 实测 2160 词，零余量；下一次改正文前要先按 ADR 0012 判断沉降。
+
+### 2026-09-29 — ADR 0023 取代的规格条文（主代理）
+
+- 第 29、394、412、414、476 行记录的是 ADR 0023 之前的计划：档案的编辑源在 `docs/agents/fable-advisor-routing.md`，中文备份不安装，伴生安装器把档案装到活体。ADR 0023 与工单 06 已取代这些行里的档案位置与安装职责：档案现为 `plugin/skills/orchestration/routing-profile.md`，随插件发布；中文翻译是镜像孪生 `docs/zh/skills/orchestration/routing-profile.md`；安装器只装 Cursor 的两个用户级文件。这些行保留原文，不改写。
+- 第 480 行是工单 05 全仓扫描仍在使用的验收范围，已原地删去不存在的 `docs/agents/fable-advisor-routing.zh.md`。它的内容现在位于 `docs/zh/` 范围内。
+- 来源：`.scratch/doc-healthcheck-6-0/review.md` 的 R14。
+- 第 410 行 RP-8 的调用入口句（`grok-4.7` 的 `medium`、`high` 经 Shell 走 grok runner）已被 ADR 0025 取代：Cursor 下 Grok 只经钉型号的 `Task` 到达。该行保留原文。

@@ -1,6 +1,6 @@
 # 0008 — 上下文纪律：分级 diff 验收、报告预算与 spec 准备探针
 
-- **Status**: accepted
+- **Status**: accepted（决策 1 的 Tier 2 触发已由 [ADR 0013](./0013-delivery-contract-not-build-instructions.md) 决策 6 补充，Tier 3 执行者已被 [ADR 0014](./0014-role-pool-posture.md) 决策 8 修订）
 - **Date**: 2026-07-29
 - **影响范围**: `skills/orchestration/SKILL.md`、`agents/implementer.md`、`agents/grok-implementer.md`、`README.md`、`.claude-plugin/plugin.json`
 - **关联决策**: [ADR 0002](./0002-codex-lane-dewrapper-receipt-gate.md)（codex receipt 提供 Tier 1 验证证据）、[ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（in-house 车道缺少跨厂商复核）、[ADR 0007](./0007-handoff-lane.md)（handoff 验收继续亲自读取 diff）

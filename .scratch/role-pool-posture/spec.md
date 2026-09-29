@@ -1,6 +1,6 @@
 # 角色池与姿态：拆掉按模型身份划分的架构师 / 顾问模式
 
-Status: ready-for-agent
+Status: resolved
 
 关联：讨论记录 `docs/issues/chatgpt_模型编排模式比较_6aa2cfb9.md`（本地，不入库）；本次 grilling 会话 Q1–Q22；被改写的前提见 [ADR 0005](../../docs/adr/0005-model-routing-and-receipt-gate.md)（架构师层按系列判定）、[ADR 0006](../../docs/adr/0006-pareto-lane-routing-inhouse-promotion.md)（两段式路由、In-house 升格）、[ADR 0013](../../docs/adr/0013-delivery-contract-not-build-instructions.md)（产物类别边界、前言单源）。术语以根目录 `CONTEXT.md` 为准（本次已改写 `角色与档位` / `车道` / `姿态` 三节）。决策记录待落 ADR 0014。
 

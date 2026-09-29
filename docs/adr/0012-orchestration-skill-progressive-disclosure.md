@@ -1,6 +1,6 @@
 # 0012 — 编排 skill 分层重构与触发描述重写
 
-- **Status**: accepted
+- **Status**: accepted（决策 6 的经济豁免已被 [ADR 0013](./0013-delivery-contract-not-build-instructions.md) 决策 4 撤回；`SKILL.md` 词数上限已由 [ADR 0020](./0020-one-executor-per-check-list.md) 决策 6 起逐次上调）
 - **Date**: 2026-08-20
 - **影响范围**: `plugin/skills/orchestration/`（SKILL.md 重写；新增 `lanes-claude-code.md` / `lanes-cursor.md` / `handoff-lane.md`）、`docs/agents/plugin-release.md`（抽查示例）、版本 3.11.0
 - **关联**: [ADR 0010](./0010-dual-harness-single-source.md)（双 harness 单源——本次把 harness 专属机制沉入分支文件，单源不变）

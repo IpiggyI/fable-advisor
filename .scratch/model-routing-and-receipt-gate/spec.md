@@ -1,6 +1,6 @@
 # 模型路由校准 + receipt gate 重触发修复
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

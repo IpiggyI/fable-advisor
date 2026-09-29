@@ -1,9 +1,9 @@
 # 05：发布 6.0.0
 
 Status: ready-for-agent
-Blocked by: 04
+Blocked by: 04, 06
 
-**要做什么：** 两侧装上 6.0.0，活体档案等于编辑源；全部测试与全仓文字扫描通过；新表每个拨盘经已安装的插件实际运行一次，并有会话记录为证。每个发布步骤都在用户当次授权后执行。
+**要做什么：** 两侧装上 6.0.0，并按工单 06 D5 的顺序完成路由档案迁移；全部测试与全仓文字扫描通过；新表每个拨盘经已安装的插件实际运行一次，并有会话记录为证。每个发布步骤都在用户当次授权后执行。
 
 **负责的要求：** `../spec.md` 第八节 REL-1 至 REL-4；第九节第 5 项全仓扫描；第十四节全部（最终排除）；O1 的询问。
 
@@ -20,14 +20,14 @@ Blocked by: 04
 ## 验收
 
 - [ ] 两处版本字段为 `6.0.0`。
-- [ ] 测试全部退出 0：`test_runner_contract.py`、`test_runner_lifecycle.py`、`test_zh_mirror.py`、`test_receipt_gate.py`、`test_lane_family_gate.py`、`test_install_user_level.py`；`test_user_level_archive.py` 在安装器运行之后执行；`git diff --check` 干净；`SKILL.md` ≤ 2160 词。
+- [ ] 测试全部退出 0：`test_runner_contract.py`、`test_runner_lifecycle.py`、`test_zh_mirror.py`、`test_receipt_gate.py`、`test_lane_family_gate.py`、`test_install_user_level.py`；`test_user_level_archive.py` 在安装器运行之后执行；`test_lane_family_gate.py` 的两项 pin 规则活体比对同样在安装器运行之后才通过（2026-09-29 审查清单 R01 改了正典，两侧活体仍是旧文本，安装前为 16/18）；`git diff --check` 干净；`SKILL.md` ≤ 2210 词（ADR 0022 上调）。
 - [ ] 全仓文字扫描零命中（`../spec.md` 第九节第 5 项的范围与例外）；结果回填到 01、03 的"Held for batch acceptance"。
 - [ ] 第十四节逐条排除，结果写入 Comments。
 - [ ] 询问用户 O1（是否提交本任务记录与溯源材料），按答复执行。
 - [ ] （需授权）按文件名暂存、`git diff --cached --stat` 复核、提交、推送；未跟踪的无关文件不暂存。
 - [ ] （需授权）两侧 `claude plugin marketplace update` 与 `claude plugin update`；缓存出现 `6.0.0` 且抽查命中本版新增短语。
-- [ ] （需授权）两侧运行伴生安装器；两个家目录 `--check` 退出 0；`test_user_level_archive.py` 退出 0；结果回填到 03 的"Held for batch acceptance"。
-- [ ] REL-4：用已安装的插件逐拨盘派发一次（codex 10 个、grok 3 个、claude 13 个，清单见 `../spec.md` REL-4），观测表列出每次的会话 id 与会话记录中的型号（codex、grok 另列强度）；任一拨盘不符按 S1 停下回报。
+- [ ] （需授权）按工单 06 D5 的顺序：两侧更新并核对后停止旧会话；删除全局提示词中的档案路径指令；启动新会话，逐侧确认读取插件内的 `routing-profile.md`（Claude Code 与 Cursor 各一次）；手动删除两侧活体档案，逐侧断言已不存在；两侧运行伴生安装器刷新 Cursor 文件；两个家目录 `--check` 退出 0；`test_user_level_archive.py` 退出 0；删除 prompts 仓库的档案快照；任一步失败即停，不做后续删除。结果回填到 03 与 06 的"Held for batch acceptance"。
+- [ ] REL-4：用已安装的插件逐拨盘派发一次（codex 10 个、grok 3 个、claude 13 个，清单见 `../spec.md` REL-4），观测表列出每次的会话 id 与会话记录中的型号（codex、grok 另列强度；claude 车道的子代理记录带 `effort` 字段，也列强度）；任一拨盘不符按 S1 停下回报。其中 `explorer-xh`、`worker-xh`、`advisor-xh` 三次派发兼作插件级 `xhigh` 强度的探针：记录中的 `effort` 须为 `xhigh`。若 O2 专题保留 `advisor-l`，另派一次 `advisor-l`，核对插件级 `low`。这两项探针从 `lanes-claude-code.md` 的维护待办移到这里（审查清单 `.scratch/doc-healthcheck-6-0/review.md` 的 R03、PS1）。
 - [ ] 在 `../spec.md` 的 Comments 追加实施记录：各票结论、未核实项（如 PRB-3 未回报、claude 车道强度不可观测）、遗留。
 
 ## Held for batch acceptance

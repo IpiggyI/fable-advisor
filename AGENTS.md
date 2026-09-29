@@ -10,7 +10,7 @@ Issues and specs live as markdown under `.scratch/<feature-slug>/`, tracked in-r
 
 ### Triage labels
 
-The five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), recorded as a `Status:` line in each issue file. See `docs/agents/triage-labels.md`.
+The five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) plus the terminal state `resolved`, recorded as a `Status:` line in each issue file. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
@@ -22,7 +22,7 @@ Write the version manual (`docs/manuals/<version>.html`) → version bump (two f
 
 ### Companion installer
 
-`scripts/install-user-level.py` copies the three canonical user-level files (routing profile, Cursor pin rule, Cursor gate script) from this checkout onto their live paths under each `--home`, deletes the retired rule files, and warns when `~/.cursor/hooks.json` lacks the gate entry; `--check` is what `tests/test_user_level_archive.py` runs. Live copies are never edited by hand. See [ADR 0018](docs/adr/0018-post-5-1-tuning.md).
+`scripts/install-user-level.py` copies the two canonical user-level files (Cursor pin rule, Cursor gate script) from this checkout onto their live paths under each `--home`, and warns when `~/.cursor/hooks.json` lacks the gate entry; `--check` is what `tests/test_user_level_archive.py` runs. Live copies are never edited by hand. See [ADR 0018](docs/adr/0018-post-5-1-tuning.md).
 
 ### Cursor lane family gate
 
@@ -30,17 +30,19 @@ Canonical copies of the user-level Cursor `preToolUse` gate and Task pin rule li
 
 ### User routing profile
 
-Canonical profile: `docs/agents/fable-advisor-routing.md` (Chinese backup `docs/agents/fable-advisor-routing.zh.md`, not installed). Live copy: `~/.claude/docs/fable-advisor-routing.md` on both sides. The prompts-repo copy is an optional `--also` snapshot, not an edit source and not checked. The skill still reads whichever path the caller names; this fork's `AGENTS.md` names the live path. See [ADR 0017](docs/adr/0017-routing-profile-edit-source.md).
+The profile ships inside the plugin: `plugin/skills/orchestration/routing-profile.md`, with its Chinese translation as the mirror twin `docs/zh/skills/orchestration/routing-profile.md`. The skill reads it directly; there is no live copy, and no instruction outside the plugin names it. See [ADR 0023](docs/adr/0023-routing-profile-in-plugin.md).
 
-Edit here, then run the companion installer (`python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy` on this machine) and `python3 tests/test_user_level_archive.py`. The profile's columns are the three tiers: new work starts in `mainstay`, may start in `crux` when a key difficulty is already identified, and reaches `rescue` only after a capability failure in `crux` or a user declaration (see `CONTEXT.md`). The Cursor Task pin rule stays a separate user-level artifact: canonical `cursor-hooks/fable-lane-pin.mdc`, Chinese backup `cursor-hooks/zh/fable-lane-pin.mdc`.
+Edit that file (a deliverable under `plugin/**`), then release and update both sides (see "Plugin release & local update"). A changed cell is a minor version, and the declaration date in the profile's first paragraph changes with it. The profile's columns are the three tiers (`CONTEXT.md`, "档位"). The Cursor Task pin rule stays a separate user-level artifact: canonical `cursor-hooks/fable-lane-pin.mdc`, Chinese backup `cursor-hooks/zh/fable-lane-pin.mdc`.
 
 ### Delegation boundary by artifact class
 
 Per [ADR 0013](docs/adr/0013-delivery-contract-not-build-instructions.md) and [ADR 0014](docs/adr/0014-role-pool-posture.md), in the **orchestrating posture** the main agent never edits deliverables, whatever the size — they go through a `worker`; coordination artifacts it writes directly in either posture. In the implementing posture (no upstream task artifact, or the user said so) the main agent may edit deliverables itself. In this repo:
 
 - Deliverables (worker only while orchestrating): `plugin/**`, `tests/**`, `cursor-hooks/**`, `scripts/**`, `README.md`, `docs/zh/**`, `docs/manuals/**`.
-- Coordination artifacts (main agent may write): `.scratch/**`, `docs/adr/**`, `CONTEXT.md`, `AGENTS.md`, `docs/agents/**`, `.fable-advisor/**`, and the two version fields named in `docs/agents/plugin-release.md`.
+- Coordination artifacts (main agent may write): `.scratch/**`, `docs/adr/**`, `CONTEXT.md`, `AGENTS.md`, `CLAUDE.md`, `docs/agents/**`, `docs/upstream-sync/**`, `.agent-discuss/**`, `.fable-advisor/**`, and the two version fields named in `docs/agents/plugin-release.md`.
+
+In the orchestrating posture, the doctrine prose under `plugin/skills/**` (except `routing-profile.md`) and `plugin/agents/**` goes through same-model dispatch. The artifact class triggers it, not how central the text feels. The routing profile records the user's declared values, so a profile edit goes through an ordinary `worker`.
 
 ### Chinese mirror of runtime docs
 
-Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship. The Chinese backup of the Cursor pin rule stays in `cursor-hooks/zh/`; the Chinese backup of the routing profile stays in `docs/agents/fable-advisor-routing.zh.md`. Neither lives under `docs/zh/`.
+Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship. The Chinese backup of the Cursor pin rule stays in `cursor-hooks/zh/`; it does not live under `docs/zh/`.

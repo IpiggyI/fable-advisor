@@ -1,6 +1,6 @@
 # 路由目标函数改帕累托 + In-house lane 升格 + 用户侧路由 profile
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

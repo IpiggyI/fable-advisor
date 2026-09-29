@@ -1,6 +1,6 @@
 # 0015 — 承接全局提示词的编排入口：填充表改为调用方指定档案、决策类型门第六项退役、拨盘记法入仓
 
-- **Status**: accepted（2026-09-13 用户确认 GPT 审查后的最终方案，五项待定"全部按推荐"）
+- **Status**: accepted（2026-09-13 用户确认 GPT 审查后的最终方案，五项待定"全部按推荐"；决策 1 中填充表位置的部分已被 [ADR 0023](./0023-routing-profile-in-plugin.md) 取代；决策 1 的"本仓不留副本"先经 [ADR 0017](./0017-routing-profile-edit-source.md) 决策 1 修订；决策 4 的 `|` 记法已被 [ADR 0018](./0018-post-5-1-tuning.md) 决策 8 退役；实施段的词数上限已由 [ADR 0020](./0020-one-executor-per-check-list.md) 决策 6 上调；决策 10 的描述已被 [ADR 0022](./0022-orchestration-load-on-events.md) 决策 2 修订）
 - **Date**: 2026-09-13
 - **影响范围**: `plugin/skills/orchestration/`（`SKILL.md`、`lanes-claude-code.md`、`lanes-cursor.md`、`lane-preamble.md`）、`plugin/agents/`（`fable-advisor.md`、`worker.md`）、`README.md`、`docs/zh/**`、`user-rules/**`（删除）、`cursor-hooks/zh/fable-lane-pin.mdc`（迁入）、`tests/test_user_level_archive.py`、`docs/agents/**`、根目录 `AGENTS.md` / `CONTEXT.md`；版本 5.1.0。不改 runner 与 hook 代码。
 - **关联**: [ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md)（机制入库、判断入用户规则——本次判断的落点从用户规则改为按需档案）、[ADR 0011](./0011-cursor-lane-family-gate-user-level.md)（用户级存档与漂移检测——本次只保留 pin 规则一项）、[ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（词数预算——本次沿用 ≤ 1950）、[ADR 0013](./0013-delivery-contract-not-build-instructions.md)（前言单源——本次加一句边界从句）、[ADR 0014](./0014-role-pool-posture.md)（决策类型门清单——本次退役第六项；填充表位置——本次改）。任务件与审查记录 `.scratch/global-orchestration-handoff/`（`spec.md`、`review.md`、`issues/01`–`09`）；上游交接 `/mnt/d/Development/Local/prompts/docs/plans/fable-advisor-orchestration-handoff-2026-09.md`。

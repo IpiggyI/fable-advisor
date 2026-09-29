@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
   "metadata": {
-    "description": "Role pool for Claude Code and Cursor: any model as the main agent, orchestrating or implementing posture, explorer / worker / advisor at mainstay / crux / rescue, grok / codex / claude / handoff lanes, and a user-side fill table."
+    "description": "Role pool for Claude Code and Cursor: any model as the main agent, orchestrating or implementing posture, explorer / worker / advisor at mainstay / crux / rescue, grok / codex / claude / handoff lanes, and a bundled routing profile."
   },
   "owner": {
     "name": "Dan McAteer",
@@ -12,7 +12,7 @@
       "name": "fable-advisor",
       "version": "6.0.0",
       "source": "./plugin",
-      "description": "Role pool: any model can be the main agent; two postures (orchestrating: deliverables only through a worker; implementing: the main agent may edit directly); explorer, worker, and advisor at mainstay, crux, and rescue; grok, codex, claude, and handoff lanes. User-side fill table maps (role, tier) to models; GPT family via the codex runner (currently GPT-6 Astra default); escalation climbs a ladder (rework ticket, then the next tier)."
+      "description": "Role pool: any model can be the main agent; two postures (orchestrating: deliverables only through a worker; implementing: the main agent may edit directly); explorer, worker, and advisor at mainstay, crux, and rescue; grok, codex, claude, and handoff lanes. A bundled routing profile maps (role, tier) to models; GPT family via the codex runner (currently GPT-6 Astra default); escalation climbs a ladder (rework ticket, then the next tier)."
     }
   ]
 }

@@ -242,7 +242,7 @@
   <h3>车道</h3>
   <p>车道决定怎么到达供应商。handoff lane 是条件成员：只有用户按任务或按会话声明之后，才进入第二段的候选。</p>
   <div class="grid cols-2">
-    <article class="card"><span class="tag lane">grok lane</span><strong>Grok 家族</strong>Claude Code：<code class="mono">plugin/scripts/run-grok.mjs</code>，默认不传 <code class="mono">model</code>，跟随 CLI 默认型号。Cursor：钉 Grok 型号名的 Task；<code class="mono">medium</code> / <code class="mono">high</code> 也可经 Shell 跑同一 runner。</article>
+    <article class="card"><span class="tag lane">grok lane</span><strong>Grok 家族</strong>Claude Code：<code class="mono">plugin/scripts/run-grok.mjs</code>，默认不传 <code class="mono">model</code>，跟随 CLI 默认型号。Cursor：钉 Grok 型号名的 Task。</article>
     <article class="card"><span class="tag lane">codex lane</span><strong>GPT 家族</strong>两侧都跑 <code class="mono">plugin/scripts/run-codex.mjs</code>，白名单三个 <code class="mono">gpt-6-*</code> 型号。Cursor 经 Shell，没有 receipt gate。</article>
     <article class="card"><span class="tag lane">claude lane</span><strong>Claude 子代理</strong>仓内九份 agent 文件，无外部 CLI。按次 <code class="mono">model</code> 只接受别名。同模派发是它的一个拨盘：模型钉为会话模型。Cursor：<code class="mono">generalPurpose</code> 省略 <code class="mono">model</code>（<code class="mono">inherit</code>）。Claude Code：<code class="mono">worker-*</code> 的按次 <code class="mono">model</code> 设为会话模型。</article>
     <article class="card"><span class="tag lane">handoff lane</span><strong>用户中介</strong>写入 <code class="mono">.fable-advisor/handoff/&lt;slug&gt;.md</code>。无 receipt，不在 receipt gate 视野内。验收对象是 diff，由架构师亲自重跑验证。</article>
@@ -345,7 +345,7 @@
     <tr><td class="mono">lane-preamble.md</td><td><code class="mono">mode: implement</code>（缺省）；claude lane 的 <code class="mono">worker-*</code></td><td>执行者持有 Files 内的交付物。保留操作仍约束它及其子代理。<strong>Verification</strong> 条：检查列表只有一个执行者；契约写明 runner 会在车道退出后跑这份列表时，车道不为收尾再跑；没写时列表归车道，在结尾跑一次；延后到批次的检查不归车道。以 <code class="mono">WORKER REPORT</code>（<code class="mono">OBJECTIVE / CHANGES / VERIFIED / GAPS</code>）结尾，附实际跑过的检查的输出。</td></tr>
     <tr><td class="mono">lane-preamble-report.md</td><td><code class="mono">mode: report</code>；claude lane 的 <code class="mono">explorer-*</code></td><td>只读的 explorer 或 advisor。<code class="mono">Files</code> 是读取范围，不是写权限。回答 Objective。explorer 以证据形状结尾，advisor 以 verdict 形状结尾。不含 <code class="mono">WORKER REPORT</code>。</td></tr>
   </table></div>
-  <p>Cursor 的 Task 不会自动前置前言。worker 派发的 prompt 首行指向 <code class="mono">lane-preamble.md</code>；explorer / advisor 派发的 prompt 首行指向 <code class="mono">lane-preamble-report.md</code>。不要在契约正文里复述前言。<code class="mono">advisor-*</code> 自带完整正文。</p>
+  <p>claude lane 与 Cursor 的 Task 都没有 runner 自动前置前言：派发 prompt 首行是读取所需前言的指令，按绝对路径给出，不是路径标签；worker 读 <code class="mono">lane-preamble.md</code>，explorer / advisor 读 <code class="mono">lane-preamble-report.md</code>。不要在契约正文里复述前言。<code class="mono">advisor-*</code> 自带完整正文。</p>
 </section>
 
 <section class="manual-section" id="section-6" aria-labelledby="heading-6">
@@ -432,18 +432,17 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   <p>Cursor 经 Claude 插件兼容路径加载本插件。grok lane、claude lane 与 cursor lane 是原生 Task 派发，各自钉模型。codex lane 不在 Task 枚举里。</p>
   <h3>钉模型的 Task</h3>
   <ul class="tight">
-    <li>worker：<code class="mono">generalPurpose</code> + 显式 <code class="mono">model</code>，prompt 首行指向 <code class="mono">lane-preamble.md</code>。</li>
-    <li>explorer：<code class="mono">explore</code>（或 <code class="mono">generalPurpose</code>）+ 显式 <code class="mono">model</code>，prompt 首行指向 <code class="mono">lane-preamble-report.md</code>。</li>
-    <li>advisor：具名 <code class="mono">advisor-*</code> agent，显式钉模型，prompt 首行指向报告前言。</li>
+    <li>worker：<code class="mono">generalPurpose</code> + 显式 <code class="mono">model</code>，prompt 首行是读取 <code class="mono">lane-preamble.md</code> 的指令。</li>
+    <li>explorer：<code class="mono">explore</code>（或 <code class="mono">generalPurpose</code>）+ 显式 <code class="mono">model</code>，prompt 首行是读取 <code class="mono">lane-preamble-report.md</code> 的指令。</li>
+    <li>advisor：具名 <code class="mono">advisor-*</code> agent，显式钉模型，prompt 首行是读取报告前言的指令。</li>
   </ul>
   <p>钉的家族就是车道：Grok 家族是 grok lane，Claude 家族是 claude lane，Cursor 自家模型是 <strong>cursor lane</strong>。钉的型号名是一个拨盘，即该格档位内的一个型号加强度。插件 agent 的文首 <code class="mono">model:</code> 在 Cursor 不生效；省略 <code class="mono">model</code> 会继承会话模型。Cursor 不向主代理回传执行元数据，披露时标「已请求，未确认」。</p>
   <p>强度钉在型号名上。档案里的 <code class="mono">model[…]</code> 在这里映射为型号名变体。当回合的允许名单只约束钉型号的 Task 派发：某个候选需要的变体不在名单里，就跳过这个候选，并在披露里说明。</p>
-  <p>同模派发是唯一允许省略 <code class="mono">model</code> 的派发：编排姿态下的准则散文，<code class="mono">generalPurpose</code> 继承会话模型。披露里写 <code class="mono">inherit</code>，以免被当成漏钉。</p>
+  <p>同模派发是唯一允许省略 <code class="mono">model</code> 的派发：编排姿态下，服务本仓 <code class="mono">AGENTS.md</code> 点名的类别（<code class="mono">plugin/skills/**</code>——不含 <code class="mono">routing-profile.md</code>——与 <code class="mono">plugin/agents/**</code> 下的准则散文），<code class="mono">generalPurpose</code> 继承会话模型。披露里写 <code class="mono">inherit</code>，以免被当成漏钉。</p>
   <p>验收走技能正文的三层；Task 派发没有 receipt，也没有 runner，所以契约检查列表归车道，在结尾跑一次，报告里的输出就是全部证据。返工用 Task <code class="mono">resume</code> 加返工契约；再失败则按升级梯归因，能力失败进入下一档，用新派发加接管契约。竞赛用隔离工作树的派发类型（当前枚举里的 <code class="mono">best-of-n-runner</code>）。</p>
 
-  <h3>codex / grok runner 经 Shell</h3>
+  <h3>codex runner 经 Shell</h3>
   <p>GPT 家族：<code class="mono">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec … --cwd "$(pwd)"</code>，经 Shell。spec、pending/receipt、等待协议、<code class="mono">resume_session_id</code>、<code class="mono">mode: "report"</code> 与 Claude Code 相同。两处不同：没有 receipt gate（Cursor 是否加载插件 Stop hook 未经核实，本车道按不加载设计）；等待跟 Shell 时钟，长票后台跑、按 shell id 等。</p>
-  <p>grok runner 同样经 Shell：<code class="mono">node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec … --cwd "$(pwd)"</code>，同一套 spec、pending/receipt 与等待协议，同样没有 receipt gate。</p>
 
   <h3>用户级门禁与钉模型规则</h3>
   <p><strong>lane family gate</strong> 是用户级 <code class="mono">preToolUse</code> 脚本 <code class="mono">cursor-hooks/fable-lane-family-gate.py</code>（活体 <code class="mono">~/.cursor/hooks/fable-lane-family-gate.py</code>）。它防止静默继承会话模型，不查家族。对 <code class="mono">advisor-</code> 前缀的 <code class="mono">subagent_type</code>，<code class="mono">model</code> 缺失、为空串或为 <code class="mono">inherit</code> 时 <code class="mono">deny</code>。<code class="mono">resume</code> 跳过型号检查。<code class="mono">explore</code> / <code class="mono">generalPurpose</code> 不在此门范围内。空 stdin 则 <code class="mono">deny</code>。</p>
@@ -452,23 +451,21 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
 
 <section class="manual-section" id="section-9" aria-labelledby="heading-9">
   <h2 id="heading-9"><span class="section-number">09</span>用户级文件与伴生安装器</h2>
-  <p>正典是仓内编辑源。活体是宿主实际读取的用户级副本。活体只由伴生安装器写入，安装时无条件覆盖，不留 <code class="mono">.bak</code>。中文备份不安装。</p>
+  <p>正典是仓内编辑源。活体是宿主实际读取的用户级副本。活体只由伴生安装器写入，安装时无条件覆盖，不留 <code class="mono">.bak</code>。中文备份不安装。路由档案随插件发布，没有活体，见第 12 节。</p>
   <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
     <tr><th scope="col">正典</th><th scope="col">活体</th></tr>
-    <tr><td class="mono">docs/agents/fable-advisor-routing.md</td><td class="mono">~/.claude/docs/fable-advisor-routing.md</td></tr>
     <tr><td class="mono">cursor-hooks/fable-lane-pin.mdc</td><td class="mono">~/.cursor/rules/fable-lane-pin.mdc</td></tr>
     <tr><td class="mono">cursor-hooks/fable-lane-family-gate.py</td><td class="mono">~/.cursor/hooks/fable-lane-family-gate.py</td></tr>
   </table></div>
-  <p>退役列表（存在即删除）：<code class="mono">~/.claude/rules/fable-advisor.md</code>、<code class="mono">~/.cursor/rules/fable-advisor.mdc</code>。</p>
   <p>伴生安装器是仓库检出内的 <code class="mono">scripts/install-user-level.py</code>。它不进 <code class="mono">plugin/</code>，不作为插件 hook，也不随 <code class="mono">claude plugin update</code> 自动运行。插件更新后由用户在每侧手动跑一次。</p>
   <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
     <tr><th scope="col">旗标</th><th scope="col">行为</th></tr>
-    <tr><td>（无）</td><td>默认家目录为当前用户，写入三件活体，删除退役文件</td></tr>
+    <tr><td>（无）</td><td>默认家目录为当前用户，写入两件活体</td></tr>
     <tr><td class="mono">--home &lt;目录&gt;</td><td>可重复；逐个家目录写入</td></tr>
-    <tr><td class="mono">--check</td><td>只比对，不写不删。任一活体缺失或字节不同 → 退出非零并列出。退役文件仍在只警告，不因此失败</td></tr>
+    <tr><td class="mono">--check</td><td>只比对，不写。任一活体缺失或字节不同 → 退出非零并列出</td></tr>
     <tr><td class="mono">--also &lt;目录&gt;</td><td>把同一批英文正典按源文件名（不含目录）平铺写入该备份目录</td></tr>
   </table></div>
-  <p>每个目标打印动作前缀：<code class="mono">installed</code> / <code class="mono">unchanged</code> / <code class="mono">removed</code> / <code class="mono">warning</code>。</p>
+  <p>每个目标打印动作前缀：<code class="mono">installed</code> / <code class="mono">unchanged</code> / <code class="mono">warning</code>。</p>
   <p><code class="mono">~/.cursor/hooks.json</code>：只检测 <code class="mono">preToolUse</code> 里是否有包含 <code class="mono">fable-lane-family-gate.py</code> 的命令字段。文件不存在或没有该条目时打印 <code class="mono">warning</code>，退出码不变，不修改该文件。</p>
   <p>本机两侧一次写入：</p>
   <pre class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</pre>
@@ -494,8 +491,8 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
     <tr><td class="mono">tests/test_runner_contract.py</td><td>两条 runner 在进程边界的契约，共 19 个用例：<code class="mono">mode</code> 校验；implement / report 分流与前言拼装；runner 是检查列表的唯一执行者（注入句按条件出现，计数文件证明恰好执行一次）；<code class="mono">empty_report</code>；<code class="mono">dirty_baseline</code>（含报告模式运行后 <code class="mono">git status</code> 失败时判 <code class="mono">complete</code> 或 <code class="mono">empty_report</code>）；<code class="mono">title</code>；真实前言文件；字段缺省与越界（<code class="mono">gpt-6-luna</code>、<code class="mono">gpt-6-sol</code> 被接受，<code class="mono">gpt-5.6-*</code> 判 <code class="mono">spec_invalid</code> 且不拉起子进程）；grok <code class="mono">effort</code>；前言缺失则不拉起子进程；<code class="mono">*_unavailable</code> 字段；<code class="mono">no_diff</code> / <code class="mono">git_status_failed</code>；<code class="mono">resume</code> 调用；codex 不换型号及其边界（会话前失败只调用一次、<code class="mono">model_used</code> 为请求型号、<code class="mono">fallback_reason</code> 为 null）；终端事件驱动计时；空闲诊断；中断与进程树；空闲截止与整段时限。假 CLI、假 git、真实 spec 与 receipt。</td></tr>
     <tr><td class="mono">tests/test_runner_lifecycle.py</td><td>进程收尾的离线回归：两条 runner 在 CLI 退出后遗留继承管道时（重定向、继承、非零退出、排空、超时、空闲、中断、杀进程失败）按时完成并写 receipt；预检、git 检查、验证三个阶段的辅助进程遗留管道时触发清理截止。</td></tr>
     <tr><td class="mono">tests/test_runner_lifecycle_windows.cjs</td><td>同一组收尾行为在原生 Windows Node 上的版本，含 <code class="mono">taskkill</code> 挂起。非 Windows 平台打印 <code class="mono">SKIP</code> 并退出 0。</td></tr>
-    <tr><td class="mono">tests/test_install_user_level.py</td><td>安装器在命令行边界：空家目录装三件且逐字节一致；改活体后 <code class="mono">--check</code> 非零，再安装覆盖；退役路径被删；<code class="mono">--also</code> 按源文件名写出；<code class="mono">hooks.json</code> 缺失或无门禁条目时打印 <code class="mono">warning</code> 且退出 0、不改文件；有门禁条目则无 <code class="mono">warning</code>；两个 <code class="mono">--home</code> 都写。</td></tr>
-    <tr><td class="mono">tests/test_user_level_archive.py</td><td>英文正典存在；钉模型规则中文备份存在、含中文、含「不是活体」；路由档案中文备份存在且含中文。对每个存在的家目录调用 <code class="mono">install-user-level.py --check</code>。</td></tr>
+    <tr><td class="mono">tests/test_install_user_level.py</td><td>安装器在命令行边界：空家目录装两件且逐字节一致，家目录内的实际文件集合恰好是这两件；改活体后 <code class="mono">--check</code> 非零，再安装覆盖；<code class="mono">--also</code> 按源文件名写出，且该目录内文件集合恰好是这两个源文件名；家目录里预先存在的无关文件在安装与 <code class="mono">--check</code> 之后原样保留；<code class="mono">hooks.json</code> 缺失或无门禁条目时打印 <code class="mono">warning</code> 且退出 0、不改文件；有门禁条目则无 <code class="mono">warning</code>；两个 <code class="mono">--home</code> 都写。</td></tr>
+    <tr><td class="mono">tests/test_user_level_archive.py</td><td>英文正典存在；钉模型规则中文备份存在、含中文、含「不是活体」。对每个存在的家目录调用 <code class="mono">install-user-level.py --check</code>。</td></tr>
     <tr><td class="mono">tests/test_zh_mirror.py</td><td>每个 <code class="mono">plugin/**/*.md</code> 在 <code class="mono">docs/zh/</code> 有同一相对路径的孪生；没有孤儿孪生。只查存在，不查译文内容。</td></tr>
     <tr><td class="mono">tests/test_receipt_gate.py</td><td>Stop hook 进程边界：无 pending 目录放行；<code class="mono">complete</code> receipt 放行；无 receipt 或非 complete（含 <code class="mono">timeout</code>）拦住；<code class="mono">stop_hook_active</code> 放行；非法 JSON 失败时放行；报告模式 pending 同样拦住。</td></tr>
     <tr><td class="mono">tests/test_lane_family_gate.py</td><td>Cursor Task 钉模型门：advisor 缺 model、<code class="mono">inherit</code> 或空串则 <code class="mono">deny</code>，文案不含 <code class="mono">family</code>；显式型号则 <code class="mono">allow</code>；<code class="mono">resume</code> 跳过；worker / <code class="mono">generalPurpose</code> / <code class="mono">explore</code> 不在范围内；未知 <code class="mono">advisor-*</code> 仍守；空 stdin 则 <code class="mono">deny</code>；父信封上的 model 不算子代理的钉。另比对仓内正典与两侧活体（若存在）。带 <code class="mono">--self-test</code>。</td></tr>
@@ -505,14 +502,13 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
 
 <section class="manual-section" id="section-12" aria-labelledby="heading-12">
   <h2 id="heading-12"><span class="section-number">12</span>路由档案</h2>
-  <p>填充表是（角色, 档位）→ 候选车道与拨盘的有序表，属于用户判断，不是插件行为。插件技能只规定：调用方指令点名哪份档案就读哪份；首次分配模型前读；档案变化或滑出上下文时重读；未指定或读不到则报缺口，不假定内容。</p>
+  <p>填充表是（角色, 档位）→ 候选车道与拨盘的有序表，属于用户判断，随插件发布，但不是插件机制。技能直接读插件内的档案，不接受调用方点名的其他档案；首次分配模型前读；档案变化或滑出上下文时重读；读不到则报缺口，不假定内容。</p>
   <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
     <tr><th scope="col">角色</th><th scope="col">路径</th></tr>
-    <tr><td>正典（唯一编辑源）</td><td class="mono">docs/agents/fable-advisor-routing.md</td></tr>
-    <tr><td>活体（技能实际读取、由调用方指名）</td><td class="mono">~/.claude/docs/fable-advisor-routing.md</td></tr>
-    <tr><td>中文备份（不安装）</td><td class="mono">docs/agents/fable-advisor-routing.zh.md</td></tr>
+    <tr><td>档案（唯一来源，随插件发布，技能直接读取）</td><td class="mono">plugin/skills/orchestration/routing-profile.md</td></tr>
+    <tr><td>中文译本（镜像孪生，不发布）</td><td class="mono">docs/zh/skills/orchestration/routing-profile.md</td></tr>
   </table></div>
-  <p>结构：声明日期与锚定型号 → 档位与格内选择 → 型号排名 → 已声明假设 → advisor 映射 → Claude Code 候选（到达方式、每个 claude 拨盘的 agent 文件与别名、表）→ Cursor 候选（按实际调用入口判断可用性、表）→ 口头声明 → 调整方法。表头形状是角色 ×（<code class="mono">mainstay</code> / <code class="mono">crux</code> / <code class="mono">rescue</code>）。</p>
+  <p>结构：声明日期与锚定型号 → 档位与格内选择 → 型号排名 → 已声明假设 → advisor 映射 → Claude Code 候选（到达方式、每个 claude 拨盘的 agent 文件与别名、表）→ Cursor 候选（按实际调用入口判断可用性、表）。表头形状是角色 ×（<code class="mono">mainstay</code> / <code class="mono">crux</code> / <code class="mono">rescue</code>）。口头声明与调整方法两节已从档案移出，规则并入 <code class="mono">SKILL.md</code> 与本仓 <code class="mono">AGENTS.md</code>。</p>
 
   <h3>格内选择规则的含义</h3>
   <ul class="tight">
@@ -534,14 +530,14 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   <p>档位改名后，advisor 的用法由这四条映射固定下来。落到哪份 agent 文件由所选拨盘的强度决定，见第 7 节。</p>
 
   <h3>Cursor 部分</h3>
-  <p>worker 与 advisor 行与 Claude Code 相同，explorer 行单列。可用性按每个候选的实际调用入口判断：GPT 候选经 Shell 走 codex runner；grok 的部分强度经 Shell 走 grok runner，其余经钉型号的 Task；Claude 候选与 Cursor 自家模型经钉型号的 Task。当回合的允许名单只约束钉型号的 Task 派发。型号名（slug）不写进档案，缺席的变体跳过并披露。</p>
+  <p>worker 与 advisor 行与 Claude Code 相同，explorer 行单列。可用性按每个候选的实际调用入口判断：GPT 候选经 Shell 走 codex runner；<code class="mono">grok-4.7</code>、Claude 候选与 Cursor 自家模型都经钉型号的 Task。当回合的允许名单只约束钉型号的 Task 派发。型号名（slug）不写进档案，缺席的变体跳过并披露。</p>
   <p>易变状态（额度、截止日期）只在开场口头声明，只对当次会话有效，不落盘；没有声明时取格内第一个候选的 <code class="mono">*</code> 拨盘。handoff lane 只在用户按任务或按会话声明后进入候选。</p>
 
   <h3>如何调整</h3>
   <ol>
-    <li>只改正典里的格子。中文文件是译文，不是第二编辑源。</li>
-    <li>从仓库检出跑伴生安装器，刷新活体。本机：<code class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</code>。<code class="mono">--check</code> 只报告漂移。</li>
-    <li>不必改技能正文，也不必改插件。技能在档案变化时重读。改表时更新文首的声明日期。任一相关型号换代时重估对应的格子。</li>
+    <li>只改 <code class="mono">plugin/skills/orchestration/routing-profile.md</code> 里的格子。中文文件是译文，不是第二来源。改表时更新文首的声明日期。</li>
+    <li>发布插件并在两侧更新（<code class="mono">docs/agents/plugin-release.md</code>）；改格算次版本。运行中的会话重启之前仍用旧档案。</li>
+    <li>不必改技能正文，也不必跑伴生安装器。任一相关型号换代时重估对应的格子。</li>
   </ol>
   <p class="note">本说明书不复述档案的逐格取值与型号排名。那些是用户在声明日写下的判断，随格子而变。</p>
 </section>
@@ -551,17 +547,15 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
   <p>以下限制在 6.0.0 仍然成立。观测日期写在各条里。</p>
   <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
     <tr><th scope="col">范围</th><th scope="col">限制</th><th scope="col">怎么处理</th></tr>
-    <tr><td>claude lane 别名</td><td>派发工具的 <code class="mono">model</code> 只接受 <code class="mono">haiku</code>、<code class="mono">sonnet</code>、<code class="mono">opus</code>、<code class="mono">fable</code>，不接受完整型号 id。2026-09-27 观测：前三个别名分别解析为 <code class="mono">claude-haiku-4-5-20251001</code>、<code class="mono">claude-sonnet-5</code>、<code class="mono">claude-opus-5-5</code>。</td><td>实际型号看子代理记录的 <code class="mono">message.model</code>。别名改指其他型号时，按档案的失效条件重估。</td></tr>
+    <tr><td>claude lane 别名</td><td>派发工具的 <code class="mono">model</code> 只接受 <code class="mono">haiku</code>、<code class="mono">sonnet</code>、<code class="mono">opus</code>、<code class="mono">fable</code>，不接受完整型号 id。2026-09-27 观测：前三个别名分别解析为 <code class="mono">claude-haiku-4-5-20251001</code>、<code class="mono">claude-sonnet-5</code>、<code class="mono">claude-opus-5-5</code>。2026-09-29 起，当前 Claude Code 版本上 <code class="mono">sonnet</code> 别名指向 Sonnet 5.5（<code class="mono">sonnet-5-5</code>）；旧版本仍解析为 <code class="mono">claude-sonnet-5</code>。</td><td>实际型号看子代理记录的 <code class="mono">message.model</code>。别名改指其他型号时，按档案的失效条件重估。</td></tr>
     <tr><td>fable</td><td><code class="mono">fable</code> 送到 API 的是 <code class="mono">claude-fable-5-1</code>，但账号没有开通 usage credits 时请求被拒（HTTP 429）。2026-09-27 在一份配置下观测到。</td><td>按第 2 节换候选。需要 fable 的拨盘在开通 credits 的配置下派发。</td></tr>
     <tr><td>grok 型号</td><td>grok runner 默认不传 <code class="mono">model</code>，跟随 CLI 默认型号。省略时 receipt 的 <code class="mono">model_requested</code> 与 <code class="mono">model_used</code> 为 null。CLI 默认型号换代时，派发会跟着变。</td><td>实际型号看 grok 会话目录 <code class="mono">~/.grok/sessions/&lt;cwd 编码&gt;/&lt;会话 id&gt;/events.jsonl</code> 中 <code class="mono">turn_started.model_id</code>（2026-09-27 为 <code class="mono">grok-4.7</code>）；消息级 <code class="mono">model_id</code> 是服务端构建名。换代时重估档案。</td></tr>
     <tr><td>receipt 的型号与强度</td><td>receipt 记的是 runner 提交的值，不是观测到的值。</td><td>引用时写「已提交，未观测」。codex 的实际配置看 <code class="mono">~/.codex/sessions/**/rollout-*.jsonl</code> 中 <code class="mono">turn_context</code> 的 <code class="mono">payload.model</code> 与 <code class="mono">payload.effort</code>。</td></tr>
     <tr><td>新增 codex 型号</td><td><code class="mono">gpt-6-luna</code>、<code class="mono">gpt-6-sol</code> 在发布前只由假 CLI 的契约测试覆盖。新表每个拨盘的实机核对安排在发布之后。</td><td>发布后逐拨盘各派发一次，以会话记录为证。跑不起来时停下，由用户决定是否回退。</td></tr>
     <tr><td>Cursor slug</td><td>各候选在 Cursor 当回合允许名单里的型号名没有核实。Cursor 不向主代理回传执行元数据。</td><td>派发时用当回合允许名单里的名字；缺席的变体跳过并披露；披露标「已请求，未确认」。</td></tr>
-    <tr><td>Cursor 经 Shell 的 grok runner</td><td>尚未在 Cursor 实跑。<code class="mono">SKILL.md</code> 车道表把 Cursor 的 Grok 概括为钉型号派发，与档案「部分强度经 Shell 走 grok runner」不完全一致；这句沿用自 5.2.0，本版没有改。</td><td>以档案的调用入口说明为准。</td></tr>
     <tr><td>原生 Windows</td><td><code class="mono">test_runner_lifecycle_windows.cjs</code> 只在原生 Windows Node 上执行；在 WSL 上打印 <code class="mono">SKIP</code>。</td><td>在 Windows 侧用原生 Node 运行它。</td></tr>
     <tr><td>检查列表只跑一次</td><td>提示词不是机制。车道仍可能在收尾前自己跑一遍检查列表；契约测试只能证明 runner 执行一次。</td><td>对比 receipt 的 <code class="mono">verification</code> 与车道报告自述跑过的命令（ADR 0020 复盘条件）。</td></tr>
-    <tr><td><code class="mono">SKILL.md</code> 词数</td><td>上限 2160 词，落地实测 2160 词，没有余量。</td><td>再有新增内容时，按 ADR 0012 判断哪一段沉入分支文件，不继续上调。</td></tr>
-    <tr><td>agent 文件措辞</td><td><code class="mono">worker-h</code>、<code class="mono">worker-xh</code>、<code class="mono">explorer-h</code> 与另外三份 advisor 文件里仍有替档案做路由选择的句子（例如「claude lane 的默认 explorer」）。本版只改了 <code class="mono">worker-md</code> 与 <code class="mono">advisor-h</code>。</td><td>路由以档案为准，agent 文件的自述不决定拨盘。</td></tr>
+    <tr><td><code class="mono">SKILL.md</code> 词数</td><td>上限 2210 词（ADR 0022 决策 5 上调），以全文 <code class="mono">wc -w</code> 计。2026-09-29 实测 2160 词，有余量。</td><td>再有新增内容时，按 ADR 0012 判断哪一段沉入分支文件，不为凑字数删无关句子。</td></tr>
   </table></div>
 </section>
 
@@ -682,9 +676,23 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
 
   <h3>路由档案换成新表</h3>
   <div class="card">
-    <p><strong>改了什么</strong>正典与中文备份按 2026-09-26 的声明重写：新的锚定型号（<code class="mono">grok-4.6</code>、<code class="mono">gpt-5.6-*</code>、<code class="mono">opus-5</code> 等旧锚定退役）、按新列名排列的两张表、型号排名及其读法、两条已声明假设与失效条件、<code class="mono">sonnet-5</code> 作为 <code class="mono">sonnet-5-5</code> 占位的说明、advisor 映射、每个 claude 拨盘的 agent 文件与别名。2026-09-06 的资源偏好与 2026-09-16 的测试集数据退役。</p>
+    <p><strong>改了什么</strong>正典与中文备份在 2026-09-26 首次按当时的判断重写：新的锚定型号（<code class="mono">grok-4.6</code>、<code class="mono">gpt-5.6-*</code>、<code class="mono">opus-5</code> 等旧锚定退役）、按新列名排列的两张表、型号排名及其读法、两条已声明假设与失效条件、当时的 sonnet 占位说明、advisor 映射、每个 claude 拨盘的 agent 文件与别名。2026-09-06 的资源偏好与 2026-09-16 的测试集数据退役。椰椰在 2026-09-29 确认 <code class="mono">sonnet</code> 别名已指向 Sonnet 5.5，档案随之把锚定型号改为 <code class="mono">sonnet-5-5</code> 本身，删除占位说明；型号排名把它插进 <code class="mono">gpt-6-sol</code> 与 <code class="mono">opus-5-5</code> 之间（价格与 <code class="mono">gpt-6-sol</code> 相近），两处 explorer <code class="mono">crux</code> 格随之改写为 <code class="mono">sonnet-5-5[medium*, high]</code>；Claude Code 侧没有 <code class="mono">medium</code> explorer 文件，<code class="mono">sonnet-5-5[medium]</code> 经 <code class="mono">explorer-h</code> 跑在 <code class="mono">high</code>。</p>
     <p><strong>为什么</strong>档案规定型号换代即重估，这次换代已经触发。</p>
-    <p><strong>依据</strong>ADR 0021 决策 6、7；工单 02（到达方式依赖的观测）、工单 03。</p>
+    <p><strong>依据</strong>ADR 0021 决策 6、7（2026-09-26 的原始重写）；2026-09-29 的锚定与 explorer <code class="mono">crux</code> 格更新由椰椰声明，记在 <code class="mono">routing-profile.md</code>，没有对应的 ADR 与工单。</p>
+  </div>
+
+  <h3>路由档案随插件发布</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>档案从 <code class="mono">docs/agents/fable-advisor-routing.md</code> 移到插件内的 <code class="mono">plugin/skills/orchestration/routing-profile.md</code>，中文译本成为镜像孪生 <code class="mono">docs/zh/skills/orchestration/routing-profile.md</code>。技能直接读插件内的档案，不再读调用方指令点名的档案，也不接受点名覆盖。伴生安装器不再复制档案。改格就是改插件文件并发版，改格算次版本。</p>
+    <p><strong>为什么</strong>一张表原来有编辑源、两份活体、一份 prompts 仓库快照和一行全局指令五个落点，活体常常落后于编辑源。用户要求路由表内置到插件，减少维护压力。代价是档案随插件发给所有安装者，改格要发版。</p>
+    <p><strong>依据</strong>ADR 0023，取代 ADR 0017 决策 1、2、4、5 与 ADR 0015 决策 1 中档案位置的部分；工单 06。</p>
+  </div>
+
+  <h3>技能描述改为按事件触发</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>技能描述不再写「决定如何落实一次交付物改动时使用」，改为列出需要加载技能正文的事件：用户或上游指令要求编排或委派；没有姿态指令时编辑受任务文件约束的交付物之前；范围很宽、可独立并行或只需结论的读取之前；派发或验收任一子代理或车道之前；决策类型门的五个节点。描述从约 35 词增到约 85 词，全文 <code class="mono">wc -w</code> 因此从 2160 增到 2206（超出的 46 词全在 frontmatter，正文不含 frontmatter 为 2115 词），<code class="mono">SKILL.md</code> 词数上限相应从 2160 上调到 2210。</p>
+    <p><strong>为什么</strong>旧描述几乎覆盖每一个编码任务，技能正文常在第一条消息后就被加载，而多数任务用不上委派。</p>
+    <p><strong>依据</strong>ADR 0022 决策 2、5，修订 ADR 0015 决策 10 的描述文本。</p>
   </div>
 
   <h3>advisor 映射与两份 agent 文件的自述</h3>
@@ -717,7 +725,7 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
 
   <h3><code class="mono">SKILL.md</code> 词数上限 2110 → 2160</h3>
   <div class="card">
-    <p><strong>改了什么</strong>上限上调到 2160，落地实测 2160 词，没有余量。</p>
+    <p><strong>改了什么</strong>上限上调到 2160，落地实测 2160 词，当时没有余量；技能描述改为按事件触发后，ADR 0022 决策 5 把上限进一步上调到 2210（见前文「技能描述改为按事件触发」）。</p>
     <p><strong>为什么</strong>首轮准入、格内选择与下一档升级梯要到达每个主代理，不能沉进宿主分支文件；删掉的 senior 门与帕累托句抵不上新增内容。不为凑字数删除无关句子。</p>
     <p><strong>依据</strong>ADR 0021 决策 11，修订 ADR 0020 决策 6；工单 03。</p>
   </div>
@@ -732,11 +740,12 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
 
 <section class="manual-section changes" id="section-16" aria-labelledby="heading-16">
   <h2 id="heading-16"><span class="section-number">16</span>升级步骤与不兼容点</h2>
-  <p>从 5.2.0 升级到 6.0.0 时，下面四处行为会变。升级步骤在本节末尾。</p>
+  <p>从 5.2.0 升级到 6.0.0 时，下面五处行为会变。升级步骤在本节末尾。</p>
 
   <h3>不兼容点</h3>
   <div class="card">
-    <p><strong>路由档案</strong>列名从 <code class="mono">light</code> / <code class="mono">standard</code> / <code class="mono">senior</code> 改为 <code class="mono">mainstay</code> / <code class="mono">crux</code> / <code class="mono">rescue</code>。新技能按新列名读档案，旧会话里的 5.2.0 技能按旧列名读档案。下面四步全部完成、会话全部重启之前，不要派发。</p>
+    <p><strong>路由档案</strong>列名从 <code class="mono">light</code> / <code class="mono">standard</code> / <code class="mono">senior</code> 改为 <code class="mono">mainstay</code> / <code class="mono">crux</code> / <code class="mono">rescue</code>。新技能按新列名读档案，旧会话里的 5.2.0 技能按旧列名读档案。下面各步全部完成、会话全部重启之前，不要派发。</p>
+    <p><strong>档案位置</strong>技能只读插件内的档案，不再读调用方点名的 <code class="mono">~/.claude/docs/fable-advisor-routing.md</code>。全局提示词里点名这个路径的指令要删掉，这份活体由两侧各自手动删除一次，安装器不处理它。</p>
     <p><strong>codex 白名单</strong><code class="mono">gpt-5.6-luna</code>、<code class="mono">gpt-5.6-sol</code> 判 <code class="mono">spec_invalid</code>。手写的 spec 或脚本里用到它们时，改为 <code class="mono">gpt-6-luna</code>、<code class="mono">gpt-6-sol</code>。</p>
     <p><strong>不再回退</strong>astra 启动失败时 runner 不再改用 luna，receipt 报告失败，由主代理换候选。</p>
     <p><strong>fallback_reason</strong>字段仍在，恒为 null。依赖它非空来识别回退的调用方需要改。</p>
@@ -746,9 +755,12 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
     <strong>升级后要做什么</strong>
     <ol>
       <li>两侧都跑插件更新：<code class="mono">claude plugin marketplace update fable-advisor</code>，然后 <code class="mono">claude plugin update fable-advisor@fable-advisor</code>。Windows 侧从 WSL 执行：<code class="mono">cd /mnt/c &amp;&amp; cmd.exe /c "claude plugin marketplace update fable-advisor &amp;&amp; claude plugin update fable-advisor@fable-advisor"</code>。</li>
-      <li>从本仓检出跑伴生安装器，把新档案写到两侧活体：<code class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</code>。</li>
-      <li>用 <code class="mono">python3 scripts/install-user-level.py --check --home ~ --home /mnt/c/Users/Shy</code> 确认没有漂移。</li>
-      <li>重启 Claude Code 与 Cursor 会话。agent 文件与插件缓存只在新会话生效，跑着的会话会继续用旧版。</li>
+      <li>确认两侧缓存都出现 <code class="mono">6.0.0</code>。任一侧失败就停，保留全局指令与活体档案。</li>
+      <li>关闭两侧正在运行的 Claude Code 与 Cursor 会话。agent 文件与插件缓存只在新会话生效。</li>
+      <li>删除全局提示词里点名 <code class="mono">~/.claude/docs/fable-advisor-routing.md</code> 的指令。本机是 prompts 仓库 <code class="mono">current-prompts/CLAUDE.en.md</code>、<code class="mono">CLAUDE.zh.md</code> 与两侧 <code class="mono">~/.claude/CLAUDE.md</code> 的 "Model allocation" 一行。</li>
+      <li>每侧开一个新会话，确认分配模型时读取的是插件缓存里的 <code class="mono">routing-profile.md</code>。任一侧不符就停，不做后面的删除。</li>
+      <li>逐侧手动删除档案活体：WSL 跑 <code class="mono">rm ~/.claude/docs/fable-advisor-routing.md</code>，Windows 侧对 <code class="mono">/mnt/c/Users/Shy</code> 下的同一路径执行同样的删除。逐侧断言该文件已不存在。再从本仓检出跑伴生安装器刷新 Cursor 文件：<code class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</code>，用 <code class="mono">--check</code> 确认 Cursor 文件没有漂移。删除失败、文件仍在，或 <code class="mono">--check</code> 报告漂移，任一检查失败即停，不做第 7 步。</li>
+      <li>删除 prompts 仓库的档案快照 <code class="mono">current-prompts/docs/fable-advisor-routing.md</code> 与 <code class="mono">fable-advisor-routing.zh.md</code>。</li>
     </ol>
   </div>
 </section>
@@ -756,7 +768,7 @@ node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&l
 </main>
 <footer>
   <div class="footer-title"><span>fable-advisor · 6.0.0 版本说明书</span><a href="#overview">回到顶部 ↑</a></div>
-  真源：<code class="mono">plugin/skills/orchestration/</code>、<code class="mono">plugin/scripts/run-*.mjs</code>、<code class="mono">plugin/agents/</code>、<code class="mono">plugin/hooks/</code>、<code class="mono">scripts/install-user-level.py</code>、<code class="mono">cursor-hooks/</code>、<code class="mono">tests/</code>、<code class="mono">docs/adr/0019-report-mode-skips-git-status-failed.md</code>、<code class="mono">docs/adr/0020-one-executor-per-check-list.md</code>、<code class="mono">docs/adr/0021-tiers-mainstay-crux-rescue.md</code>、<code class="mono">CONTEXT.md</code>。填充表取值以活体路由档案为准，本页不将其当作插件行为。
+  真源：<code class="mono">plugin/skills/orchestration/</code>、<code class="mono">plugin/scripts/run-*.mjs</code>、<code class="mono">plugin/agents/</code>、<code class="mono">plugin/hooks/</code>、<code class="mono">scripts/install-user-level.py</code>、<code class="mono">cursor-hooks/</code>、<code class="mono">tests/</code>、<code class="mono">docs/adr/0019-report-mode-skips-git-status-failed.md</code>、<code class="mono">docs/adr/0020-one-executor-per-check-list.md</code>、<code class="mono">docs/adr/0021-tiers-mainstay-crux-rescue.md</code>、<code class="mono">docs/adr/0022-orchestration-load-on-events.md</code>、<code class="mono">docs/adr/0023-routing-profile-in-plugin.md</code>、<code class="mono">CONTEXT.md</code>。填充表取值以插件内的 <code class="mono">routing-profile.md</code> 为准，本页不将其当作插件机制。
 </footer>
 </div>
 <script>

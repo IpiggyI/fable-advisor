@@ -8,14 +8,8 @@ from pathlib import Path
 GATE_NAME = "fable-lane-family-gate.py"
 
 MANIFEST = (
-    ("docs/agents/fable-advisor-routing.md", ".claude/docs/fable-advisor-routing.md"),
     ("cursor-hooks/fable-lane-pin.mdc", ".cursor/rules/fable-lane-pin.mdc"),
     ("cursor-hooks/fable-lane-family-gate.py", ".cursor/hooks/fable-lane-family-gate.py"),
-)
-
-RETIRE = (
-    ".claude/rules/fable-advisor.md",
-    ".cursor/rules/fable-advisor.mdc",
 )
 
 
@@ -101,19 +95,6 @@ def install_file(dest, data, check_only):
     return False
 
 
-def process_retire(path, check_only):
-    if not path.is_file():
-        return
-    if check_only:
-        emit("warning", "still present %s" % path)
-        return
-    try:
-        path.unlink()
-    except OSError as exc:
-        raise IOError("could not remove %s: %s" % (path, exc))
-    emit("removed", path)
-
-
 def process_hooks(home):
     if gate_present(home / ".cursor" / "hooks.json"):
         return
@@ -140,8 +121,6 @@ def process_home(home, sources, check_only):
         dest = home / rel
         if install_file(dest, data, check_only):
             drifted = True
-    for rel in RETIRE:
-        process_retire(home / rel, check_only)
     process_hooks(home)
     return drifted
 
@@ -172,12 +151,12 @@ def parse_args(argv):
     parser.add_argument(
         "--check",
         action="store_true",
-        help="compare only; write nothing, delete nothing",
+        help="compare only; write nothing",
     )
     parser.add_argument(
         "--also",
         metavar="DIR",
-        help="also write the three English sources into DIR (flat, source basenames)",
+        help="also write the two English sources into DIR (flat, source basenames)",
     )
     return parser.parse_args(argv)
 

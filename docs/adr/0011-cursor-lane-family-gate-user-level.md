@@ -1,6 +1,6 @@
 # 0011 — Cursor 车道家族门：user-level 存活、仓库留档
 
-- **Status**: accepted
+- **Status**: accepted（背景里的家族门检查已被 [ADR 0014](./0014-role-pool-posture.md) 决策 12 放宽；决策 2 的"活体手动拷"已被 [ADR 0018](./0018-post-5-1-tuning.md) 决策 5 修订）
 - **Date**: 2026-08-18
 - **影响范围**: `cursor-hooks/`、`tests/test_lane_family_gate.py`、`docs/agents/cursor-lane-gate.md`、根目录 `AGENTS.md` / `CONTEXT.md`
 - **关联**: [ADR 0010](./0010-dual-harness-single-source.md)（Cursor 经插件兼容路径加载 skill/agent；receipt gate 在 Cursor 侧无 pending 故无害）

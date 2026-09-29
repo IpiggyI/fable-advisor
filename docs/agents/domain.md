@@ -17,6 +17,8 @@ The `mem` skill's default decision surface, `.memory/decisions/`, is not used in
 
 `.memory/tasks/` holds the retrospective task archive.
 
+When a new ADR revises, supersedes, or withdraws a decision of an earlier ADR, the same change appends a back-pointer to the earlier ADR's Status line, inside its parentheses, for example `决策 2 已被 [ADR 0023](./0023-routing-profile-in-plugin.md) 取代`. A reader who opens only the earlier ADR then learns that part of it no longer holds.
+
 ## Use the glossary's vocabulary
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
