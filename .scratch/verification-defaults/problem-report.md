@@ -1,6 +1,6 @@
 # 重复检查问题报告：多方成因
 
-日期：2026-10-01。调查对象：cc-usage 会话 `a39e68e3-be6d-48dd-b2ed-cd04dd6960ec`（2026-09-28）和 rustpad 会话 `129c2bee-c1f8-4a72-8bdc-1897833c95d9`（2026-10-01）。关联：[ADR 0029 草案](../../docs/adr/0029-scoped-contract-checks-and-batch-defaults.md)（proposed，按本报告的决定修订）、[任务件](spec.md)。文中时刻都是 UTC。本稿已按 `gpt-6-astra[xhigh]` 第二轮评审修订，见第 7 节。
+日期：2026-10-01。调查对象：cc-usage 会话 `a39e68e3-be6d-48dd-b2ed-cd04dd6960ec`（2026-09-28）和 rustpad 会话 `129c2bee-c1f8-4a72-8bdc-1897833c95d9`（2026-10-01）。关联：[ADR 0029 草案](../../docs/adr/0029-scoped-contract-checks-and-batch-defaults.md)（proposed，按本报告的决定修订）、[任务件](spec.md)。文中时刻都是 UTC。本稿已按 `gpt-6-astra[xhigh]` 第二轮评审修订，见第 7 节。ADR 0029 之后已接受并随 6.1.0 发布；实施、验收、发布、部署的经过和复发时的排查入口见 [前因后果记录](record.md)。
 
 ## 1. 结论
 
@@ -17,7 +17,7 @@
 ## 2. 计数口径
 
 - 一次检查指一条命令段的一次执行。只读文件的命令不计。
-- 本报告重数了全部来源：claude 车道 worker 和主会话取 Bash 命令；grok 车道取 `chat_history.jsonl` 里工具调用的 `command`；codex 车道及其子代理取 rollout 里工具调用的 `cmd` 和 `command`，FastCtx 的 `run`、`run_background` 也算在内；runner 取回执的 `verification` 数组。重数脚本为 `/tmp/fa0029/recount.py` 和 `/tmp/fa0029/recount_all.py`（临时文件）。
+- 本报告重数了全部来源：claude 车道 worker 和主会话取 Bash 命令；grok 车道取 `chat_history.jsonl` 里工具调用的 `command`；codex 车道及其子代理取 rollout 里工具调用的 `cmd` 和 `command`，FastCtx 的 `run`、`run_background` 也算在内；runner 取回执的 `verification` 数组。重数脚本为 [`tools/recount.py`](tools/recount.py) 和 [`tools/recount_all.py`](tools/recount_all.py)。`recount.py` 在切分命令段之前先去掉 heredoc 正文；早先的版本没有这一步，会把主会话写票时正文里的一条 `cargo check` 多计一次。
 - 会话的自统计（`.scratch/feedback-round-0928/evidence/count-test-runs.ts`）在 16:44 至 16:46 之间改过多版，合计依次为 91、79、82、84、82；它漏掉了 codex 车道通过 FastCtx 发出的命令。
 - 耗时取工具调用与工具结果之间的时间差；CLI 车道的运行时长取回执的 `started_at` 与 `finished_at`。
 - 上下文取单次模型调用的输入量。一条记录含多次调用（`iterations`）时取其中最大的一次。
