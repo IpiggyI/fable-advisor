@@ -18,6 +18,8 @@ Model resolution order: a per-dispatch `model` wins, then the agent file's `mode
 
 Fable as the advisor needs usage credits enabled on the account. When a `fable` dispatch fails, treat it as an unavailable candidate and re-route (SKILL.md "Re-routing"). A model is a request, not an execution guarantee: cite a receipt's model as submitted, not observed, and read `message.model` in the subagent transcript for what ran.
 
+A background subagent can be corrected while it runs. `SendMessage` to the `agentId` its dispatch returned, with no `name` needed, is delivered at the subagent's next tool call; while one long tool call is in progress, such as a foreground runner, the message waits until that call returns. A correction changes the contract: send one only when an Objective, Constraint or Verification item turns out wrong, and judge acceptance against the contract plus that message.
+
 Same flow for both CLI lanes; the codex walkthrough is canonical, the grok deltas follow it. Both runners serve the worker role by default and the read-only roles in report mode (see "Report mode" below).
 
 ## 0. The preamble reaches every lane
@@ -87,6 +89,8 @@ Three independent clocks run over a dispatch, and each one can end it:
 - **The background call** kills nothing and has no deadline of its own: only the runner's deadlines bound it. A ticket that may outlast 60 minutes runs in the background, because a single foreground call can never exceed that.
 
 Letting the runner finish is always cheaper than killing it. The CLI child is spawned detached, in its own process group, so it survives a signal aimed at the runner's process group. The runner traps SIGTERM and SIGINT, kills the child tree and writes an `interrupted` receipt — but a SIGKILL of the runner still leaves the CLI running and editing the repo, with no receipt at all.
+
+A CLI lane has no channel for a message while it runs: the runner hands the prompt over once. To correct one mid-run, stop its runner with `kill <pid>`, the pid in its running marker: that sends SIGTERM and lets the interrupt path finish. `TaskStop` on the runner's background task also sends SIGTERM but force-kills shortly after, which can cut off the receipt. Then delete the old pending spec and queue the corrected contract with `resume_session_id` set to the `interrupted` receipt's session id; the lane resumes with its context.
 
 ## 4. Judge the receipt
 

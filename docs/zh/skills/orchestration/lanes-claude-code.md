@@ -18,6 +18,8 @@ agent 定义**没写** `effort:` 时，强度跟它实际运行其上的那个�
 
 Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时，把它当作不可用的候选，按 SKILL.md「改道」改道。模型是请求值，不是执行保证：引用 receipt 的模型时写提交值，不是观测值；实际运行的模型看子代理转写里的 `message.model`。
 
+后台子代理可以在运行中被纠偏。按派发结果返回的 `agentId` 调用 `SendMessage`，不需要 `name`，消息在子代理下一次调用工具时送达；子代理正在执行一次很长的工具调用时（例如在前台运行 runner），消息要等那次调用返回。纠偏会改变合同：只在 Objective、Constraint 或 Verification 某一项被发现有错时发送，验收依据合同加这条消息。
+
 两条 CLI 车道流程相同；以 codex 演练为典范，grok 的差异紧随其后。两条 runner 默认服务 `worker` 角色，并在 report mode 下服务只读角色（见下文「报告模式」）。
 
 ## 0. 前言到达每一条车道
@@ -87,6 +89,8 @@ CLI 主进程退出后，执行器停止运行计时器，最多等待两秒来�
 - **后台调用** 不杀任何东西，自身也没有截止：只有 runner 自己的截止约束它。可能超过 60 分钟的票据放到后台运行，因为单次前台调用永远不可能超过 60 分钟。
 
 让 runner 自己跑完，总是比杀掉它更便宜。CLI 子进程以 detached 方式拉起，处在它自己的进程组中，因此它能在一个瞄准 runner 进程组的信号下存活。runner 捕获 SIGTERM 与 SIGINT，杀掉子进程树并写下一份 `interrupted` receipt——但对 runner 的一次 SIGKILL 仍会留下 CLI 继续运行、继续改动仓库，且完全没有 receipt。
+
+CLI 车道运行期间没有传递消息的通道：runner 只交付一次提示词。要在运行中纠偏，用 `kill <pid>` 停止它的 runner，pid 取自运行中标记：这只发送 SIGTERM，中断路径能完整走完。对 runner 的后台任务调用 `TaskStop` 同样先发 SIGTERM，但随后很快强制结束，可能截断 receipt 的写入。然后删除旧的 pending spec，用 `resume_session_id` 指向那份 `interrupted` receipt 的 session id，排入修正后的合同；车道带着原有上下文继续。
 
 ## 4. 裁决 receipt
 
