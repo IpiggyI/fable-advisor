@@ -2,7 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { performance } from "node:perf_hooks";
 import path from "node:path";
@@ -21,6 +21,11 @@ const SESSION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
 const PROCESS_GRACE_MS = 2_000;
+// The receipt gate treats a running marker older than MARKER_STALE_MS as dead; keep both values in step with hooks/receipt-gate.py.
+const HEARTBEAT_MS = 60_000;
+const MARKER_STALE_MS = 180_000;
+const progress = { phase: "preparing", events: 0, lastEventAt: null };
+let releaseRunningMarker = async () => {};
 let forcedCleanup = false;
 const IS_WINDOWS = process.platform === "win32";
 const VALID_MODELS = new Set(DEFAULT_EFFORTS.keys());
@@ -393,6 +398,8 @@ function observeCodexEvents(child, state, onEvent) {
     );
     state.lastEventAt = observedAt;
     state.eventObserved = true;
+    progress.events += 1;
+    progress.lastEventAt = Date.now();
     onEvent();
 
     if (state.codexSessionId === null) {
@@ -699,6 +706,71 @@ async function removePromptFile(promptPath) {
   }
 }
 
+function formatDuration(ms) {
+  const seconds = Math.floor(ms / 1_000);
+  return `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, "0")}s`;
+}
+
+async function claimMarker(markerPath, contents) {
+  try {
+    await writeFile(markerPath, contents, { encoding: "utf8", flag: "wx" });
+    return true;
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  const { mtimeMs } = await stat(markerPath);
+  if (Date.now() - mtimeMs < MARKER_STALE_MS) return false;
+  await writeFile(markerPath, contents, "utf8");
+  return true;
+}
+
+// The running marker tells the receipt gate and a second runner that this spec is in flight.
+async function acquireRunningMarker(state, specPath) {
+  const markerDirectory = path.join(state.cwd, ".fable-advisor", "running");
+  const markerPath = path.join(markerDirectory, `${state.specHash}.json`);
+  const startedMs = Date.now();
+  const render = () => `${JSON.stringify({
+    runner: "codex",
+    pid: process.pid,
+    spec: path.resolve(specPath),
+    started_at: state.startedAt,
+    heartbeat_at: new Date().toISOString(),
+    phase: progress.phase,
+    events: progress.events,
+  }, null, 2)}\n`;
+  try {
+    await mkdir(markerDirectory, { recursive: true });
+    if (!(await claimMarker(markerPath, render()))) {
+      diagnostic(`another runner is running this spec (marker ${markerPath}); wait for that runner to exit instead of starting a second one`);
+      return null;
+    }
+  } catch (error) {
+    diagnostic(`could not write running marker ${markerPath}: ${errorMessage(error)}; the receipt gate will not see this run`);
+    return async () => {};
+  }
+
+  let pendingWrite = Promise.resolve();
+  const heartbeat = setInterval(() => {
+    const lastEvent = progress.lastEventAt === null
+      ? "none yet"
+      : `${formatDuration(Date.now() - progress.lastEventAt)} ago`;
+    diagnostic(`running ${formatDuration(Date.now() - startedMs)}; phase ${progress.phase}; ${progress.events} events; last event ${lastEvent}`);
+    pendingWrite = writeFile(markerPath, render(), "utf8").catch((error) => {
+      diagnostic(`could not refresh running marker ${markerPath}: ${errorMessage(error)}`);
+    });
+  }, HEARTBEAT_MS);
+  heartbeat.unref();
+  return async () => {
+    clearInterval(heartbeat);
+    await pendingWrite;
+    try {
+      await unlink(markerPath);
+    } catch (error) {
+      diagnostic(`could not remove running marker ${markerPath}: ${errorMessage(error)}`);
+    }
+  };
+}
+
 async function main() {
   const state = initialState(new Date().toISOString());
   const parsedArguments = parseArguments(process.argv.slice(2));
@@ -730,6 +802,10 @@ async function main() {
     return emitReceipt(state);
   }
 
+  const release = await acquireRunningMarker(state, parsedArguments.specPath);
+  if (release === null) return 1;
+  releaseRunningMarker = release;
+
   let preamble;
   const preamblePath = spec.mode === "report" ? REPORT_PREAMBLE_PATH : PREAMBLE_PATH;
   try {
@@ -754,6 +830,7 @@ async function main() {
     const prompt = `${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
     promptPath = await writePromptFile(prompt);
     const promptContents = await readFile(promptPath);
+    progress.phase = "cli";
     const codexResult = await executeCodex(spec, state.cwd, promptContents);
     state.codexSessionId = codexResult.codexSessionId;
     state.codexFinalMessage = codexResult.codexFinalMessage;
@@ -777,6 +854,7 @@ async function main() {
     && state.errorClass !== "timeout"
     && state.errorClass !== "idle_timeout"
     && state.errorClass !== "interrupted") {
+    progress.phase = "verifying";
     state.verification = await runVerification(spec.verification, state.cwd);
     if (spec.mode === "report" && spec.verification.length > 0) {
       changedFilesResult = await collectChangedFiles(state.cwd);
@@ -829,6 +907,7 @@ process.on("SIGINT", onInterrupt);
 try {
   process.exitCode = await main();
 } finally {
+  await releaseRunningMarker();
   process.removeListener("SIGTERM", onInterrupt);
   process.removeListener("SIGINT", onInterrupt);
 }

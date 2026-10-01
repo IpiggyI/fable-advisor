@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,6 +45,18 @@ def write_receipt(tmpdir, spec_bytes, receipt_obj):
     path = os.path.join(receipts_dir, digest + ".json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(receipt_obj, f)
+    return path
+
+
+def write_running_marker(tmpdir, spec_bytes, age_sec=0):
+    digest = hashlib.sha256(spec_bytes).hexdigest()
+    running_dir = os.path.join(tmpdir, ".fable-advisor", "running")
+    os.makedirs(running_dir, exist_ok=True)
+    path = os.path.join(running_dir, digest + ".json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"runner": "grok", "pid": 1}, f)
+    stamp = time.time() - age_sec
+    os.utime(path, (stamp, stamp))
     return path
 
 
@@ -132,6 +145,43 @@ def case_8_report_pending_blocks():
             assert "report.json" in r.stderr, r.stderr
 
 
+def case_9_fresh_marker_allows_stop():
+    """pending spec whose runner is in flight (fresh marker) → exit 0, with or without an old receipt"""
+    for error_class in (None, "verification_failed"):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, spec_bytes = write_pending_spec(tmp, "inflight.json", b'{"task":"inflight"}')
+            if error_class is not None:
+                write_receipt(tmp, spec_bytes, {"error_class": error_class})
+            write_running_marker(tmp, spec_bytes, age_sec=30)
+            r = run_hook(tmp, {"cwd": tmp})
+            assert r.returncode == 0, "expected exit 0, got %s stderr=%r" % (
+                r.returncode,
+                r.stderr,
+            )
+
+
+def case_10_stale_marker_blocks():
+    """marker not refreshed for longer than the stale window → exit 2"""
+    with tempfile.TemporaryDirectory() as tmp:
+        _, spec_bytes = write_pending_spec(tmp, "killed.json", b'{"task":"killed"}')
+        write_running_marker(tmp, spec_bytes, age_sec=200)
+        r = run_hook(tmp, {"cwd": tmp})
+        assert r.returncode == 2, "expected exit 2, got %s" % r.returncode
+        assert "killed.json" in r.stderr, r.stderr
+
+
+def case_11_marker_covers_only_its_spec():
+    """one spec in flight, one orphan → exit 2 naming only the orphan"""
+    with tempfile.TemporaryDirectory() as tmp:
+        _, inflight = write_pending_spec(tmp, "inflight.json", b'{"task":"inflight"}')
+        write_pending_spec(tmp, "orphan.json", b'{"task":"orphan"}')
+        write_running_marker(tmp, inflight)
+        r = run_hook(tmp, {"cwd": tmp})
+        assert r.returncode == 2, "expected exit 2, got %s" % r.returncode
+        assert "orphan.json" in r.stderr, r.stderr
+        assert "inflight.json" not in r.stderr, r.stderr
+
+
 CASES = [
     ("1: no pending dir → exit 0", case_1_no_pending_dir),
     ("2: complete receipt → exit 0", case_2_complete_receipt),
@@ -141,6 +191,9 @@ CASES = [
     ("6: timeout receipt → exit 2 + stderr has timeout", case_6_timeout_receipt_blocks),
     ("7: invalid JSON → exit 0 (fail-open)", case_7_invalid_json_fail_open),
     ("8: report pending without complete receipt → exit 2", case_8_report_pending_blocks),
+    ("9: fresh running marker → exit 0", case_9_fresh_marker_allows_stop),
+    ("10: stale running marker → exit 2", case_10_stale_marker_blocks),
+    ("11: marker covers only its own spec → exit 2 naming the orphan", case_11_marker_covers_only_its_spec),
 ]
 
 

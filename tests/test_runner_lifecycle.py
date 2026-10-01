@@ -119,6 +119,7 @@ raise SystemExit(7 if mode == "nonzero" else 0)
             assert (cwd / ".fable-advisor/pending/job.json").exists() == (expected != "complete")
             receipts = list((cwd / ".fable-advisor/receipts").glob("*.json"))
             assert len(receipts) == 1 and json.loads(receipts[0].read_text()) == receipt
+            assert list((cwd / ".fable-advisor/running").glob("*")) == []
             print("PASS pipes: %s %s completed in %.2fs" % (
                 binary, mode, elapsed,
             ))

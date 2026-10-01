@@ -65,10 +65,16 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 
 The lane is done when the **runner process exits** — not when the event stream shows an `end` event, and not when a sleep runs out. Two ways to wait, no third:
 
-- Run the runner in the foreground and let Bash return on exit.
-- If it was backgrounded, `Read` the output file the background Bash call reported, and re-read it until the completion evidence below appears. Do not wait with `TaskOutput`; it is officially deprecated in favour of that `Read`.
+- Run the runner in the foreground and let Bash return on exit. This suits a ticket expected to finish well inside the Bash `timeout`.
+- Run the runner itself as a background Bash call (`run_in_background: true`), then end the turn or go on with independent work. The harness wakes the session when that process exits; judge the receipt then. The receipt gate lets the turn end while the runner is in flight.
 
-Completion evidence is the pending file disappearing or the receipt appearing under `.fable-advisor/receipts/`. Never `sleep N` and then `ls .fable-advisor/pending/` as a wait — a fixed sleep keeps burning the full interval after the runner has already exited. For parallel lanes, block on each background task in turn, or run the runners in the foreground in one message.
+Only the main session waits by ending its turn. A subagent that ends its turn returns its report to its parent, and the receipt gate does not run on that stop, so a subagent runs the runner in the foreground.
+
+Write no wait loop of your own: no `sleep`, `while`, `until` or `pgrep` polling, neither in the foreground nor wrapped into a background call. A background call that wraps a loop around the runner hands the exit notice to the loop instead of the runner, and `pgrep -f <pattern>` matches the shell that runs it, so a loop on it never ends. Re-reading the output file is not a wait either, and neither is `TaskOutput`, which is officially deprecated.
+
+Completion evidence is the pending file disappearing or the receipt appearing under `.fable-advisor/receipts/`. For parallel lanes, start each runner as its own background call in one message, or run them in the foreground in one message.
+
+While it works, the runner keeps a running marker at `.fable-advisor/running/<spec_hash>.json` (runner, pid, spec path, start time, phase `preparing | cli | verifying`, event count) and refreshes it every 60 seconds. Each refresh also writes one progress line to stderr, such as `[run-grok] running 4m00s; phase cli; 132 events; last event 0m12s ago`. The runner deletes the marker on every exit it observes; a marker not refreshed for 180 seconds belongs to a dead runner. A runner started on a spec whose marker is fresh exits with status 1, without a receipt and without starting the CLI: one spec has at most one runner at a time.
 
 After the CLI process exits, the runner stops its execution timers and allows up to two seconds for inherited output pipes to drain. It then releases any remaining pipes, records a diagnostic, and continues to verification and the receipt using the observed exit status. Preflight, Git checks, and verification commands use the same drain bound; this does not impose a runtime limit on a verification command that is still running.
 
@@ -78,7 +84,7 @@ Three independent clocks run over a dispatch, and each one can end it:
 
 - **The runner's idle deadline** (`idle_timeout_sec`, default 600 s) kills the CLI child once the event stream has been silent that long, skips verification, and leaves an `idle_timeout` receipt. An explicit `timeout_sec` adds an absolute cap on top, with a `timeout` receipt; without it the runner imposes no total limit.
 - **The harness Bash tool's `timeout`** (default 600000 ms, maximum 3600000 ms) kills the foreground call. The runner never gets to write anything, so there is no receipt at all and the pending spec stays behind. Since the runner caps nothing by default, this is the real ceiling on a foreground dispatch: a ticket expected to run long needs an explicit larger Bash `timeout`.
-- **The background read** kills nothing and has no deadline of its own: a `Read` of the task's output file returns whatever has been written so far, with the lane possibly still running, so one read is not a wait — re-read until the completion evidence appears, and judge that evidence (pending file gone, receipt present), not the length of the output. This is the only path with no upper bound; a single foreground call can never exceed 60 minutes.
+- **The background call** kills nothing and has no deadline of its own: only the runner's deadlines bound it. A ticket that may outlast 60 minutes runs in the background, because a single foreground call can never exceed that.
 
 Letting the runner finish is always cheaper than killing it. The CLI child is spawned detached, in its own process group, so it survives a signal aimed at the runner's process group. The runner traps SIGTERM and SIGINT, kills the child tree and writes an `interrupted` receipt — but a SIGKILL of the runner still leaves the CLI running and editing the repo, with no receipt at all.
 
@@ -100,7 +106,7 @@ The runner is the executor of the contract's check list: it runs `verification` 
 
 CLI-lane acceptance = `error_class: complete`, a non-null session id, verification output you can spot-check against the working tree, **and** the diff passes the tiered acceptance in [SKILL.md](SKILL.md). A missing or non-complete receipt is not done. Tier 3 is the advisor's acceptance shape; which fill answers it is the fill table's row for the advisor.
 
-The receipt is mechanically enforced: a plugin Stop hook (the **receipt gate**) blocks finishing while any spec under `.fable-advisor/pending/` lacks a `complete` receipt. On `complete` the runner deletes the pending spec itself. If you abandon or re-route a pending task, delete its pending file and say so explicitly — never let the gate be the only one who knows. The gate enforces the receipt's existence; you still judge its content.
+The receipt is mechanically enforced: a plugin Stop hook (the **receipt gate**) blocks finishing while any spec under `.fable-advisor/pending/` lacks a `complete` receipt and has no fresh running marker. A fresh marker lets the turn end, because the harness wakes the session when the backgrounded runner exits. On `complete` the runner deletes the pending spec itself. If you abandon or re-route a pending task, delete its pending file and say so explicitly — never let the gate be the only one who knows. The gate enforces the receipt's existence; you still judge its content.
 
 Add `.fable-advisor/` to the target repo's `.gitignore` — receipts embed command output. Receipts are keyed by spec hash, so parallel runner invocations with distinct spec files don't collide on the receipt — but two executors in one working tree overwrite each other's edits, and distinct pending file names are not isolation. A pick-the-stronger-diff race needs one isolated working directory per contestant (`git worktree add`), each holding its own pending spec and receiving its own receipt, with the runner's `--cwd` pointing at that worktree.
 

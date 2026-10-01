@@ -94,6 +94,7 @@ async function run(binary, killMode) {
     assert.equal(receipts.length, 1);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(receiptDir, receipts[0]), 'utf8')), receipt);
     assert.equal(fs.existsSync(specPath), Boolean(killMode));
+    assert.deepEqual(fs.readdirSync(path.join(cwd, '.fable-advisor', 'running')), []);
     if (killMode !== 'timeout') assert.equal(receipt.end_to_close_ms, null);
     if (killMode) {
       assert.deepEqual(receipt.verification, []);

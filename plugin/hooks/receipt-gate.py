@@ -2,16 +2,31 @@
 
 Specs the architect queues for a lane runner live in <cwd>/.fable-advisor/
 pending/. The runner writes a receipt keyed by the spec file's sha256 and
-deletes the pending spec on success. A pending spec without a `complete`
-receipt means the work was neither finished nor consciously abandoned, so the
-stop is blocked. Deliberately fail-open on malformed input: this gate is a
-backstop, not the primary guardrail.
+deletes the pending spec on success. While a runner works on a spec it
+refreshes <cwd>/.fable-advisor/running/<sha256>.json; a fresh marker means the
+lane is in flight, so the stop is allowed and the harness wakes the session when
+the backgrounded runner exits. A pending spec with neither a `complete` receipt
+nor a fresh marker means the work was neither finished nor consciously
+abandoned, so the stop is blocked. Deliberately fail-open on malformed input:
+this gate is a backstop, not the primary guardrail.
 """
 import glob
 import hashlib
 import json
 import os
 import sys
+import time
+
+# Keep in step with MARKER_STALE_MS in scripts/run-codex.mjs and scripts/run-grok.mjs.
+MARKER_STALE_SEC = 180
+
+
+def runner_in_flight(cwd, digest):
+    marker = os.path.join(cwd, ".fable-advisor", "running", digest + ".json")
+    try:
+        return time.time() - os.path.getmtime(marker) < MARKER_STALE_SEC
+    except OSError:
+        return False
 
 
 def main():
@@ -38,6 +53,8 @@ def main():
         except OSError:
             unmatched.append(name)
             continue
+        if runner_in_flight(cwd, digest):
+            continue
         receipt_path = os.path.join(cwd, ".fable-advisor", "receipts", digest + ".json")
         try:
             with open(receipt_path, encoding="utf-8") as f:
@@ -49,10 +66,11 @@ def main():
             unmatched.append("%s (receipt: %s)" % (name, receipt.get("error_class")))
     if unmatched:
         sys.stderr.write(
-            "RECEIPT GATE: pending spec(s) without a complete receipt: "
+            "RECEIPT GATE: pending spec(s) without a complete receipt and with no runner in flight: "
             + ", ".join(unmatched)
             + ". Run the matching runner (`node <plugin-root>/scripts/run-codex.mjs` or "
-            "`node <plugin-root>/scripts/run-grok.mjs`) --spec .fable-advisor/pending/<file> --cwd <repo>. "
+            "`node <plugin-root>/scripts/run-grok.mjs`) --spec .fable-advisor/pending/<file> --cwd <repo> "
+            "as a background Bash call, then end the turn; the harness wakes the session when it exits. "
             "If the task was re-routed or abandoned, delete the pending spec file "
             "and disclose that to the user before finishing."
         )

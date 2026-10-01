@@ -7,7 +7,7 @@
 ### 护栏与门禁
 
 **receipt gate**:
-Stop hook，fail open；针对的是**主会话自己**——排了 spec 却不跑、或把非-complete receipt 当完成的威胁。
+Stop hook，fail open；针对的是**主会话自己**——排了 spec 却不跑、或把非-complete receipt 当完成的威胁。运行中标记（`.fable-advisor/running/<spec_hash>.json`，runner 每 60 秒刷新）新鲜的 spec 视为车道在跑，不拦截（ADR 0027）。
 _Avoid_: 笼统称"护栏/guardrail"而不指明针对主会话；勿与历史上的 spawn 护栏混同（后者针对 wrapper 子代理，已随 wrapper 一并退役，见 ADR 0009）。
 
 **决策类型门**:

@@ -65,10 +65,16 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 
 车道完成于 **runner 进程退出** —— 不是事件流出现 `end` 事件时，也不是一次 sleep 到期时。等待方式只有两种，没有第三种：
 
-- 在前台运行 runner，让 Bash 在退出时返回。
-- 若已后台化，`Read` 后台 Bash 调用所报告的输出文件，并反复读取直到下文的完成证据出现。不要用 `TaskOutput` 等待；它已正式弃用，改用该 `Read`。
+- 在前台运行 runner，让 Bash 在退出时返回。这适合预计远在 Bash `timeout` 之内完成的票据。
+- 把 runner 本身作为一次后台 Bash 调用（`run_in_background: true`）运行，然后结束本轮，或继续做互不依赖的工作。该进程退出时，宿主会唤醒会话；那时再裁决 receipt。runner 运行期间，receipt gate 允许本轮结束。
 
-完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。绝不要用 `sleep N` 再 `ls .fable-advisor/pending/` 充当等待——固定睡眠会在 runner 已经退出之后继续烧完整段间隔。对于并行车道，逐条 block 每个后台任务，或在同一条消息里前台运行各 runner。
+只有主会话以结束本轮的方式等待。子代理结束本轮就是把报告交还给上级，receipt gate 不在这种结束上运行，所以子代理在前台运行 runner。
+
+不要自己写等待循环：不用 `sleep`、`while`、`until` 或 `pgrep` 轮询，前台不行，包进后台调用也不行。在 runner 外面包一层循环的后台调用，会把退出通知交给循环而不是 runner；`pgrep -f <pattern>` 会匹配到运行它的 shell 自身，所以基于它的循环永远不会结束。反复读取输出文件也不是等待；`TaskOutput` 也不是，它已正式弃用。
+
+完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。对于并行车道，在同一条消息里把每个 runner 各作为一次后台调用启动，或在同一条消息里前台运行各 runner。
+
+runner 工作期间，在 `.fable-advisor/running/<spec_hash>.json` 维护一个运行中标记（runner、pid、spec 路径、开始时间、阶段 `preparing | cli | verifying`、事件数），每 60 秒刷新一次。每次刷新同时向 stderr 写一行进度，例如 `[run-grok] running 4m00s; phase cli; 132 events; last event 0m12s ago`。runner 在它观察到的每条退出路径上都删除该标记；180 秒未刷新的标记属于已死的 runner。在标记仍新鲜的 spec 上启动的 runner 以状态 1 退出，不写 receipt，也不启动 CLI：同一份 spec 同一时间最多只有一个 runner。
 
 CLI 主进程退出后，执行器停止运行计时器，最多等待两秒来排空后代继承的输出管道。到期后，执行器释放剩余管道、记录诊断，并依据已观察到的退出状态继续核验和生成收据。预检、Git 检查和核验命令使用同样的排空期限；仍在运行的核验命令不因此获得总运行时限。
 
@@ -78,7 +84,7 @@ CLI 主进程退出后，执行器停止运行计时器，最多等待两秒来�
 
 - **runner 自己的静默截止**（`idle_timeout_sec`，默认 600 秒）在事件流静默这么久之后杀掉 CLI 子进程、跳过核验，并留下一份 `idle_timeout` receipt。显式给出的 `timeout_sec` 在其之上再加一道绝对上限，留下 `timeout` receipt；不给则 runner 不设任何总量限制。
 - **宿主 Bash 工具的 `timeout`**（默认 600000 毫秒，最大 3600000 毫秒）杀掉前台调用。runner 来不及写下任何东西，因此根本没有 receipt，而 pending spec 留在原地。既然 runner 默认不设上限，这就是前台派发的真正天花板：预计要跑很久的票据需要显式传入更大的 Bash `timeout`。
-- **后台读取** 不杀任何东西，自身也没有截止：对任务输出文件做一次 `Read` 返回目前已写入的内容，车道可能仍在运行，因此一次读取不等于一次等待——反复读取直到完成证据出现，并依据该证据裁决（pending 文件已消失、receipt 已出现），而不是依据输出长度。这是唯一没有上限的路径；单次前台调用永远不可能超过 60 分钟。
+- **后台调用** 不杀任何东西，自身也没有截止：只有 runner 自己的截止约束它。可能超过 60 分钟的票据放到后台运行，因为单次前台调用永远不可能超过 60 分钟。
 
 让 runner 自己跑完，总是比杀掉它更便宜。CLI 子进程以 detached 方式拉起，处在它自己的进程组中，因此它能在一个瞄准 runner 进程组的信号下存活。runner 捕获 SIGTERM 与 SIGINT，杀掉子进程树并写下一份 `interrupted` receipt——但对 runner 的一次 SIGKILL 仍会留下 CLI 继续运行、继续改动仓库，且完全没有 receipt。
 
@@ -100,7 +106,7 @@ runner 是契约检查列表的执行者：CLI 退出之后由它自己跑 `veri
 
 CLI 车道验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。第 3 层是 `advisor` 的 acceptance 形状；由哪种填充来答，是填充表中 `advisor` 那一行。
 
-receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fable-advisor/pending/` 下任何 spec 缺少 `complete` receipt 时阻止结束。一旦 `complete`，runner 自行删除 pending spec。若你放弃或改道一项 pending 任务，删除其 pending 文件并显式说明——绝不让 gate 成为唯一知情者。gate 强制的是 receipt 的存在；其内容仍由你裁决。
+receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fable-advisor/pending/` 下任何 spec 缺少 `complete` receipt、且没有新鲜运行中标记时阻止结束。新鲜标记允许本轮结束，因为后台 runner 退出时宿主会唤醒会话。一旦 `complete`，runner 自行删除 pending spec。若你放弃或改道一项 pending 任务，删除其 pending 文件并显式说明——绝不让 gate 成为唯一知情者。gate 强制的是 receipt 的存在；其内容仍由你裁决。
 
 把 `.fable-advisor/` 加入目标仓库的 `.gitignore`——receipt 内嵌命令输出。receipt 按 spec 哈希键控，因此带不同 spec 文件的并行 runner 调用不会在 receipt 上碰撞——但同一工作树上的两个执行者会互相覆盖对方的改动，不同的 pending 文件名不是隔离。一次「挑选更强 diff」的竞速需要每位选手一个隔离工作目录（`git worktree add`），各自持有自己的 pending spec 并收到自己的 receipt，runner 的 `--cwd` 指向该 worktree。
 

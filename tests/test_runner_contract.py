@@ -1444,6 +1444,93 @@ def case_last_terminal_event_drives_timing():
         )
 
 
+def fake_marker_cli(directory, binary):
+    write_executable(
+        directory,
+        binary,
+        """#!/usr/bin/env python3
+import json, os, sys, time
+from pathlib import Path
+args = sys.argv[1:]
+if args == ["--version"]:
+    raise SystemExit(0)
+if args == ["models"]:
+    print("* grok-test (default)")
+    raise SystemExit(0)
+with open(os.environ["CALL_LOG"], "a", encoding="utf-8") as handle:
+    handle.write(json.dumps(args) + "\\n")
+codex = "exec" in args
+if codex:
+    sys.stdin.read()
+    print(json.dumps({"type": "thread.started", "thread_id": "marker-session"}), flush=True)
+else:
+    print(json.dumps({"type": "text", "data": "working"}), flush=True)
+time.sleep(0.5)
+markers = {path.name: json.loads(path.read_text())
+           for path in Path(os.environ["RUNNING_DIR"]).glob("*.json")}
+Path(os.environ["SEEN"]).write_text(json.dumps({"ppid": os.getppid(), "markers": markers}))
+if codex:
+    print(json.dumps({"type": "turn.completed"}), flush=True)
+else:
+    session = args[args.index("--session-id") + 1]
+    print(json.dumps({"type": "end", "sessionId": session, "stopReason": "done"}), flush=True)
+""",
+    )
+
+
+def case_running_marker():
+    for binary in ("codex", "grok"):
+        for scenario in ("fresh_run", "duplicate", "stale_marker"):
+            with tempfile.TemporaryDirectory() as tmp:
+                bin_dir = Path(tmp) / "bin"
+                bin_dir.mkdir()
+                fake_marker_cli(bin_dir, binary)
+                fake_git(bin_dir)
+                runner = copy_runner(tmp, "run-%s.mjs" % binary)
+                runner.write_text(runner.read_text().replace(
+                    "const HEARTBEAT_MS = 60_000;", "const HEARTBEAT_MS = 100;",
+                ))
+                cwd = Path(tmp) / "work"
+                cwd.mkdir()
+                spec = base_spec()
+                spec_hash = hashlib.sha256(json.dumps(spec).encode("utf-8")).hexdigest()
+                running_dir = cwd / ".fable-advisor" / "running"
+                marker = running_dir / ("%s.json" % spec_hash)
+                if scenario != "fresh_run":
+                    running_dir.mkdir(parents=True)
+                    marker.write_text('{"runner": "other"}', encoding="utf-8")
+                    if scenario == "stale_marker":
+                        stamp = time.time() - 200
+                        os.utime(marker, (stamp, stamp))
+                call_log = Path(tmp) / "calls.jsonl"
+                seen_path = Path(tmp) / "seen.json"
+                result, receipt = run_runner(
+                    runner, cwd, spec, bin_dir,
+                    {"CALL_LOG": str(call_log), "RUNNING_DIR": str(running_dir),
+                     "SEEN": str(seen_path)},
+                    pending=True, timeout=8,
+                )
+                if scenario == "duplicate":
+                    assert result.returncode == 1, (result.returncode, result.stderr)
+                    assert receipt is None, receipt
+                    assert "another runner is running this spec" in result.stderr, result.stderr
+                    assert not call_log.exists(), call_log.read_text()
+                    assert not (cwd / ".fable-advisor" / "receipts").exists()
+                    assert (cwd / ".fable-advisor" / "pending" / "job.json").exists()
+                    assert marker.read_text(encoding="utf-8") == '{"runner": "other"}'
+                else:
+                    assert receipt["error_class"] == "complete", (receipt, result.stderr)
+                    seen = json.loads(seen_path.read_text())
+                    in_flight = seen["markers"]["%s.json" % spec_hash]
+                    assert in_flight["runner"] == binary, in_flight
+                    assert in_flight["pid"] == seen["ppid"], (in_flight, seen)
+                    assert in_flight["phase"] == "cli", in_flight
+                    assert in_flight["events"] >= 1, in_flight
+                    assert "phase cli; " in result.stderr, result.stderr
+                    assert list(running_dir.glob("*")) == [], list(running_dir.glob("*"))
+                print("ASSERT running marker: runner=%s scenario=%s" % (binary, scenario))
+
+
 CASES = [
     ("mode validation", case_mode_validation),
     ("report and implement modes", case_report_and_implement_modes),
@@ -1464,6 +1551,7 @@ CASES = [
     ("idle diagnostic", case_idle_diagnostic),
     ("interrupted receipt and process tree", case_interrupted_receipt_and_process_tree),
     ("idle and wall deadlines", case_idle_and_wall_deadlines),
+    ("running marker", case_running_marker),
 ]
 
 
