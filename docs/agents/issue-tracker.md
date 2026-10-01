@@ -9,13 +9,13 @@ Issues and specs (you may know a spec as a PRD) for this repo live as markdown f
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` — never a single combined tickets file
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
-- Checks the ticket's contract held for a later batch go under a `## Held for batch acceptance` heading, one line each
+- Batch checks are recorded once per feature, under a `## Batch checks` heading in its spec or closing ticket
 
-## Held for batch acceptance
+## Batch checks
 
-A delivery contract carries only the checks that decide that contract; an expensive check shared with sibling tickets is held for one batch run after the last of them lands (`CONTEXT.md`, "批次验收"). The held check has no mechanical keeper — the receipt gate does not see it and no runner records it — so the ticket file is where it lives.
+A delivery contract carries only the checks scoped to its own change; a costly check wider than one contract's change (full suite, browser or end-to-end suite, full build or package) is a batch check (`CONTEXT.md`, "批次验收"). A batch check has no mechanical keeper — the receipt gate does not see it and no runner records it — so the task artifact is where it lives.
 
-Write each held check as one line under `## Held for batch acceptance` when the ticket is written, and record the batch's actual result there when it runs. A ticket whose checklist is fully ticked while that section still names an unrun check is not accepted.
+Name each batch check once under `## Batch checks` in the feature's spec or closing ticket when the batch is planned, and record its result there when it runs: passed, failed or pending, with its output or the path to it. A feature with a failed or pending batch check, one left unrun by an early stop included, is not done unless the user waives it.
 
 ## When a skill says "publish to the issue tracker"
 

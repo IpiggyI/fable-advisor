@@ -1,6 +1,6 @@
 # 0020 — 一份检查列表一个执行者，昂贵检查合并成批次验收
 
-- **Status**: accepted（决策 6 的上限已被 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 11 上调；头部的版本号已被 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 12 取代）
+- **Status**: accepted（决策 6 的上限已被 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 11 上调；头部的版本号已被 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 12 取代；决策 2、3、8 已被 [ADR 0029](./0029-scoped-contract-checks-and-batch-defaults.md) 修订）
 - **Date**: 2026-09-20
 - **影响范围**: `plugin/scripts/run-grok.mjs`、`plugin/scripts/run-codex.mjs`、`tests/test_runner_contract.py`、`plugin/skills/orchestration/`（`SKILL.md`、`lane-preamble.md`、`lanes-claude-code.md`、`lanes-cursor.md`）、`plugin/agents/explorer-h.md`、`plugin/agents/explorer-xh.md` 与 `docs/zh/` 六份孪生、`CONTEXT.md`（新词条「批次验收」）、`docs/agents/issue-tracker.md`。版本定为 5.3.0，但本批不单独发布——椰椰 2026-09-20 决定与后续改动攒齐一起发
 - **关联**: [ADR 0012](./0012-orchestration-skill-progressive-disclosure.md)（`SKILL.md` 词数预算——本次把上限从 1960 上调）、[ADR 0013](./0013-delivery-contract-not-build-instructions.md)（五部契约与前言单源——本次改第 5 部语义、前言增一条）、[ADR 0015](./0015-global-orchestration-entry.md)（上限 1960 的来源）、[ADR 0009](./0009-grok-lane-dewrapper-runner.md)（runner 直驱，注入句的出处）。上游交接 `/mnt/d/Development/Local/prompts/docs/plans/fable-advisor-verification-handoff-2026-09.md`；任务件 `.scratch/verification-batching/`

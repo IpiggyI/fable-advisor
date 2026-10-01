@@ -387,6 +387,49 @@ def case_runner_owns_verification_list():
     print("ASSERT runner owns verification: both runners new sentence iff non-empty; retired gone; list runs once")
 
 
+def case_verification_output_log():
+    marker = "FULL-OUTPUT-MARKER"
+    for binary in ("codex", "grok"):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            fake_report_cli(bin_dir, binary)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            receipts = cwd / ".fable-advisor" / "receipts"
+            receipts.mkdir(parents=True)
+            env = {"CALL_LOG": str(Path(tmp) / "calls"), "PROMPT_LOG": str(Path(tmp) / "prompt")}
+
+            spec = base_spec(verification=[
+                "echo %s; printf '%%03000d\\n' 0; exit 3" % marker,
+                "echo second",
+            ])
+            spec_hash = hashlib.sha256(json.dumps(spec).encode("utf-8")).hexdigest()
+            logs = [".fable-advisor/receipts/%s.verification-%d.log" % (spec_hash, n) for n in (1, 2)]
+            (cwd / logs[1]).write_text("STALE\n", encoding="utf-8")
+            result, receipt = run_runner(runner, cwd, spec, bin_dir, env)
+            assert receipt["error_class"] == "verification_failed", (receipt, result.stderr)
+            first, second = receipt["verification"]
+            assert first["exit_code"] == 3, first
+            assert marker not in first["output_tail"], first
+            assert [first["output_log"], second["output_log"]] == logs, receipt
+            full = (cwd / logs[0]).read_text(encoding="utf-8")
+            assert full.startswith(marker + "\n") and full.endswith(first["output_tail"]), full[:80]
+            assert (cwd / logs[1]).read_text(encoding="utf-8") == "second\n"
+
+            spec = base_spec(verification=["echo kept"])
+            spec_hash = hashlib.sha256(json.dumps(spec).encode("utf-8")).hexdigest()
+            (receipts / ("%s.verification-1.log" % spec_hash)).mkdir()
+            result, receipt = run_runner(runner, cwd, spec, bin_dir, env)
+            assert receipt["error_class"] == "complete", (receipt, result.stderr)
+            assert receipt["verification"] == [
+                {"command": "echo kept", "exit_code": 0, "output_tail": "kept\n", "output_log": None},
+            ], receipt
+            assert "could not write verification log" in result.stderr, result.stderr
+    print("ASSERT verification output log: both runners stream full output to numbered logs; unwritable log is null, verdict unchanged")
+
+
 def case_empty_report():
     for binary in ("codex", "grok"):
         for chunks in ([], [""], [" \t\n"], [" Findings. \n"]):
@@ -1535,6 +1578,7 @@ CASES = [
     ("mode validation", case_mode_validation),
     ("report and implement modes", case_report_and_implement_modes),
     ("runner owns verification list", case_runner_owns_verification_list),
+    ("verification output log", case_verification_output_log),
     ("empty report", case_empty_report),
     ("dirty baseline", case_dirty_baseline),
     ("spec title", case_title),

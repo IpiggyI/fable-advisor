@@ -2,6 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { performance } from "node:perf_hooks";
@@ -13,6 +14,7 @@ const DEFAULT_IDLE_TIMEOUT_SEC = 600;
 const interruption = new AbortController();
 const PREPARATION_TIMEOUT_MS = 30_000;
 const OUTPUT_TAIL_LENGTH = 2_000;
+const LOG_QUEUE_LIMIT = 16 * 1024 * 1024;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
 const PROCESS_GRACE_MS = 2_000;
 // The receipt gate treats a running marker older than MARKER_STALE_MS as dead; keep both values in step with hooks/receipt-gate.py.
@@ -527,29 +529,76 @@ function appendTail(current, chunk) {
     : combined.slice(-OUTPUT_TAIL_LENGTH);
 }
 
-async function runVerificationCommand(command, cwd) {
+function openVerificationLog(cwd, logPath) {
+  const stream = createWriteStream(path.join(cwd, logPath));
+  const closed = new Promise((resolve) => { stream.once("close", resolve); });
+  let failure = null;
+  let fellBehind = false;
+  stream.on("error", (error) => { failure ??= error; });
+  return {
+    write(chunk) {
+      if (failure !== null) return;
+      stream.write(chunk);
+      // shortcut: a log that falls behind the command's output is dropped rather than slowing the command it records; ceiling: when disk writes lag the output by more than LOG_QUEUE_LIMIT bytes, output_log is null; replace when: a receipt shows output_log null with a "fell more than" diagnostic.
+      if (stream.writableLength > LOG_QUEUE_LIMIT) {
+        fellBehind = true;
+        failure = new Error(`writing fell more than ${LOG_QUEUE_LIMIT} bytes behind the output`);
+        stream.destroy();
+      }
+    },
+    async close() {
+      stream.end();
+      await closed;
+      if (failure === null) return logPath;
+      diagnostic(`could not write verification log ${logPath}: ${errorMessage(failure)}`);
+      if (fellBehind) {
+        try {
+          await unlink(path.join(cwd, logPath));
+        } catch (error) {
+          diagnostic(`could not remove partial verification log ${logPath}: ${errorMessage(error)}`);
+        }
+      }
+      return null;
+    },
+  };
+}
+
+async function runVerificationCommand(command, cwd, logPath) {
+  const log = openVerificationLog(cwd, logPath);
+  let outputTail = "";
+  const record = (chunk) => {
+    outputTail = appendTail(outputTail, chunk);
+    log.write(chunk);
+  };
   let child;
   try {
     child = spawn(command, { cwd, shell: true, stdio: ["ignore", "pipe", "pipe"] });
   } catch (error) {
-    return { command, exit_code: 1, output_tail: errorMessage(error) };
+    record(errorMessage(error));
+    return { command, exit_code: 1, output_tail: outputTail, output_log: await log.close() };
   }
 
-  let outputTail = "";
   const lifecycle = monitorProcess(child);
   child.stdout.setEncoding("utf8");
   child.stderr.setEncoding("utf8");
-  child.stdout.on("data", (chunk) => { outputTail = appendTail(outputTail, chunk); });
-  child.stderr.on("data", (chunk) => { outputTail = appendTail(outputTail, chunk); });
+  child.stdout.on("data", record);
+  child.stderr.on("data", record);
   const result = await lifecycle.done;
-  if (result.spawnError) outputTail = appendTail(outputTail, errorMessage(result.spawnError));
-  return { command, exit_code: result.code ?? 1, output_tail: outputTail };
+  if (result.spawnError) record(errorMessage(result.spawnError));
+  return { command, exit_code: result.code ?? 1, output_tail: outputTail, output_log: await log.close() };
 }
 
-async function runVerification(commands, cwd) {
+async function runVerification(commands, cwd, specHash) {
+  const receiptDirectory = path.join(cwd, ".fable-advisor", "receipts");
+  try {
+    await mkdir(receiptDirectory, { recursive: true });
+  } catch (error) {
+    diagnostic(`could not create receipt directory ${receiptDirectory}: ${errorMessage(error)}`);
+  }
   const results = [];
-  for (const command of commands) {
-    results.push(await runVerificationCommand(command, cwd));
+  for (const [index, command] of commands.entries()) {
+    const logPath = `.fable-advisor/receipts/${specHash}.verification-${index + 1}.log`;
+    results.push(await runVerificationCommand(command, cwd, logPath));
   }
   return results;
 }
@@ -827,7 +876,7 @@ async function main() {
     && state.errorClass !== "idle_timeout"
     && state.errorClass !== "interrupted") {
     progress.phase = "verifying";
-    state.verification = await runVerification(spec.verification, state.cwd);
+    state.verification = await runVerification(spec.verification, state.cwd, state.specHash);
     if (spec.mode === "report" && spec.verification.length > 0) {
       changedFilesResult = await collectChangedFiles(state.cwd);
       state.changedFiles = changedFilesResult.files;

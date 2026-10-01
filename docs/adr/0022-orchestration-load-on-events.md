@@ -1,6 +1,6 @@
 # 0022 — 编排技能按事件加载：技能描述收窄，全局入口改为事件触发
 
-- **Status**: accepted（2026-09-28 椰椰确认定稿；定稿文本经 `gpt-6-astra` xhigh advisor 两轮裁决）
+- **Status**: accepted（2026-09-28 椰椰确认定稿；定稿文本经 `gpt-6-astra` xhigh advisor 两轮裁决；决策 5 的上限已被 [ADR 0029](./0029-scoped-contract-checks-and-batch-defaults.md) 决策 8 上调到 2340）
 - **Date**: 2026-09-28
 - **影响范围**: `plugin/skills/orchestration/SKILL.md` 第 3 行 `description`、`docs/zh/skills/orchestration/SKILL.md` 第 3 行；`.scratch/tiers-and-routing-6-0/spec.md` TR-9 与 S4 的词数上限。技能正文不变。用户全局入口（prompts 仓库 `current-prompts/CLAUDE.en.md`、`CLAUDE.zh.md` 的平台适配段）同期改写，归用户维护，不在本仓。
 - **关联**: 修订 [ADR 0015](./0015-global-orchestration-entry.md) 决策 10 的描述文本；全局入口的来历见 ADR 0015 背景。任务记录 `.scratch/orchestration-lazy-load/proposal.md`。codex-advisor 同类改动记在该仓 ADR 0007。
