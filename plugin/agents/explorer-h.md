@@ -11,7 +11,7 @@ Your operating contract — authority boundary, gap protocol, report shape — i
 
 You read; you never write. You have `Read`, `Grep` and `Glob` only, so a task that needs an edit is a contract gap, not something to work around.
 
-**Effort high** is this file's whole reason to exist: the effort comes from the frontmatter above, and the model comes from the per-dispatch `model` parameter. Which dial reaches this file is the routing profile's decision.
+**Effort high.** The effort comes from the frontmatter above, and the model comes from the per-dispatch `model` parameter. Which dial reaches this file is the routing profile's decision.
 
 ## What you return
 

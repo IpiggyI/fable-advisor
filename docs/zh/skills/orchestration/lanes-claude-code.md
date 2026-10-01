@@ -42,7 +42,7 @@ Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时�
 
 调谐字段可选，且失败即响——越界值或未知顶层键会被拒绝为 `spec_invalid`，从不被静默强制转换。receipt 记录 runner 提交给 CLI 的值。
 
-- `model` — `gpt-6-astra`（默认）、`gpt-6-luna` 或 `gpt-6.1-sol`；codex 目录是静态白名单，因此已退役的名字是 `spec_invalid`。
+- `model` — `gpt-6-astra`（默认）、`gpt-6-luna` 或 `gpt-6.1-sol`；codex 目录是静态白名单，因此其他名字都是 `spec_invalid`。
 - `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。省略时，runner 按型号提交默认值：astra → `medium`，luna → `max`，sol → `high`；这是 runner 的省略默认，不是档案的默认。一个任务用哪个拨盘，由填充表决定。
 - `title` — 可选；提示第一行，原文纯文本，不加 Markdown 标记。省略时该行是 spec 文件去掉 `.json` 的基名。
 - `service_tier` — 省略则用 Codex 自己的默认；`"fast"` 是 Codex 的速度模式：大约快 1.5 倍，ChatGPT credit 消耗大约为 2.5 倍，智力不损失。不适用于 API-key 计费。
@@ -66,7 +66,7 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 车道完成于 **runner 进程退出** —— 不是事件流出现 `end` 事件时，也不是一次 sleep 到期时。等待方式只有两种，没有第三种：
 
 - 在前台运行 runner，让 Bash 在退出时返回。
-- 若已后台化，`Read` 后台 Bash 调用所报告的输出文件，并反复读取直到下文的完成证据出现。`TaskOutput` 已正式弃用，改用该 `Read`；弃用并不等于今天不可用，但等待协议按 `Read` 来写。
+- 若已后台化，`Read` 后台 Bash 调用所报告的输出文件，并反复读取直到下文的完成证据出现。不要用 `TaskOutput` 等待；它已正式弃用，改用该 `Read`。
 
 完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。绝不要用 `sleep N` 再 `ls .fable-advisor/pending/` 充当等待——固定睡眠会在 runner 已经退出之后继续烧完整段间隔。对于并行车道，逐条 block 每个后台任务，或在同一条消息里前台运行各 runner。
 
@@ -88,7 +88,7 @@ runner 把 receipt 打印到 stdout，并写入 `.fable-advisor/receipts/<spec_h
 
 - `error_class` — `complete | spec_invalid | codex_unavailable | preparation_stalled | idle_timeout | timeout | interrupted | codex_failed | verification_failed | no_diff | unexpected_diff | empty_report | git_status_failed`。
 - `codex_session_id` — 绑定到所拉起进程的事件流，不受并发会话串扰；在恢复运行上它等于被恢复的 id。
-- `model_requested`、`model_used`、`fallback_reason`（恒为 null，为兼容保留）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程自然触发 `close` 的时长；未见终止事件或管道被强制释放时为 `null`——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是诊断，不是门禁：一次 `idle_timeout` 之后它说明静默截止是不是定得太紧，正常跑完的运行上它显示还剩多少余量）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。三层，不是两层：`model_requested` 是 spec 请求的值；`model_used` 与 `effort` 是 runner 提交给 CLI 的值；runner 不读取 CLI 运行事件来获知实际执行的配置，因此那一层仍未知——引用 receipt 的 model 或 effort 时，写 "submitted, not observed"。
+- `model_requested`、`model_used`、`fallback_reason`（恒为 null）、`resumed_from`（无恢复时为 null）、`end_to_close_ms`（终止事件到进程自然触发 `close` 的时长；未见终止事件或管道被强制释放时为 `null`——这是诊断，不是门禁）、`max_idle_ms`（CLI 流上相邻两个事件之间的最长间隔，从子进程拉起量到最后一个事件；未观察到任何事件时为 null——这是诊断，不是门禁：一次 `idle_timeout` 之后它说明静默截止是不是定得太紧，正常跑完的运行上它显示还剩多少余量）、`idle_timeout_sec` 与 `timeout_sec`（本次实际生效的值；未设绝对上限时 `timeout_sec` 为 null）。三层：`model_requested` 是 spec 请求的值；`model_used` 与 `effort` 是 runner 提交给 CLI 的值；runner 不读取 CLI 运行事件来获知实际执行的配置，因此那一层仍未知——引用 receipt 的 model 或 effort 时，写 "submitted, not observed"。
 - `dirty_baseline` — 开跑前一次 `git status --porcelain` 非空为 `true`，空为 `false`，该次 `git status` 本身失败为 `null`（运行继续）。两种模式、两条 runner 都记录。
 - `changed_files`，外加核验命令的实际退出码与输出尾部。
 
@@ -133,8 +133,8 @@ node "<plugin-root>/scripts/run-grok.mjs" --spec .fable-advisor/pending/<slug>.j
 
 - Spec 键：五个部分加上可选的 `model`、`effort`、`mode`、`title`、`idle_timeout_sec`、`timeout_sec` 和 `resume_session_id`。
 - `effort` — 可选，白名单 `low | medium | high | xhigh`；越界值是 `spec_invalid`。省略则不发送 effort 标志，因此 CLI 自己的默认生效；receipt 记录 runner 提交给 CLI 的值（省略时为 null），从不是 CLI 实际跑的值。这就是在不换车道的情况下给 grok `worker` 设定拨盘的方式。
-- `model` — 默认省略：未设置则不发送 `-m` 标志，因此 CLI 跑自己的默认并跟踪实时目录（当前为 grok-4.7，2026-09），世代更换时 spec 零改动。仅在有意挑选 `grok models` 列出的非默认目录条目时才设置。当目录可读时，`model` 对照每一个列出的条目校验——不在目录中的模型是 `spec_invalid`。目录不可读不是 `grok_unavailable`：runner 记录一条诊断、跳过校验，由真正的运行决定可用性。
-- 错误类镜像 `codex lane`（`grok_unavailable | grok_failed | …`，外加 `no_diff`、`unexpected_diff`、`empty_report` 和 `git_status_failed`）。receipt 携带同样的 `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` 字段（`fallback_reason` 恒为 null，为兼容保留——两条 runner 都不换型号），并额外记录 grok 结束事件中的 `usage` 与 `total_cost_usd`。`grok_session_id` 由 runner 注入（`--session-id`），而非从流中嗅探。
+- `model` — 默认省略：未设置则不发送 `-m` 标志，因此 CLI 跑自己的默认并跟踪实时目录，世代更换时 spec 零改动。仅在有意挑选 `grok models` 列出的非默认目录条目时才设置。当目录可读时，`model` 对照每一个列出的条目校验——不在目录中的模型是 `spec_invalid`。目录不可读不是 `grok_unavailable`：runner 记录一条诊断、跳过校验，由真正的运行决定可用性。
+- 错误类镜像 `codex lane`（`grok_unavailable | grok_failed | …`，外加 `no_diff`、`unexpected_diff`、`empty_report` 和 `git_status_failed`）。receipt 携带同样的 `model_requested` / `model_used` / `fallback_reason` / `resumed_from` / `end_to_close_ms` / `max_idle_ms` / `idle_timeout_sec` / `timeout_sec` 字段（`fallback_reason` 恒为 null：两条 runner 都不换型号），并额外记录 grok 结束事件中的 `usage` 与 `total_cost_usd`。`grok_session_id` 由 runner 注入（`--session-id`），而非从流中嗅探。
 
 ## 派发，而非探测
 

@@ -11,7 +11,7 @@ tools: Read, Grep, Glob
 
 你只读，从不写。你只有 `Read`、`Grep`、`Glob`，所以一项需要编辑的任务是契约缺口，不是要绕过去的障碍。
 
-**effort high** 就是本文件存在的全部理由：强度来自上面的 frontmatter，模型来自派发时的 `model` 参数。哪个拨盘到达本文件，由路由档案决定。
+**effort high**。强度来自上面的 frontmatter，模型来自派发时的 `model` 参数。哪个拨盘到达本文件，由路由档案决定。
 
 ## 你返回什么
 

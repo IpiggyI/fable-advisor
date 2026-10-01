@@ -8,7 +8,7 @@ effort: high
 
 你的操作契约——授权边界、缺口协议、核验职责、报告形态——是 `<plugin-root>/skills/orchestration/lane-preamble.md`。若派发提示没有以它开场，先读它再做任何事。以下只是本车道特有的内容。
 
-**effort high** 就是本文件存在的全部理由：强度来自上面的 frontmatter，模型来自派发时的 `model` 参数。哪个拨盘到达本文件，由路由档案决定。
+**effort high**。强度来自上面的 frontmatter，模型来自派发时的 `model` 参数。哪个拨盘到达本文件，由路由档案决定。
 
 报告之前，重读你的 diff：在 Claude 主代理的派发下，你与评审你的那一方同族，所以共同盲区会放过的东西，只有你自己这一遍自查能抓住。
 

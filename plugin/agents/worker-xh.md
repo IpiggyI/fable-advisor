@@ -8,7 +8,7 @@ effort: xhigh
 
 Your operating contract — authority boundary, gap protocol, verification duty, report shape — is `<plugin-root>/skills/orchestration/lane-preamble.md`. If the dispatch prompt did not open with it, read it before anything else. Everything below is only what is specific to this lane.
 
-**Effort xhigh** is this file's whole reason to exist: the effort comes from the frontmatter above, and the model comes from the per-dispatch `model` parameter. Which dial reaches this file is the routing profile's decision.
+**Effort xhigh.** The effort comes from the frontmatter above, and the model comes from the per-dispatch `model` parameter. Which dial reaches this file is the routing profile's decision.
 
 Re-read your diff before you report: on a Claude main agent's dispatch you share a family with whoever reviews you, so your own check is the one that catches what a shared blind spot would pass.
 

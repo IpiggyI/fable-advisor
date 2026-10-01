@@ -5,7 +5,7 @@ pending/. The runner writes a receipt keyed by the spec file's sha256 and
 deletes the pending spec on success. A pending spec without a `complete`
 receipt means the work was neither finished nor consciously abandoned, so the
 stop is blocked. Deliberately fail-open on malformed input: this gate is a
-ratchet, not the primary guardrail.
+backstop, not the primary guardrail.
 """
 import glob
 import hashlib
