@@ -17,7 +17,7 @@ Only `plugin/` ships: `marketplace.json` sets `"source": "./plugin"`, and Claude
 
 ## 1b. Sync the Chinese mirror
 
-Every `plugin/**/*.md` touched by the release has a twin at the same relative path under `docs/zh/` (see `AGENTS.md`, "Chinese mirror of runtime docs"). Update the twins in the same commit and run `python3 tests/test_zh_mirror.py`.
+Every `plugin/**/*.md` touched by the release has a twin at the same relative path under `docs/zh/` (see `AGENTS.md`, "Chinese mirror of runtime docs"). Update the twins in the same commit and run `python3 tests/test_zh_mirror.py` and `python3 tests/test_shipped_wording.py`.
 
 ## 2. Commit and push
 

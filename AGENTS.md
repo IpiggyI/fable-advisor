@@ -54,6 +54,8 @@ Text that ships under `plugin/**`, together with its `docs/zh/**` twins, states 
 - retired names → `_Avoid_` in `CONTEXT.md`;
 - dated observations and unverified status → the task file or ADR.
 
+`python3 tests/test_shipped_wording.py` fails on known phrasings of this kind; a pass does not prove the rule as a whole.
+
 ### Canonical notation for the user's declarations
 
 The user often declares models and dials in loose notation: `opus5.5`, `opus5-5`, `6-sol`, `sol`, `astra[low, medium]`, `[low* medium]`. Every artifact writes them in canonical form, with no note on the original spelling:
@@ -61,3 +63,5 @@ The user often declares models and dials in loose notation: `opus5.5`, `opus5-5`
 - dials as `model[a*, b]` (`CONTEXT.md`, "拨盘"); a multi-effort dial without `*` gets it on the first listed effort, which is already its default.
 
 Verbatim quotes of the user in specs and discussion records stay as written. Ask only when a loose name fits more than one model.
+
+The same test checks shipped text and `README.md`: every dial uses an anchored id and canonical brackets, every routing-profile table cell is an anchored id, and no known loose model name appears.

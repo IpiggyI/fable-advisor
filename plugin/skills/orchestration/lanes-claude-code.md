@@ -43,7 +43,7 @@ Write the five-part spec as JSON to `.fable-advisor/pending/<slug>.json` in the 
 The tuning fields are optional and fail-loud — an out-of-range value or unknown top-level key is rejected as `spec_invalid`, never silently coerced. The receipt records the values the runner submitted to the CLI.
 
 - `model` — `gpt-6-astra` (default), `gpt-6-luna`, or `gpt-6.1-sol`; the codex catalog is a static whitelist, so any other name is `spec_invalid`.
-- `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. When omitted, the runner submits a per-model default: astra → `medium`, luna → `max`, sol → `high`; these are the runner's omission defaults, not the profile's. Which dial a task gets is the fill table's call.
+- `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. When omitted, the runner submits a per-model default: `gpt-6-astra` → `medium`, `gpt-6-luna` → `max`, `gpt-6.1-sol` → `high`; these are the runner's omission defaults, not the profile's. Which dial a task gets is the fill table's call.
 - `title` — optional; first prompt line, verbatim plain text, no Markdown marker. When absent, that line is the spec file's basename without `.json` (the slug).
 - `service_tier` — omit for Codex's own default; `"fast"` is Codex's speed mode: about 1.5× faster at about 2.5× the ChatGPT credit consumption, with no loss of intelligence. It does not apply on API-key billing.
 - `idle_timeout_sec` — the silence deadline (default 600 s): how long after the *last* event a stalled CLI child is killed. A lane that keeps emitting events runs as long as it takes; only silence is cut, and that path skips verification, so a lane cut here loses its verification evidence entirely.
