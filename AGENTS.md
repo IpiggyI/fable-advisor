@@ -46,3 +46,18 @@ In the orchestrating posture, the doctrine prose under `plugin/skills/**` (excep
 ### Chinese mirror of runtime docs
 
 Every `plugin/**/*.md` has a Chinese twin at the same relative path under `docs/zh/` (`docs/zh/skills/orchestration/…`, `docs/zh/agents/…`). A change to a runtime `.md` updates its twin in the same commit. `python3 tests/test_zh_mirror.py` checks the one-to-one existence (not content). The mirror is repo-only and does not ship. The Chinese backup of the Cursor pin rule stays in `cursor-hooks/zh/`; it does not live under `docs/zh/`.
+
+### Wording of shipped text
+
+Text that ships under `plugin/**`, together with its `docs/zh/**` twins, states settled results: the rules and facts its reader acts on. This covers prose, agent and skill descriptions, manifest and hook descriptions, code comments and user-facing messages. Write "The models show no clear difference in speed.", not a remark on what the text lists. A "because" clause that explains why a rule holds stays. How the text came to be goes to a coordination artifact:
+- what the text lists or omits, why a file exists, and which rule replaced which → an ADR;
+- retired names → `_Avoid_` in `CONTEXT.md`;
+- dated observations and unverified status → the task file or ADR.
+
+### Canonical notation for the user's declarations
+
+The user often declares models and dials in loose notation: `opus5.5`, `opus5-5`, `6-sol`, `sol`, `astra[low, medium]`, `[low* medium]`. Every artifact writes them in canonical form, with no note on the original spelling:
+- models as the full id in the routing profile's anchor list (`opus-5-5`, `gpt-6.1-sol`, `gpt-6-astra`);
+- dials as `model[a*, b]` (`CONTEXT.md`, "拨盘"); a multi-effort dial without `*` gets it on the first listed effort, which is already its default.
+
+Verbatim quotes of the user in specs and discussion records stay as written. Ask only when a loose name fits more than one model.
