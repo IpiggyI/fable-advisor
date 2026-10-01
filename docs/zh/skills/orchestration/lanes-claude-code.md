@@ -42,7 +42,7 @@ Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时�
 
 调谐字段可选，且失败即响——越界值或未知顶层键会被拒绝为 `spec_invalid`，从不被静默强制转换。receipt 记录 runner 提交给 CLI 的值。
 
-- `model` — `gpt-6-astra`（默认）、`gpt-6-luna` 或 `gpt-6-sol`；codex 目录是静态白名单，因此已退役的名字是 `spec_invalid`。
+- `model` — `gpt-6-astra`（默认）、`gpt-6-luna` 或 `gpt-6.1-sol`；codex 目录是静态白名单，因此已退役的名字是 `spec_invalid`。
 - `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。省略时，runner 按型号提交默认值：astra → `medium`，luna → `max`，sol → `high`；这是 runner 的省略默认，不是档案的默认。一个任务用哪个拨盘，由填充表决定。
 - `title` — 可选；提示第一行，原文纯文本，不加 Markdown 标记。省略时该行是 spec 文件去掉 `.json` 的基名。
 - `service_tier` — 省略则用 Codex 自己的默认；`"fast"` 是 Codex 的速度模式：大约快 1.5 倍，ChatGPT credit 消耗大约为 2.5 倍，智力不损失。不适用于 API-key 计费。

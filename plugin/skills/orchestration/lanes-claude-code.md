@@ -42,7 +42,7 @@ Write the five-part spec as JSON to `.fable-advisor/pending/<slug>.json` in the 
 
 The tuning fields are optional and fail-loud — an out-of-range value or unknown top-level key is rejected as `spec_invalid`, never silently coerced. The receipt records the values the runner submitted to the CLI.
 
-- `model` — `gpt-6-astra` (default), `gpt-6-luna`, or `gpt-6-sol`; the codex catalog is a static whitelist, so a retired name is `spec_invalid`.
+- `model` — `gpt-6-astra` (default), `gpt-6-luna`, or `gpt-6.1-sol`; the codex catalog is a static whitelist, so a retired name is `spec_invalid`.
 - `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. When omitted, the runner submits a per-model default: astra → `medium`, luna → `max`, sol → `high`; these are the runner's omission defaults, not the profile's. Which dial a task gets is the fill table's call.
 - `title` — optional; first prompt line, verbatim plain text, no Markdown marker. When absent, that line is the spec file's basename without `.json` (the slug).
 - `service_tier` — omit for Codex's own default; `"fast"` is Codex's speed mode: about 1.5× faster at about 2.5× the ChatGPT credit consumption, with no loss of intelligence. It does not apply on API-key billing.

@@ -13,7 +13,7 @@ const DEFAULT_MODEL = "gpt-6-astra";
 const DEFAULT_EFFORTS = new Map([
   ["gpt-6-astra", "medium"],
   ["gpt-6-luna", "max"],
-  ["gpt-6-sol", "high"],
+  ["gpt-6.1-sol", "high"],
 ]);
 const DEFAULT_IDLE_TIMEOUT_SEC = 600;
 const interruption = new AbortController();

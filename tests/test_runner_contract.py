@@ -447,9 +447,9 @@ def case_schema_defaults_and_validation():
             "codex_unavailable", "gpt-6-luna", "gpt-6-luna", "max",
         )
 
-        _, sol = run_runner(codex, cwd, base_spec(model="gpt-6-sol"), bin_dir)
+        _, sol = run_runner(codex, cwd, base_spec(model="gpt-6.1-sol"), bin_dir)
         assert (sol["error_class"], sol["model_requested"], sol["model_used"], sol["effort"]) == (
-            "codex_unavailable", "gpt-6-sol", "gpt-6-sol", "high",
+            "codex_unavailable", "gpt-6.1-sol", "gpt-6.1-sol", "high",
         )
         assert sol["fallback_reason"] is None
 
@@ -460,7 +460,7 @@ def case_schema_defaults_and_validation():
             "CALL_LOG": str(call_log),
             "PROMPT_LOG": str(Path(tmp) / "retired-model-prompt"),
         }
-        for retired in ("gpt-5.6-luna", "gpt-5.6-sol"):
+        for retired in ("gpt-5.6-luna", "gpt-5.6-sol", "gpt-6-sol"):
             _, receipt = run_runner(codex, cwd, base_spec(model=retired), bin_dir, cli_env)
             assert receipt["error_class"] == "spec_invalid", receipt
             assert not call_log.exists(), "%s spawned codex" % retired
@@ -796,12 +796,12 @@ def case_codex_no_model_switch_boundaries():
     with tempfile.TemporaryDirectory() as tmp:
         receipt, attempts = run_codex_mode(
             tmp,
-            base_spec(model="gpt-6-sol"),
+            base_spec(model="gpt-6.1-sol"),
             "fail_before_session",
         )
         assert len(attempts) == 1
-        assert receipt["model_requested"] == "gpt-6-sol"
-        assert receipt["model_used"] == "gpt-6-sol"
+        assert receipt["model_requested"] == "gpt-6.1-sol"
+        assert receipt["model_used"] == "gpt-6.1-sol"
         assert receipt["effort"] == "high"
         assert receipt["fallback_reason"] is None
         assert "model_reasoning_effort=high" in attempts[0]
