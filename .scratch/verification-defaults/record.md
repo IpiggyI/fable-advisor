@@ -19,7 +19,7 @@
 | 2026-09-28 12:04 至 16:48 | cc-usage 会话。它加载的插件目录名为 `5.2.0`，内容是 `e5d65a4`，已含 ADR 0020。13 张票实际跑了 96 次检查，会话自统计为 82 次。16:42 椰椰要求提前结束。 |
 | 2026-10-01 | rustpad 会话。它加载 6.0.0，已含 ADR 0020。5 张票共跑 138 次检查。 |
 | 2026-10-01 | 椰椰要求调查成因：先出问题报告，听取 `gpt-6-astra[xhigh]` 的意见；修复由主会话亲自完成，不派 worker。 |
-| 2026-10-01 14:36 至 15:24 | astra 两轮评审：第一轮评审 ADR 0029 草案，第二轮评审问题报告初稿。 |
+| 2026-10-01 14:36 至 15:24 | `gpt-6-astra` 两轮评审：第一轮评审 ADR 0029 草案，第二轮评审问题报告初稿。 |
 | 2026-10-01 15:36 | 椰椰决定车道内验收的去留和验收单位，要求先看修订稿。 |
 | 2026-10-01 16:10 | 椰椰确认 `SKILL.md` 词数上限 2340，要求按修订稿实施。 |
 | 2026-10-01 16:21 至 16:53 | 实施后，`gpt-6.1-sol[medium]` 验收三轮：拒绝、拒绝、修改后接受。 |
@@ -111,7 +111,7 @@ ADR 0020 发布后，两次编排会话仍然大量重复跑检查。一次检�
 | 轮次 | 评审者与回执 | 对象 | 裁决与处理 |
 |---|---|---|---|
 | 1 | `gpt-6-astra[xhigh]`，`dab1331dfa` | ADR 0029 草案 | 修改后接受。修订全部并入。 |
-| 2 | 同上，`3a90475a58` | 问题报告初稿 | 需修改后再决策。10 条意见经核实全部属实，已并入。修订稿没有再交 astra 复审。 |
+| 2 | 同上，`3a90475a58` | 问题报告初稿 | 需修改后再决策。10 条意见经核实全部属实，已并入。修订稿没有再交 `gpt-6-astra` 复审。 |
 | 3 | `gpt-6.1-sol[medium]`，`c8b750418e` | 实施后的改动 | 拒绝。日志写入忽略背压，慢存储会让内存队列无界增长；它的探针测到 64 MiB 积压。返工一改为：写盘跟不上时暂停读取命令输出。 |
 | 4 | 同一会话，`77bf09b710` | 返工一 | 拒绝。命令退出时，还停在暂停管道里的输出会在两秒排空期限到期后与 `output_tail` 一起丢失。 |
 | 决策门 | 会话内顾问工具，按「同一问题两次失败」咨询 | 两个方案：只在命令运行期间暂停；不暂停，给写入队列设上限 | 采纳后者，因为日志只记录，不能改变被记录的命令。返工二按此实施。 |
@@ -140,13 +140,13 @@ ADR 0020 发布后，两次编排会话仍然大量重复跑检查。一次检�
 | `1991758` | `AGENTS.md`：发布文本只写已定结果；用户的松散型号写法改为规范写法 |
 | `cf78419` | 新增 `tests/test_shipped_wording.py` |
 | `8ef3590` | ADR 0027：运行中标记带心跳；receipt gate 放行在跑的车道；等待改为后台 runner 加宿主唤醒 |
-| `9fe6796` | ADR 0028：按 agentId 给后台子代理发消息；用 SIGTERM 停 CLI 车道的 runner，再带修正契约续跑 |
+| `9fe6796` | ADR 0028：按 `agentId` 给后台子代理发消息；用 SIGTERM 停 CLI 车道的 runner，再带修正契约续跑 |
 
 **部署：**
 
 - 两侧的 `installed_plugins.json` 里，用户级 fable-advisor 都是 6.1.0。更新时刻：WSL 17:01:05，Windows 17:01:20。
 - 写本记录时重新核对了缓存。WSL 缓存 `~/.claude/plugins/cache/fable-advisor/fable-advisor/6.1.0` 与 `plugin/` 相比只多一个宿主写的 `.in_use`。Windows 缓存忽略 CRLF 后，同样只多一个 `.in_use`。`~/.claude-a/plugins` 是指向 `~/.claude/plugins` 的符号链接，所以两个配置目录共用这一份缓存。
-- 伴生安装器在两侧 home 上都报告 unchanged。`--check` 退出码 0，`tests/test_user_level_archive.py` 5/5。
+- 伴生安装器对两个 `--home`（`~` 与 `/mnt/c/Users/Shy`）都报告 `unchanged`。`--check` 退出码 0，`tests/test_user_level_archive.py` 5/5。
 - 生效条件：两侧都要重启会话。更新之前启动的会话仍用旧版本，写本记录的会话加载的就是 6.0.0。
 
 **旧的项目级安装记录仍在 WSL 的 `installed_plugins.json` 里。** `/home/hyy` 固定在 5.2.0，`/mnt/c/Users/Shy` 固定在 4.0.0。
@@ -164,7 +164,7 @@ ADR 0020 发布后，两次编排会话仍然大量重复跑检查。一次检�
 | cc-usage 记忆 `spec-must-say-bun-run-test.md` | 仍要求验证命令「一律写 `bun run test`」，记忆索引里有这一条 | 主代理仍可能把全量测试写进每份契约。它与 ADR 0029 决策 1 冲突，哪条胜出取决于模型 |
 | cc-usage 记忆 `test-run-budget.md`（09-29） | 仍要求「派活时明确禁止实施者自行跑测试，或只允许最后一次」，`verification`「留空或只放一条」 | 与判定检查冲突，契约可能一条判定检查都没有 |
 | cc-usage 记忆 `cc-usage-app-ts-is-the-parallelism-chokepoint.md` | 仍写「默认串行一票一提交」 | 可能继续逐票往返，与决策 3 冲突 |
-| `~/.codex/AGENTS.md` 的 Platform Adapter 一节 | 仍按事件加载 `codex-advisor:orchestration`（0.3.1）。触发条件包括两条：交付属于高风险，需要独立验收；进程缺少选定的咨询姿态 | codex 车道仍会做车道内验收。决策 6 保留高风险契约的车道内独立验收，所以这不算回退；验收里跑全量测试，则命中复盘条件 |
+| `~/.codex/AGENTS.md` 的 `## Platform Adapter` 一节 | 仍按事件加载 `codex-advisor:orchestration`（0.3.1）。触发条件包括两条：交付属于高风险，需要独立验收；进程缺少选定的咨询姿态 | codex 车道仍会做车道内验收。决策 6 保留高风险契约的车道内独立验收，所以这不算回退；验收里跑全量测试，则命中复盘条件 |
 | 全局提示词的合批句 | "Batch checks sharing costly setup when failures remain diagnosable" 没有改 | 与插件的旧触发词相同，可能把模型拉回旧的理解 |
 | rustpad 的 2 个原有失败的浏览器测试 | 10-01 调查时没有登记；未复查 | 主代理仍要靠重跑区分原有失败 |
 | cc-usage 的 DOM 测试环境 | 10-01 调查时没有；未复查 | 点击级页面测试仍要自己补全局对象 |
@@ -186,7 +186,7 @@ ADR 0020 发布后，两次编排会话仍然大量重复跑检查。一次检�
 
 ### 9.1 先确认加载的版本
 
-1. 在会话记录里找插件路径。技能加载时的「Base directory」和 runner 的调用路径都含这一段：
+1. 在会话记录里找插件路径。技能加载时的 `Base directory` 和 runner 的调用路径都含这一段：
 
    ```sh
    grep -o 'plugins/cache/fable-advisor/fable-advisor/[0-9.]*' <会话记录>.jsonl | sort | uniq -c
@@ -215,7 +215,7 @@ ADR 0020 发布后，两次编排会话仍然大量重复跑检查。一次检�
 ### 9.3 取证注意事项
 
 - codex 车道经 FastCtx 发出的命令在 `command` 字段里，不在 `cmd` 字段里。只认 `cmd` 会漏计；cc-usage 的自统计就因此少数了 14 次。
-- heredoc 正文是写进文件的文本，不是命令。写票时，正文里的验证命令会被切成命令段。`recount.py` 已经去掉 heredoc 正文。
+- heredoc（用 `<<` 把多行文本交给命令的写法）的正文是写进文件的文本，不是命令。写票时，正文里的验证命令会被切成命令段。`recount.py` 已经去掉 heredoc 正文。
 - 循环里的命令只出现一次，却执行多次；契约 JSON 里的命令文本会被误计。这两类要手工数，rustpad 主代理的 34 次就是手工数的。
 - 删除工作树会同时删掉其中的回执和输出日志。车道在工作树里运行时，删工作树之前先把 `.fable-advisor/receipts/` 复制出来。
 - codex 的 rollout 文件名用本地时间，记录里的时间戳用 UTC。按时间窗找子代理的 rollout 时要换算。
@@ -229,12 +229,12 @@ ADR 0029 的复盘条件，以及每条的取证方法：
 |---|---|
 | 实现派发不少于 3 次的会话里，实现回执含全量命令 | 看 `receipts.py` 输出的实现回执数和全量条数。全量条数大于 0 时，看对应契约有没有写提前跑的理由 |
 | 批次检查仍为待跑，却被报告为完成 | 读任务件的 `## Batch checks` 和主会话的收尾回复 |
-| 批次失败无法归因到某份契约 | 读批次检查的输出或 `output_log`，看失败用例能不能对应到某份契约的 Files |
+| 批次失败无法归因到某份契约 | 读批次检查的输出或 `output_log`，看失败用例能不能对应到某份契约的 `Files` |
 | 已有 `output_log`，主会话仍为看失败而重跑整个列表 | 在 `verification_failed` 回执之后，查主会话的 Bash 命令：有没有重跑同一条检查，有没有读过 `.verification-<n>.log` |
 | 车道内评审或验收里出现批次检查 | 在车道记录和子代理记录里找全量命令。codex 要连同子代理的 rollout 一起查，grok 查 `chat_history.jsonl` |
 | 并票后的契约仍逐票验收或逐票往返 | 在主会话里找 `do only <票号>` 这类逐票续派，以及逐票的提交 |
 | `SKILL.md` 再次逼近上限 | 运行 `wc -w plugin/skills/orchestration/SKILL.md`，上限是 2340 |
-| 回执出现 `output_log: null`，诊断为写入落后超过上限 | 看 `receipts.py` 输出的 output_log 为空条数，以及 runner 的 stderr 里有没有 "fell more than" |
+| 回执出现 `output_log: null`，诊断为写入落后超过上限 | 看 `receipts.py` 输出的 `output_log` 为空的条数，以及 runner 的 stderr 里有没有 `fell more than` |
 
 ### 9.5 记录位置
 
@@ -258,7 +258,7 @@ ADR 0029 的复盘条件，以及每条的取证方法：
 | `recount_all.py` | 重数 cc-usage 会话里 runner 以外的全部来源 | 78 次，各行与报告第 2 节一致 |
 | `count_rustpad.py` | 统计 rustpad 会话各车道内部的检查 | 76 次，与台账一致。主代理部分不适用 |
 | `receipts.py` | 列出回执里的检查，标出全量命令和为空的 `output_log` | cc-usage 18 条，其中全量 7 条。rustpad 25 条，票 03 的回执已被删除 |
-| `probe_output_log.mjs` | 从 runner 源码取出日志相关的函数，配上模拟子进程和慢写入端 | 两个 runner 结果相同。slow-exit 场景：日志完整，1,048,590 字节。cap 场景：`output_log` 为 `null`，诊断已打出，不完整的文件已删除，队列峰值为 16 MiB 加一个 64 KiB 块 |
+| `probe_output_log.mjs` | 从 runner 源码取出日志相关的函数，配上模拟子进程和慢写入端 | 两个 runner 结果相同。`slow-exit` 场景：日志完整，1,048,590 字节。`cap` 场景：`output_log` 为 `null`，诊断已打出，不完整的文件已删除，队列峰值为 16 MiB 加一个 64 KiB 块 |
 | `mutation_output_log.py` | 变异检查：去掉 `log.write(chunk);` 后，新用例必须失败 | 不改时通过；两个变异都在第 418 行失败 |
 
 验收第 4 轮的截断问题曾用「只暂停」版 runner 的临时副本复现。这些副本没有保留。
