@@ -9,6 +9,7 @@ import { performance } from "node:perf_hooks";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { parseRoutingProfile, validateRoute } from "./routing-profile.mjs";
 
 const DEFAULT_IDLE_TIMEOUT_SEC = 600;
 const interruption = new AbortController();
@@ -31,7 +32,11 @@ const PREAMBLE_DIR = path.resolve(
 );
 const PREAMBLE_PATH = path.join(PREAMBLE_DIR, "lane-preamble.md");
 const REPORT_PREAMBLE_PATH = path.join(PREAMBLE_DIR, "lane-preamble-report.md");
+const ROUTING_PROFILE_PATH = path.join(PREAMBLE_DIR, "routing-profile.md");
 const SPEC_KEYS = new Set([
+  "role",
+  "tier",
+  "basis",
   "mode",
   "objective",
   "files",
@@ -126,6 +131,13 @@ function normalizeSpec(value) {
     }
   }
   const mode = value.mode ?? "implement";
+  const roles = mode === "implement" ? ["worker"] : ["explorer", "advisor"];
+  if (!roles.includes(value.role)) {
+    throw new Error(`role for ${mode} must be one of: ${roles.join(", ")}`);
+  }
+  if (!["mainstay", "crux", "rescue"].includes(value.tier)) {
+    throw new Error("tier must be one of: mainstay, crux, rescue");
+  }
   requireString(value.objective, "objective", { nonEmpty: true });
   requireStringArray(value.files, "files");
   requireString(value.interfaces, "interfaces");
@@ -135,14 +147,10 @@ function normalizeSpec(value) {
     minLength: mode === "report" ? 0 : 1,
   });
 
-  if (value.model !== undefined) {
-    requireString(value.model, "model");
-  }
-  if (value.effort !== undefined) {
-    requireString(value.effort, "effort");
-    if (!["low", "medium", "high", "xhigh"].includes(value.effort)) {
-      throw new Error("effort must be one of: low, medium, high, xhigh");
-    }
+  requireString(value.model, "model", { nonEmpty: true });
+  requireString(value.effort, "effort");
+  if (!["low", "medium", "high", "xhigh"].includes(value.effort)) {
+    throw new Error("effort must be one of: low, medium, high, xhigh");
   }
   if (value.timeout_sec !== undefined) {
     requirePositiveNumber(value.timeout_sec, "timeout_sec");
@@ -160,6 +168,9 @@ function normalizeSpec(value) {
   }
 
   return {
+    role: value.role,
+    tier: value.tier,
+    basis: value.basis,
     objective: value.objective,
     mode,
     files: value.files,
@@ -253,7 +264,7 @@ function monitorProcess(child, onExit = () => {}) {
     result.code = code;
     result.signal = signal;
     result.stopped = true;
-    onExit();
+    onExit(new Date().toISOString());
     stop();
   });
   child.once("error", (error) => {
@@ -389,6 +400,7 @@ async function executeGrok(spec, cwd, promptPath) {
     totalCostUsd: null,
     grokFinalMessage: "",
     eventObserved: false,
+    laneFinishedAt: null,
     terminalEventAt: null,
     maxIdleMs: null,
     lastEventAt: null,
@@ -423,7 +435,8 @@ async function executeGrok(spec, cwd, promptPath) {
   let termination = Promise.resolve();
   let clearIdleTimer = () => {};
   let clearPreparationTimer = () => {};
-  const lifecycle = monitorProcess(child, () => {
+  const lifecycle = monitorProcess(child, (exitedAt = null) => {
+    state.laneFinishedAt = exitedAt;
     exited = true;
     clearWallTimer();
     clearIdleTimer();
@@ -607,6 +620,10 @@ function initialState(startedAt) {
   return {
     specHash: null,
     mode: "implement",
+    role: null,
+    tier: null,
+    basis: null,
+    laneFinishedAt: null,
     cwd: process.cwd(),
     model: null,
     effort: null,
@@ -637,6 +654,10 @@ function buildReceipt(state) {
   return {
     receipt_version: 1,
     mode: state.mode,
+    role: state.role,
+    tier: state.tier,
+    basis: state.basis,
+    lane_finished_at: state.laneFinishedAt,
     report: state.mode === "report" ? (state.grokFinalMessage ?? "") : null,
     spec_hash: state.specHash,
     cwd: state.cwd,
@@ -688,7 +709,11 @@ async function emitReceipt(state) {
 async function loadSpec(specPath, state) {
   const raw = await readFile(specPath);
   state.specHash = createHash("sha256").update(raw).digest("hex");
-  return normalizeSpec(JSON.parse(raw.toString("utf8")));
+  const value = JSON.parse(raw.toString("utf8"));
+  state.role = value?.role ?? null;
+  state.tier = value?.tier ?? null;
+  state.basis = value?.basis ?? null;
+  return normalizeSpec(value);
 }
 
 async function writePromptFile(contents) {
@@ -787,6 +812,9 @@ async function main() {
   try {
     spec = await loadSpec(parsedArguments.specPath, state);
     state.mode = spec.mode;
+    state.role = spec.role;
+    state.tier = spec.tier;
+    state.basis = spec.basis ?? null;
     state.model = spec.model;
     state.effort = spec.effort;
     state.modelRequested = spec.model;
@@ -797,6 +825,16 @@ async function main() {
     state.timeoutSec = spec.timeout_sec;
   } catch (error) {
     diagnostic(`invalid spec: ${errorMessage(error)}`);
+    state.errorClass = "spec_invalid";
+    return emitReceipt(state);
+  }
+
+  try {
+    const tables = parseRoutingProfile(await readFile(ROUTING_PROFILE_PATH, "utf8"));
+    const verdict = validateRoute(spec.role, spec.tier, `${spec.model}[${spec.effort}]`, spec.basis, tables);
+    if (!verdict.valid) throw new Error(verdict.message);
+  } catch (error) {
+    diagnostic(`invalid spec: routing profile ${ROUTING_PROFILE_PATH}: ${errorMessage(error)}`);
     state.errorClass = "spec_invalid";
     return emitReceipt(state);
   }
@@ -856,6 +894,7 @@ async function main() {
     state.totalCostUsd = grokResult.totalCostUsd;
     state.grokFinalMessage = grokResult.grokFinalMessage;
     state.childExitCode = grokResult.childExitCode;
+    state.laneFinishedAt = grokResult.laneFinishedAt ?? null;
     state.errorClass = grokResult.errorClass;
     state.endToCloseMs = grokResult.endToCloseMs;
     state.maxIdleMs = grokResult.maxIdleMs;

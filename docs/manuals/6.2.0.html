@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fable-advisor 6.2.0 版本说明书</title>
+<style>
+
+  :root {
+    --ink: #22352e; --paper: #f7f8f4; --card: #fff;
+    --line: #dfe5dd; --muted: #627268; --accent: #32694e;
+    --ok: #32694e; --warn: #925522; --lane: #32694e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color-scheme: light; scroll-behavior: smooth; scroll-padding-top: 36px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.85; }
+  a { color: var(--accent); text-underline-offset: 4px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid #aa671f; outline-offset: 5px;
+  }
+  .skip-link { position: fixed; left: 20px; top: -100px; z-index: 10; background: white; padding: 10px 20px; }
+  .skip-link:focus { top: 12px; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: 254px; padding: 32px 23px 22px; border-right: 1px solid var(--line); background: #f0f3ec; display: flex; flex-direction: column; z-index: 3; }
+  .brand { display: flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font-weight: 750; font-size: 18px; letter-spacing: -.5px; }
+  .brand-mark { display: grid; place-items: center; width: 34px; height: 36px; background: var(--accent); border-radius: 10px 10px 10px 2px; color: white; font: italic 27px Georgia, serif; }
+  .edition { margin: 18px 0 24px; font-size: 12px; color: var(--muted); }
+  .edition span { padding: 4px 9px; border: 1px solid #cbd6c8; border-radius: 5px; margin-right: 7px; color: var(--accent); font-weight: 650; }
+  .toc { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .toc summary { list-style: none; font-size: 11px; letter-spacing: .16em; color: var(--muted); margin-bottom: 12px; pointer-events: none; }
+  .toc summary::-webkit-details-marker { display: none; }
+  .nav-group { color: var(--muted); font-size: 11px; padding: 18px 10px 6px; letter-spacing: .12em; }
+  .toc a { display: flex; gap: 11px; padding: 7px 10px; margin: 2px 0; border-radius: 6px; font-size: 12px; text-decoration: none; line-height: 1.6; color: #526158; }
+  .toc a span { color: #7b897e; font-size: 10px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .toc a:hover { background: #e6ece1; color: var(--ink); }
+  .toc a[aria-current="location"] { background: #e0eadb; color: #214b34; font-weight: 650; }
+  .sidebar-foot { margin-top: auto; padding-top: 22px; color: var(--muted); font-size: 11px; }
+  .sidebar-foot a { color: inherit; }
+  .workspace { margin-left: 254px; padding: 0 56px; }
+  .topbar { max-width: 1100px; margin: auto; display: flex; justify-content: space-between; align-items: center; padding: 25px 0; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .topbar span:last-child { display: flex; align-items: center; gap: 9px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #61845c; }
+  main { max-width: 1100px; margin: auto; }
+  .hero { padding: 54px 0 40px; }
+  .eyebrow { display: flex; align-items: center; gap: 12px; margin: 0 0 20px; color: var(--accent); font-size: 12px; font-weight: 650; letter-spacing: .1em; }
+  .eyebrow::before { content: ""; width: 25px; height: 1px; background: var(--accent); }
+  .hero-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 36px; align-items: center; }
+  h1 { margin: 0 0 22px; font-size: clamp(38px, 4.2vw, 62px); line-height: 1.12; letter-spacing: -.055em; font-weight: 680; }
+  h1 span { display: block; color: #75936a; font-size: .62em; letter-spacing: -.025em; margin-top: 16px; }
+  .hero-description { max-width: 520px; font-size: 15px; color: var(--muted); line-height: 1.9; margin: 0; }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 25px; }
+  .button { display: inline-flex; align-items: center; gap: 18px; min-height: 44px; padding: 9px 18px; border: 1px solid var(--line); background: #fff; border-radius: 6px; text-decoration: none; color: var(--ink); font-size: 13px; font-weight: 600; }
+  .button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .button:hover { box-shadow: 0 3px 10px #22352e12; transform: translateY(-1px); }
+  .system-map { background: #eaf0e4; border: 1px solid #d9e3d2; padding: 23px; border-radius: 14px; position: relative; }
+  .map-heading { display: flex; justify-content: space-between; font-size: 11px; color: #53694b; margin-bottom: 17px; }
+  .map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .map-item { padding: 16px 14px; background: #fafcf7; border: 1px solid #dce5d5; border-radius: 8px; }
+  .map-item b { display: block; font-size: 17px; margin: 7px 0 2px; font-weight: 600; }
+  .map-item small { font-size: 11px; color: var(--muted); }
+  .map-index { font-size: 10px; color: #7d9070; font-family: ui-monospace, monospace; }
+  .map-caption { font-size: 11px; color: #53694b; margin: 14px 0 0; text-align: center; }
+  .release-meta { display: flex; flex-wrap: wrap; gap: 10px 25px; margin-top: 32px; color: var(--muted); font-size: 11px; }
+  .release-meta b { color: var(--ink); font-weight: 600; margin-right: 7px; }
+  .highlights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 0 0 44px; }
+  .highlight { padding: 20px 22px; border: 1px solid var(--line); border-radius: 9px; background: #fff; text-decoration: none; color: inherit; }
+  .highlight:hover { border-color: #91aa82; }
+  .highlight small { font: 11px ui-monospace, monospace; color: #6c845e; }
+  .highlight strong { display: block; margin: 9px 0 6px; font-size: 15px; }
+  .highlight p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+  .part-heading { display: flex; align-items: center; gap: 15px; margin: 42px 0 24px; }
+  .part-heading span { color: var(--accent); font: 11px ui-monospace, monospace; border: 1px solid #cddbc5; padding: 4px 8px; border-radius: 4px; }
+  .part-heading h2 { margin: 0; font-size: 13px; letter-spacing: .08em; font-weight: 600; white-space: nowrap; }
+  .part-heading::after { content: ""; height: 1px; background: var(--line); width: 100%; }
+  .manual-section { padding: 32px 36px 36px; margin: 0 0 22px; background: white; border: 1px solid var(--line); border-radius: 12px; scroll-margin-top: 24px; }
+  .manual-section > h2 { display: flex; align-items: baseline; gap: 16px; font-size: 23px; line-height: 1.5; letter-spacing: -.025em; margin: 0 0 20px; }
+  .section-number { color: #779168; font: 14px ui-monospace, monospace; flex-shrink: 0; }
+  h3 { margin: 30px 0 12px; font-size: 16px; line-height: 1.65; }
+  p { margin: 12px 0; }
+  .manual-section > p { color: #43554a; }
+  .manual-section > h2 + p { color: var(--muted); }
+  strong { font-weight: 650; }
+  .grid { display: grid; gap: 14px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .card { background: #f7f9f4; border: 1px solid #e1e8dc; border-radius: 8px; padding: 20px; font-size: 14px; }
+  .card strong { display: block; margin-bottom: 7px; color: var(--ink); }
+  .tag { display: inline-block; font: 10px ui-monospace, monospace; color: #3c6445; background: #e5edde; padding: 5px 8px; border-radius: 4px; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; margin: 16px 0; scrollbar-width: thin; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+  th { color: #56654f; background: #f1f5ed; font-size: 12px; font-weight: 600; }
+  th, td { padding: 13px 16px; vertical-align: top; border-bottom: 1px solid #e6ebe2; }
+  tr:last-child td { border-bottom: 0; }
+  tr:nth-child(odd) td { background: #fbfcf9; }
+  td:first-child { color: var(--ink); }
+  .mono, code { font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace; font-size: .87em; overflow-wrap: anywhere; }
+  code { color: #365d49; background: #eef3e9; padding: 2px 4px; border-radius: 3px; }
+  td.mono { font-size: 11px; }
+  pre.mono { white-space: pre-wrap; background: #253b30; color: #eff5e8; padding: 21px 24px; border-radius: 8px; font-size: 12px; line-height: 1.9; overflow-wrap: anywhere; }
+  .note { color: var(--muted); font-size: 12px; }
+  .box { margin-top: 22px; padding: 20px 24px; border: 1px solid #d5e1cc; border-left: 3px solid var(--accent); background: #f2f6ed; border-radius: 0 8px 8px 0; }
+  .box.warn { border-color: #e4d4bc; border-left-color: #ad7b40; background: #faf6ee; }
+  ul.tight { padding-left: 21px; margin: 14px 0; }
+  li { margin: 8px 0; padding-left: 3px; }
+  li::marker { color: #708b61; }
+  .changes > h3 { padding-top: 16px; margin-top: 24px; }
+  .changes > .card { border: 0; border-left: 2px solid #d4e0ca; border-radius: 0; padding: 2px 0 2px 22px; background: transparent; }
+  .changes > .card p { margin: 0 0 14px; }
+  .changes > .card strong { display: inline-block; margin: 0 12px 0 0; font-size: 11px; color: var(--accent); }
+  footer { max-width: 1100px; margin: auto; padding: 26px 0 36px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+  .footer-title { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 22px; margin-bottom: 14px; }
+  @media (min-width: 1600px) { .workspace { padding: 0 80px; } }
+  @media (max-width: 1150px) {
+    .sidebar { width: 220px; padding: 25px 16px; }
+    .workspace { margin-left: 220px; padding: 0 32px; }
+    .hero-layout { gap: 22px; }
+    .system-map { padding: 16px; }
+    .map-item { padding: 12px; }
+    .manual-section { padding: 28px; }
+  }
+  @media (max-width: 900px) {
+    .sidebar { position: relative; width: auto; padding: 18px 24px; display: block; border-right: 0; border-bottom: 1px solid var(--line); }
+    .brand { font-size: 17px; }
+    .edition { position: absolute; top: 26px; right: 24px; margin: 0; }
+    .edition .edition-label { display: none; }
+    .toc { margin-top: 16px; }
+    .toc summary { pointer-events: auto; cursor: pointer; margin: 0; padding: 9px 0; font-size: 12px; letter-spacing: .04em; }
+    .toc summary::after { content: "展开 / 收起"; float: right; font-size: 11px; color: #627268; }
+    .toc nav { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .nav-group { grid-column: 1 / -1; }
+    .sidebar-foot { display: none; }
+    .workspace { margin: 0; padding: 0 28px; }
+    .hero { padding-top: 36px; }
+  }
+  @media (max-width: 600px) {
+    body { font-size: 14px; }
+    .workspace { padding: 0 18px; }
+    .sidebar { padding: 16px 20px 8px; }
+    .edition { top: 22px; right: 18px; }
+    .topbar { font-size: 10px; padding: 17px 0; }
+    .hero { padding: 30px 0; }
+    .hero-layout { grid-template-columns: 1fr; gap: 26px; }
+    h1 { font-size: 45px; }
+    .hero-description { font-size: 14px; }
+    .release-meta { gap: 6px 20px; margin-top: 22px; }
+    .highlights { grid-template-columns: 1fr; gap: 10px; margin-bottom: 28px; }
+    .highlight { padding: 16px 18px; }
+    .highlight small { float: right; }
+    .highlight strong { margin-top: 0; }
+    .manual-section { padding: 24px 18px; border-radius: 9px; }
+    .manual-section > h2 { gap: 10px; font-size: 20px; }
+    .cols-2, .cols-3, .cols-5 { grid-template-columns: 1fr; }
+    .table-wrap table { min-width: 560px; }
+    .table-wrap::before { content: "左右滑动查看完整表格"; display: block; padding: 8px 12px; color: var(--muted); font-size: 10px; }
+    .card { padding: 17px; }
+    .part-heading { margin-top: 28px; }
+    .box { padding: 17px; }
+    ol { padding-left: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) { :root { scroll-behavior: auto; } .button:hover { transform: none; } }
+  @media print {
+    :root { --ink: #000; --muted: #444; }
+    body { background: #fff; font-size: 10pt; }
+    .sidebar, .topbar, .hero-actions, .skip-link, .highlights, .footer-title a { display: none; }
+    .workspace { margin: 0; padding: 0; }
+    .hero { padding-top: 0; }
+    .hero-layout { grid-template-columns: 1.2fr 1fr; }
+    h1 { font-size: 32pt; }
+    .manual-section { padding: 18px 0; border: 0; border-radius: 0; }
+    .table-wrap { overflow: visible; border-radius: 0; }
+    .table-wrap table { min-width: 0; }
+    .table-wrap::before { display: none; }
+    h2, h3 { break-after: avoid; }
+    tr, .card, .box { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳至正文</a>
+<aside class="sidebar" aria-label="说明书导航">
+  <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true">f</span>fable-advisor</a>
+  <p class="edition"><span>v6.2.0</span><span class="edition-label">版本说明书</span></p>
+  <details class="toc" open><summary>阅读目录</summary><nav aria-label="章节目录"><a href="#overview" aria-current="location"><span>00</span>版本概览</a><div class="nav-group">工作方式</div><a href="#section-1"><span>01</span>角色、档位与姿态</a><a href="#section-2"><span>02</span>两段式路由与准入</a><a href="#section-3"><span>03</span>升级梯</a><a href="#section-4"><span>04</span>规划、决策与验证</a><a href="#section-5"><span>05</span>交付契约</a><div class="nav-group">运行与接入</div><a href="#section-6"><span>06</span>运行器与报告模式</a><a href="#section-7"><span>07</span>Claude 子代理</a><a href="#section-8"><span>08</span>Cursor 接入</a><div class="nav-group">配置与维护</div><a href="#section-9"><span>09</span>伴生安装器</a><a href="#section-10"><span>10</span>回执门禁</a><a href="#section-11"><span>11</span>测试覆盖</a><a href="#section-12"><span>12</span>路由档案</a><a href="#section-13"><span>13</span>已知限制</a><div class="nav-group">本版新增机制</div><a href="#section-14"><span>14</span>路由行与 route gate</a><a href="#section-15"><span>15</span>会话续用窗口</a><div class="nav-group">版本变化</div><a href="#section-16"><span>16</span>规划、验收与宽检查</a><a href="#section-17"><span>17</span>准入、路由与校验</a><a href="#section-18"><span>18</span>续用窗口</a><a href="#section-19"><span>19</span>档案、词数与版本</a><a href="#section-20"><span>20</span>升级步骤</a></nav></details>
+  <div class="sidebar-foot">本页支持离线阅读。<br>2026 年 10 月 · <a href="#upgrade">查看升级步骤</a></div>
+</aside>
+<div class="workspace">
+<div class="topbar"><span>文档 / 版本说明书</span><span><i class="status-dot" aria-hidden="true"></i>适用于 Claude Code 与 Cursor</span></div>
+<main id="main">
+<header class="hero" id="overview">
+  <p class="eyebrow">版本 6.2.0 · 使用指南与更新记录</p>
+  <div class="hero-layout">
+    <div>
+      <h1>fable-advisor<span>让协作各司其职。</span></h1>
+      <p class="hero-description">任一模型都可以担任主代理。用角色定义职责，用档位选择能力，用车道连接模型，再由姿态决定谁来动手。6.2.0 要求主代理在第一次派发前做全局规划，并按结果验收；每次派发写明路由，由 runner 与新的 route gate 校验；车道会话只在续用窗口之内续用。</p>
+      <div class="hero-actions"><a class="button primary" href="#section-16">查看本版更新 <span aria-hidden="true">↗</span></a><a class="button" href="#section-1">了解完整行为 <span aria-hidden="true">↓</span></a></div>
+    </div>
+    <div class="system-map" role="img" aria-label="四个独立维度：角色定义职责，档位选择能力，车道连接供应商，姿态决定主代理是否修改交付物。">
+      <div class="map-heading"><span>一次派发，四个维度</span><span aria-hidden="true">＋</span></div>
+      <div class="map-grid">
+        <div class="map-item"><span class="map-index">01 / 职责</span><b>角色</b><small>调查 · 实现 · 咨询</small></div>
+        <div class="map-item"><span class="map-index">02 / 能力</span><b>档位</b><small>主力 · 攻坚 · 后援</small></div>
+        <div class="map-item"><span class="map-index">03 / 连接</span><b>车道</b><small>到达模型的方式</small></div>
+        <div class="map-item"><span class="map-index">04 / 分工</span><b>姿态</b><small>编排或亲自实现</small></div>
+      </div>
+      <p class="map-caption">四个维度独立选择，模型身份不决定姿态。</p>
+    </div>
+  </div>
+  <div class="release-meta"><span><b>说明书日期</b>2026-10-04</span><span><b>上一版本</b>6.1.0</span><span><b>版本性质</b>次版本，含不兼容的 runner spec 字段</span><span><b>本页内容</b>完整行为与逐项变更</span></div>
+</header>
+<div class="highlights" aria-label="本版重点">
+  <a class="highlight" href="#section-14"><small>01</small><strong>每次派发写明路由，程序校验。</strong><p>角色、档位、拨盘与依据写在 spec 或 <code class="mono">Route:</code> 行里。runner 在启动 CLI 之前校验，Claude Code 里由新的 route gate 校验。</p></a>
+  <a class="highlight" href="#section-4"><small>02</small><strong>先全局规划，再按结果验收。</strong><p>主代理派发前写下依赖、契约、隔离与宽检查，只等真实的依赖；验收时读承载行为的文件差异，不只看测试。</p></a>
+  <a class="highlight" href="#section-15"><small>03</small><strong>车道会话有续用窗口。</strong><p>窗口之外新开会话，在同一档位、同一拨盘上继续。取值写在路由档案，时间来源可追溯。</p></a>
+</div>
+<div class="part-heading"><span>01</span><h2>本版完整行为</h2></div>
+
+<section class="manual-section" id="section-1" aria-labelledby="heading-1">
+  <h2 id="heading-1"><span class="section-number">01</span>角色 × 档位 × 车道 × 姿态</h2>
+  <p>这四个维度互相正交。角色决定契约形状，档位决定能力等级，车道决定如何到达供应商，姿态决定主代理会不会亲手改交付物。插件技能正文不写型号排名与拨盘取值，这些只写在用户路由档案里。</p>
+
+  <h3>角色</h3>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">角色</th><th scope="col">权限</th><th scope="col">返回</th></tr>
+    <tr><td class="mono">explorer</td><td>只读</td><td>证据：<code class="mono">file:line</code>、符号、原文</td></tr>
+    <tr><td class="mono">worker</td><td>在契约的 <code class="mono">Files</code> 内可写</td><td>diff 与验证证据</td></tr>
+    <tr><td class="mono">advisor</td><td>只读</td><td>不超过 300 词的 verdict。两种请求形状：决策（动工前）与验收（完工后：契约 + diff + receipt）</td></tr>
+  </table></div>
+  <p>角色不含模型型号。卡住任务的接管是 worker 加一份接管契约，不是另一个角色。</p>
+
+  <h3>档位与首轮准入</h3>
+  <p>档位是 <code class="mono">mainstay</code>（主力）、<code class="mono">crux</code>（攻坚）、<code class="mono">rescue</code>（后援），与角色正交。任一角色可派任一档位。档位是每个角色的一组拨盘：按角色、型号、强度划分，同一型号可以按强度分在不同档位。设计意图是多数任务在 <code class="mono">mainstay</code> 结束，极少到 <code class="mono">rescue</code>。</p>
+  <div class="grid cols-3">
+    <article class="card"><span class="tag">mainstay</span><strong>主力</strong>新工作默认从这里开始，承担大多数日常工作。</article>
+    <article class="card"><span class="tag">crux</span><strong>攻坚</strong>已识别关键难点，或要处理相互制约的条件时，首轮可以直接用这一档。不设使用比例。</article>
+    <article class="card"><span class="tag">rescue</span><strong>后援</strong>只经 <code class="mono">crux</code> 的一次能力失败或用户声明进入，不作首轮选择。</article>
+  </div>
+  <p>拨盘是档位在车道内的实现：型号加强度。记法见第 2 节。格内取值写在用户路由档案，见第 12 节。</p>
+
+  <h3>车道</h3>
+  <p>车道决定怎么到达供应商。handoff lane 是条件成员：只有用户按任务或按会话声明之后，才进入第二段的候选。</p>
+  <div class="grid cols-2">
+    <article class="card"><span class="tag lane">grok lane</span><strong>Grok 家族</strong>Claude Code：<code class="mono">plugin/scripts/run-grok.mjs</code>，spec 必须显式写 <code class="mono">model</code> 与 <code class="mono">effort</code>。Cursor：钉 Grok 型号名的 Task。</article>
+    <article class="card"><span class="tag lane">codex lane</span><strong>GPT 家族</strong>两侧都跑 <code class="mono">plugin/scripts/run-codex.mjs</code>，白名单为 <code class="mono">gpt-6-astra</code>、<code class="mono">gpt-6-luna</code>、<code class="mono">gpt-6.1-sol</code>。Cursor 经 Shell，没有 receipt gate。</article>
+    <article class="card"><span class="tag lane">claude lane</span><strong>Claude 子代理</strong>仓内九份 agent 文件，无外部 CLI。按次 <code class="mono">model</code> 只接受别名。同模派发是它的一个拨盘：模型钉为会话模型，只限 worker，路由写 <code class="mono">tier=same-model</code>（第 14 节）。Cursor：<code class="mono">generalPurpose</code> 省略 <code class="mono">model</code>（<code class="mono">inherit</code>）。Claude Code：<code class="mono">worker-*</code> 的按次 <code class="mono">model</code> 设为会话模型。</article>
+    <article class="card"><span class="tag lane">handoff lane</span><strong>用户中介</strong>写入 <code class="mono">.fable-advisor/handoff/&lt;slug&gt;.md</code>。无 receipt，不在 receipt gate 视野内。验收对象是 diff，由架构师亲自重跑验证。</article>
+  </div>
+  <p class="note" style="margin-top:.8rem">cursor lane 只在 Cursor 宿主存在，见第 8 节。它不进技能正文的车道表。</p>
+
+  <h3>姿态</h3>
+  <div class="grid cols-2">
+    <article class="card"><strong>编排姿态</strong>主代理不亲手改交付物：写交付契约、派 worker、验收。这一姿态下的职责名是架构师。没人声明时，存在上游任务件（issue、spec、task）即为此姿态。</article>
+    <article class="card"><strong>实现姿态</strong>主代理可亲手改交付物，同时仍可派任一角色。没人声明且没有上游任务件时为此姿态。</article>
+  </div>
+  <p>选择器顺序：用户声明或上层指示优先；二者都没有时，看有没有上游任务件。姿态相对一次派发成立：车道对自己的契约是实现姿态，对它再派的子代理可以是编排姿态。深度不限。Claude Code 把子代理嵌套上限定在主会话之下三层。</p>
+  <p>编排姿态下，交付物只经 worker 改，与改动大小无关。协调件（任务件、ADR、词表、工作流状态、发布版本字段）在任一姿态下主代理都可直接写。本仓的路径映射写在 <code class="mono">AGENTS.md</code>。类别不明时按交付物处理。</p>
+</section>
+
+<section class="manual-section" id="section-2" aria-labelledby="heading-2">
+  <h2 id="heading-2"><span class="section-number">02</span>两段式路由：档位准入、路由、格内选择与换候选</h2>
+  <p>主代理持有需求、分解、契约、路由与验收。一次派发先选（角色, 档位），再在路由档案的该格里选一个候选。</p>
+  <h3>第一段：（角色, 档位）与档位准入</h3>
+  <p>角色按产物选：证据走 explorer，改动走 worker，承诺或验收走 advisor。档位先按任务难点或升级梯定：新工作从 <code class="mono">mainstay</code> 开始；已识别关键难点，或要处理相互制约的条件时，首轮可以直接用 <code class="mono">crux</code>，不设使用比例；首轮 <code class="mono">rescue</code> 只凭用户声明；升档按升级梯。</p>
+  <p>椰椰声明的家族或型号只筛选候选，不设档位。主代理取满足三个条件的最低一档：</p>
+  <ul class="tight">
+    <li>不低于按难点或升级梯定下的档位；</li>
+    <li>这一档的格里有符合声明的候选；</li>
+    <li>这次派发有该档接受的依据（<code class="mono">mainstay</code> 不需要依据）。</li>
+  </ul>
+  <p>家族或型号声明可以作为 <code class="mono">crux</code> 的 <code class="mono">user-declaration</code> 依据，<code class="mono">ref</code> 写椰椰的原话。它不算 <code class="mono">rescue</code> 的准入。三个条件同时满足不了时，主代理向椰椰报告冲突，不自动降档。</p>
+
+  <h3>路由：每次派发写明去向</h3>
+  <p>每次派发写明路由：角色、档位、拨盘，高于 <code class="mono">mainstay</code> 时再加依据。经 <code class="mono">SendMessage</code> 或 <code class="mono">resume</code> 发给已有会话的消息也写路由。依据种类按角色和档位定：</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">角色</th><th scope="col"><code class="mono">crux</code></th><th scope="col"><code class="mono">rescue</code></th></tr>
+    <tr><td>worker、explorer</td><td><code class="mono">key-difficulty</code>、<code class="mono">failure</code>、<code class="mono">user-declaration</code></td><td><code class="mono">failure</code>、<code class="mono">user-declaration</code></td></tr>
+    <tr><td>advisor</td><td><code class="mono">low-confidence</code>、<code class="mono">user-declaration</code></td><td><code class="mono">user-declaration</code></td></tr>
+  </table></div>
+  <p>依据带非空的 <code class="mono">ref</code>：<code class="mono">key-difficulty</code> 写难点；<code class="mono">failure</code> 写失败那次派发的标识（回执哈希、会话 id 或 agentId）；<code class="mono">low-confidence</code> 写那条低置信度的 verdict；<code class="mono">user-declaration</code> 写椰椰的原话。同模派发有自己的路由：只限 worker，档位写 <code class="mono">same-model</code>，依据种类也是 <code class="mono">same-model</code>，<code class="mono">ref</code> 写产物类别。</p>
+  <p>路由由程序机械校验：runner 在启动 CLI 之前校验 spec（第 6 节），Claude Code 里由 route gate 校验 <code class="mono">Agent</code> 与 <code class="mono">SendMessage</code>（第 14 节）。校验只查依据存在、格式合规，不查它是否属实；属实与否仍由主代理判断。</p>
+
+  <h3>第二段：格内选择</h3>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">情况</th><th scope="col">取哪个候选</th></tr>
+    <tr><td>没有声明，也没有合适的擅长点</td><td>格内第一个候选，取它的 <code class="mono">*</code> 拨盘</td></tr>
+    <tr><td>任务落在档案为某个候选声明的擅长点上</td><td>取那个候选。价格低也算擅长点</td></tr>
+    <tr><td>几个候选同样合适</td><td>按档案声明的车道默认顺序</td></tr>
+  </table></div>
+  <p>格内顺序是用户写定的偏好，不是能力排名，也不是价格排名。主代理不得按能力、价格或车道顺序重排格子。</p>
+  <h3>换候选</h3>
+  <p>候选不可用或超时时，契约原样交给同一格的另一个候选，并披露。三种情况都按档案声明的车道默认顺序换：整条车道不可用、单个候选不可用、codex runner 对某个型号启动失败。换候选不算能力失败。两条 CLI 车道都不可用时转 claude lane，并说明失去的跨厂商复核。可用性由这次派发的结果决定，不靠事先探测。</p>
+  <h3>记法 <code class="mono">model[a*, b, c]</code></h3>
+  <p>拨盘写作 <code class="mono">model[a*, b, c]</code>：方括号里是这一格、这一型号可选的强度，都可直接选用，<code class="mono">*</code> 标默认；没有 <code class="mono">*</code> 的格以第一个列出的强度为默认。没有强度维度的型号裸写（例如 <code class="mono">haiku-4-5</code>）。已退役的 <code class="mono">|</code>（仅升级）记法不再使用。</p>
+  <p class="note">车道默认顺序的具体值、Claude Code 中 explorer 的例外、擅长点示例都写在路由档案，见第 12 节。本节只说明机制。</p>
+</section>
+
+<section class="manual-section" id="section-3" aria-labelledby="heading-3">
+  <h2 id="heading-3"><span class="section-number">03</span>升级梯 R1–R4 与下一档</h2>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">规则</th><th scope="col">含义</th></tr>
+    <tr><td>R1</td><td>验收未过：开返工票，同拨盘，在续用窗口之内用同一会话。契约缺口：给修正后的契约，条件相同。超出窗口时，在同一档位、同一拨盘上新开会话（第 15 节）。</td></tr>
+    <tr><td>R2</td><td>返工票也未过，且诊断归为能力：记一次<strong>能力失败</strong>，进入下一档（<code class="mono">mainstay</code> → <code class="mono">crux</code> → <code class="mono">rescue</code> → 用户）。新会话，接管契约 = 原契约 + 上轮报告 + receipt。在下一档里按任务特点选型号。下限：新型号在档案排名中不低于失败的型号，没有别的候选时除外。同一型号必须提高强度。不同型号之间不比较强度名。</td></tr>
+    <tr><td>R3</td><td>同一型号只提升一次，按完整模型标识计数。</td></tr>
+    <tr><td>R4</td><td>执行时出现较大问题（工具反复失败、跑飞、触碰保留项）可跳过返工票，记一次能力失败，进入下一档。</td></tr>
+  </table></div>
+  <p>环境问题和契约缺口不算失败。首轮就在 <code class="mono">crux</code> 的任务，在 <code class="mono">crux</code> 失败一次即进 <code class="mono">rescue</code>。<code class="mono">rescue</code> 失败交给用户，没有第四档。同一档内换型号不是能力失败后的下一步。</p>
+  <p>排名的读法由档案声明：每个家族只给自己的型号定位，定位从低到高为 <code class="mono">starter</code>、<code class="mono">midrange</code>、<code class="mono">premium</code>、<code class="mono">flagship</code>。不同家族的型号只按定位比较，同一定位内不分高下，所以在同一定位内跨厂商换模型不算降级。R2 的下限按定位判断：例如 worker 在 <code class="mono">crux</code> 用 <code class="mono">flagship</code> 的型号失败后，不能升到 <code class="mono">rescue</code> 里 <code class="mono">premium</code> 的型号。</p>
+  <p>提升跑在接管契约下，那是契约形状，不是档位。决策类型门的「同一问题两次失败」照旧触发 advisor 的决策形状，但 verdict 不再裁定升档。</p>
+  <p>窗口之外新开会话不是升档，失败计数不变，强度也不改。续用只在窗口之内进行，见第 15 节。</p>
+</section>
+
+<section class="manual-section" id="section-4" aria-labelledby="heading-4">
+  <h2 id="heading-4"><span class="section-number">04</span>全局规划、决策类型门、验证三层与批次验收</h2>
+  <p>决策类型门约束任何主代理、任一档位、两种姿态。它是技能正文规则，不是 hook。到点位时咨询 advisor 的<strong>决策</strong>形状：传入决定、约束、备选；advisor 自己读代码。主代理对 verdict 采取行动，或公开分歧；不得静默忽略。没有机械强制，也没有逐 diff 过审。</p>
+  <ul class="tight">
+    <li>承诺一种架构、数据迁移、API 形状或重构策略</li>
+    <li>推翻既定方案</li>
+    <li>改公共接口或跨模块依赖</li>
+    <li>放宽验收标准</li>
+    <li>同一问题两次失败</li>
+  </ul>
+  <p>advisor 的<strong>验收</strong>形状由验证第 3 层到达，不按步数触发。</p>
+
+  <h3>派发前的全局规划</h3>
+  <p>任务有两张以上的票时，主代理在第一次派发前把计划写进任务件。计划有四项：</p>
+  <ul class="tight">
+    <li><strong>依赖</strong>：哪张票需要另一张票的结果（例如接口），或在同一文件上先后修改。</li>
+    <li><strong>契约</strong>：共用文件或同一区域的票并成一份契约，每张票各有一条判定检查和一行报告；超出一条车道的上下文、一张票需要另一张已核验的结果、或一张票需要单独授权时，分开派发。契约验收一次，不逐票验收。</li>
+    <li><strong>隔离</strong>：每份契约的 Files。同时进行的契约若会共用一个工作目录，就各用一个独立的工作目录（<code class="mono">git worktree</code>）；只换分支名而共用一个工作目录，不算隔离。Cursor 里普通的 <code class="mono">Task</code> 共用工作区，并发契约改用隔离工作树的派发类型（<code class="mono">best-of-n-runner</code>，一次尝试），或者依次执行。</li>
+    <li><strong>宽检查</strong>：每项宽检查覆盖哪些契约，由谁跑，在哪个时点跑。</li>
+  </ul>
+  <p><strong>只等真实的依赖。</strong> 没有全局的阶段屏障。没有依赖的契约在一条消息里同时派发；顺序链和单文件手术保持串行。一份契约在它需要的契约验收通过、判定检查就绪后就派发，不等无关的契约。只有它需要的结果只能由某项宽检查证明时，才等这项宽检查。一份独立契约的验收、返工和检查，不挡另一份契约的派发。</p>
+  <p>提交只在授权或回滚边界处拆分，与验收分开。向椰椰问提交粒度时，选项里包含按契约提交。高风险工作可以让两个候选竞赛同一份契约，取较强的 diff；每个候选各用一个独立的工作目录和执行记录。</p>
+  <p>报告是声称，不是证据。审查对象是契约。验收一张契约只关闭这张契约，不关闭整个任务。三层：</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">层级</th><th scope="col">何时</th><th scope="col">做什么</th></tr>
+    <tr><td>第 1 层</td><td>每条车道默认</td><td>对照契约逐条核对三样东西：报告对每条验收标准的说法；车道的检查证据（命令、退出码、输出尾，对照工作树抽查）；承载 Objective 所述行为的文件，按路径限定的 <code class="mono">git diff &lt;file&gt;</code>（文件清单从 <code class="mono">git diff --stat</code> 得到）。测试只证明它覆盖的断言：差异实现的是别的行为时，即使检查全部通过也拒收。差异太大时交 advisor 阅读；主代理核对标准、证据、结论是否一一对应，再读 advisor 标出的片段。完整无范围的 <code class="mono">git diff</code> 不进主代理上下文。车道自己做的评审或验收是声称；复用它的命令输出，不重跑，把验收的力气花在车道看不到的部分：其他契约、车道不具备的环境、批次检查。</td></tr>
+    <tr><td>第 2 层</td><td>报告、<code class="mono">git diff --stat</code> 或验证输出引起具体怀疑</td><td>读它指向的其他文件的限定路径 <code class="mono">git diff &lt;file&gt;</code>。车道自己写的验收测试是声称的一部分，要读它。</td></tr>
+    <tr><td>第 3 层</td><td>正确性关键、同族 diff、或用户要求评审</td><td>advisor 以验收形状读 diff 与 receipt，返回 verdict 与标出的片段。同族 diff 优先换跨厂商候选。verdict 仍是声称，终裁在主代理。</td></tr>
+  </table></div>
+
+  <h3>每项检查只跑一次</h3>
+  <ul class="tight">
+    <li>一份契约的检查列表只有一个执行者，由车道文档写明是谁。执行者跑过之后，不为收尾再跑一次。契约只放本契约的判定检查。</li>
+    <li><strong>宽检查</strong>归批次：全量测试、渲染或浏览器检查、端到端套件、完整构建或打包、与其他契约的检查共用昂贵准备（服务、浏览器、设备、构建）的检查，以及主代理自己做的渲染和人工检查。</li>
+    <li>每项宽检查在它覆盖的契约都落地并验收之后跑一次，这就是<strong>批次验收</strong>。它只挡需要它结果的工作，不挡其余契约的派发。只在它发现的失败返工之后再跑。</li>
+    <li>一个批次容纳的契约数，以一次失败仍能归因为限。批次检查失败时，先追溯到致因契约，再给它开返工票；归因不到一份契约时，把批次分小。</li>
+    <li>批次检查在任务件里登记一次，记为通过、失败或待跑，并附输出。有失败或待跑的批次检查（包括因提前停止而没跑的），任务就不算完成，除非用户豁免。</li>
+    <li>主代理可以把批次的执行交给车道，判断仍归主代理。</li>
+    <li>证据在其依据的代码、输入与环境未变时继续有效。换角色或换会话本身不是重跑理由。</li>
+  </ul>
+  <p>「应该能工作」「测试应该过」，或者背后没有命令输出的验收，都不算完成。</p>
+</section>
+
+<section class="manual-section" id="section-5" aria-labelledby="heading-5">
+  <h2 id="heading-5"><span class="section-number">05</span>五部交付契约与两份前言</h2>
+  <p>车道不共享主代理的上下文。每次派发携带五部：</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">部</th><th scope="col">键</th><th scope="col">内容</th></tr>
+    <tr><td>1. Objective</td><td class="mono">objective</td><td>结果与验收标准，不是步骤</td></tr>
+    <tr><td>2. Files</td><td class="mono">files</td><td>授权范围（路径或目录）；范围内新建文件允许</td></tr>
+    <tr><td>3. Interfaces</td><td class="mono">interfaces</td><td>结果必须匹配的共享或外部契约；可以为无</td></tr>
+    <tr><td>4. Constraints</td><td class="mono">constraints</td><td>保留项：不得改什么、上游已钉死的选择、调用方留在自己会话里的操作。约束车道、它的子代理与它的验证命令</td></tr>
+    <tr><td>5. Verification</td><td class="mono">verification</td><td>worker：范围限于<strong>这张</strong>契约的改动及其调用方的检查。至少一条在 Objective 点名的行为未达成时会失败，这一条永不延后；先用能做到这一点的最便宜检查（现有测试，文本类改动用 grep），之后才写新的测试代码。批次检查不放进来，票据列出的也不放。explorer / advisor：期望的证据或 verdict 形状，可为空</td></tr>
+  </table></div>
+  <p>Constraints 未钉死的实现选择归车道：不上报、不等待。契约缺口（预期行为不明、要求冲突、必须改保留接口、无法判定什么算通过）要上报，由架构师修正契约。</p>
+  <p>存在上游任务件时，契约引用它的路径，只内联验收标准、保留约束与本契约自己的检查，并标明哪些节有约束力。主代理不重述、不重规划。本仓把批次检查在功能 spec 或收尾票的 <code class="mono">## Batch checks</code> 小节登记一次，跑过之后在同一处记录结果。</p>
+  <p>返工票是给同一车道的新契约，在续用窗口之内复用它的会话（第 15 节）：Objective 写缺陷（违反的要求、可复现失败、期望行为、证据）；Files 仍是原范围；Verification 是能覆盖失败用例与修复波及范围的最小可运行检查，不是整个套件。票内不写修复方案。</p>
+  <p>共用文件或同一区域的多张票交给一个 worker，作为一张契约派发，每张票各有一条判定检查和一行报告。三种情况分开派发：超出一条车道的上下文；一张票需要另一张已核验的结果；一张票需要单独授权。这张契约验收一次，不逐票验收；提交只在授权或回滚边界处拆分。</p>
+
+  <h3>两份前言</h3>
+  <p>前言是执行侧契约的单源，与 runner 同目录解析：<code class="mono">&lt;plugin-root&gt;/skills/orchestration/</code>。当前 <code class="mono">mode</code> 所需的前言缺失时，runner 退出非零、不拉起子进程，stderr 指名文件，不写 receipt。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">文件</th><th scope="col">用于</th><th scope="col">执行侧约定</th></tr>
+    <tr><td class="mono">lane-preamble.md</td><td><code class="mono">mode: implement</code>（缺省）；claude lane 的 <code class="mono">worker-*</code></td><td>执行者持有 Files 内的交付物，可以自己拆分工作、派子代理。对自己 diff 的评审（自己做或子代理做）是自查；车道判定为高风险的契约，可以做一次独立验收；评审的发现用最窄的检查复核，连同证据写进报告，验收留给调用方。保留操作仍约束它及其子代理。<strong>Verification</strong> 条：检查列表只有一个执行者；契约写明 runner 会在车道退出后跑这份列表时，车道不为收尾再跑；没写时列表归车道，在结尾跑一次。工作中只跑能回答当前问题的最窄检查，例如一个测试文件；比改动更宽的昂贵检查（全量测试、浏览器或端到端套件、完整构建或打包、耗时长的整项目类型检查）、与其他契约的检查共用昂贵准备（服务、浏览器）的检查，以及调用方自己的渲染或人工检查，属于调用方的批次，除非检查列表写了它们，子代理也不跑。以 <code class="mono">WORKER REPORT</code>（<code class="mono">OBJECTIVE / CHANGES / VERIFIED / GAPS</code>）结尾，附实际跑过的检查的输出。</td></tr>
+    <tr><td class="mono">lane-preamble-report.md</td><td><code class="mono">mode: report</code>；claude lane 的 <code class="mono">explorer-*</code></td><td>只读的 explorer 或 advisor。<code class="mono">Files</code> 是读取范围，不是写权限。回答 Objective。explorer 以证据形状结尾，advisor 以 verdict 形状结尾。不含 <code class="mono">WORKER REPORT</code>。</td></tr>
+  </table></div>
+  <p>claude lane 与 Cursor 的 Task 都没有 runner 自动前置前言：派发 prompt 第一行是路由行（第 14 节），第二行是读取所需前言的指令，按绝对路径给出，不是路径标签；worker 读 <code class="mono">lane-preamble.md</code>，explorer / advisor 读 <code class="mono">lane-preamble-report.md</code>。不要在契约正文里复述前言。<code class="mono">advisor-*</code> 自带完整正文。</p>
+</section>
+
+<section class="manual-section" id="section-6" aria-labelledby="heading-6">
+  <h2 id="heading-6"><span class="section-number">06</span>两条 runner：spec、receipt、错误类与报告模式</h2>
+  <p>主代理把五部写成 JSON，放到目标仓的 <code class="mono">.fable-advisor/pending/&lt;slug&gt;.json</code>，然后跑 runner。车道在 <strong>runner 进程退出</strong>时结束。receipt 打印到 stdout，并写入 <code class="mono">.fable-advisor/receipts/&lt;spec_hash&gt;.json</code>。<code class="mono">error_class: complete</code> 时 runner 自己删除 pending spec。</p>
+  <pre class="mono">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"
+node "&lt;plugin-root&gt;/scripts/run-grok.mjs" --spec .fable-advisor/pending/&lt;slug&gt;.json --cwd "$(pwd)"</pre>
+  <p>未知顶层键、越界值，以及缺失或不合规的路由字段，都记 <code class="mono">spec_invalid</code>，永不静默改写。CLI 车道的验收 = <code class="mono">error_class: complete</code> + 非空会话 id + 可对照工作树抽查的验证输出 + 技能正文的分层验收。引用 receipt 里的型号或强度时写「已提交，未观测」：那是 runner 提交给 CLI 的值，不是从运行事件读回来的。</p>
+
+  <h3>spec 键</h3>
+  <p>五部键：<code class="mono">objective</code>、<code class="mono">files</code>、<code class="mono">interfaces</code>、<code class="mono">constraints</code>、<code class="mono">verification</code>。implement 模式的 <code class="mono">verification</code> 至少一条；report 模式可以为空数组。<code class="mono">files</code> 在 report 模式是读取范围，也可以为空。</p>
+  <p>路由键：<code class="mono">role</code>、<code class="mono">tier</code> 必填，<code class="mono">basis</code> 在 <code class="mono">mainstay</code> 以上必填。回执原样记录这三个字段。校验规则见本节的「路由校验」。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">键</th><th scope="col">codex</th><th scope="col">grok</th></tr>
+    <tr><td class="mono">role</td><td colspan="2">必填。<code class="mono">mode: implement</code> 只收 <code class="mono">worker</code>；<code class="mono">mode: report</code> 收 <code class="mono">explorer</code> 或 <code class="mono">advisor</code>。其他值 → <code class="mono">spec_invalid</code></td></tr>
+    <tr><td class="mono">tier</td><td colspan="2">必填：<code class="mono">mainstay</code>、<code class="mono">crux</code>、<code class="mono">rescue</code>。<code class="mono">same-model</code> 是 claude 车道的拨盘，runner 拒绝它 → <code class="mono">spec_invalid</code></td></tr>
+    <tr><td class="mono">basis</td><td colspan="2"><code class="mono">{"kind": …, "ref": …}</code>。<code class="mono">crux</code> 与 <code class="mono">rescue</code> 必填；<code class="mono">mainstay</code> 可以省略，写了则种类必须是四种之一、<code class="mono">ref</code> 非空。种类按角色和档位合规（第 2 节的表）</td></tr>
+    <tr><td class="mono">mode</td><td colspan="2"><code class="mono">implement</code>（缺省）或 <code class="mono">report</code>。其他值 → <code class="mono">spec_invalid</code></td></tr>
+    <tr><td class="mono">model</td><td>白名单恰为 <code class="mono">gpt-6-astra</code>（缺省）、<code class="mono">gpt-6-luna</code>、<code class="mono">gpt-6.1-sol</code>。名单外（包括 <code class="mono">gpt-6-sol</code>、<code class="mono">gpt-5.6-luna</code>、<code class="mono">gpt-5.6-sol</code>）→ <code class="mono">spec_invalid</code>，不拉起子进程</td><td>必填，非空字符串；缺失 → <code class="mono">spec_invalid</code>。目录可读时按 <code class="mono">grok models</code> 的目录校验，目录里没有的型号 → <code class="mono">spec_invalid</code>；目录不可读时跳过校验，由实跑决定可用性，不是 <code class="mono">grok_unavailable</code></td></tr>
+    <tr><td class="mono">effort</td><td><code class="mono">low | medium | high | xhigh | max</code>。省略时按型号：<code class="mono">gpt-6-astra</code> → <code class="mono">medium</code>，<code class="mono">gpt-6-luna</code> → <code class="mono">max</code>，<code class="mono">gpt-6.1-sol</code> → <code class="mono">high</code>。这是 runner 的省略默认，不是档案默认</td><td>必填：<code class="mono">low | medium | high | xhigh</code>；缺失或越界 → <code class="mono">spec_invalid</code>。receipt 记提交值</td></tr>
+    <tr><td class="mono">title</td><td colspan="2">可选非空字符串。prompt 第一行是标题原文（纯文本，不加 Markdown 标记），空一行，再前言，再五部。省略时第一行是 spec 文件去掉 <code class="mono">.json</code> 后的文件名。空串或非字符串 → <code class="mono">spec_invalid</code>，不拉起子进程</td></tr>
+    <tr><td class="mono">service_tier</td><td>可省略；合法值只有 <code class="mono">fast</code></td><td>不是 spec 键</td></tr>
+    <tr><td class="mono">idle_timeout_sec</td><td colspan="2">静默截止，缺省 600。只切「最后一次事件之后的沉默」，被切时跳过验证</td></tr>
+    <tr><td class="mono">timeout_sec</td><td colspan="2">整次运行的绝对上限。无缺省；省略则不封顶</td></tr>
+    <tr><td class="mono">resume_session_id</td><td>上次的 <code class="mono">codex_session_id</code>；调用 <code class="mono">codex exec resume &lt;id&gt;</code></td><td>上次的 <code class="mono">grok_session_id</code>；传 <code class="mono">--resume &lt;id&gt;</code></td></tr>
+  </table></div>
+
+  <h3>路由校验</h3>
+  <p>runner 在拉起 CLI 之前校验路由，并用 <code class="mono">plugin/scripts/routing-profile.mjs</code> 解析随插件发布的路由档案（<code class="mono">&lt;plugin-root&gt;/skills/orchestration/routing-profile.md</code>）。校验失败记 <code class="mono">spec_invalid</code>，不拉起子进程，stderr 打一行诊断。档案读不出或解析失败也是 <code class="mono">spec_invalid</code>。</p>
+  <ul class="tight">
+    <li>角色与模式匹配：implement 只收 worker，report 收 explorer 与 advisor。</li>
+    <li>拨盘（<code class="mono">model</code> 加 <code class="mono">effort</code>）在档案里该角色、该档位的格里。runner 在两个宿主上都运行，所以取 Claude Code 表与 Cursor 表同一格的并集。</li>
+    <li>codex 按补齐省略默认值之后的有效拨盘校验。grok 必须显式写 <code class="mono">model</code> 和 <code class="mono">effort</code>，因为 runner 无从得知 CLI 自己的默认值。</li>
+    <li>依据种类按角色和档位合规，<code class="mono">ref</code> 非空。</li>
+    <li><code class="mono">tier: same-model</code> 被拒。</li>
+  </ul>
+  <p>校验只查依据存在、格式合规，不查真假。</p>
+
+  <h3>不换型号</h3>
+  <p>两条 runner 都不换型号。codex runner 在会话建立前失败（<code class="mono">preparation_stalled</code>，或 <code class="mono">codex_failed</code> 且尚无会话 id）时只尝试一次：receipt 报告这个错误类，<code class="mono">model_requested</code> 与 <code class="mono">model_used</code> 都是请求的型号。主代理按第 2 节的换候选规则处理。不要预先探测 CLI 登录态；最多检查安装（<code class="mono">which grok</code>）。可用性以 receipt 为准。</p>
+
+  <h3>检查列表的执行者</h3>
+  <p>runner 是契约检查列表的唯一执行者。<code class="mono">verification</code> 非空时，runner 在 prompt 里告诉车道：runner 会在车道退出后自己跑这些命令，退出码与输出写进 receipt，非零退出仍算车道的失败；车道工作中按需跑检查，但不把这份列表当收尾步骤再跑。<code class="mono">verification</code> 为空时不注入这句话。runner 自己那次执行不变，它是车道无法伪造的证据。<code class="mono">complete</code> receipt 是那张契约的证据，不是对契约的验收，更不是对任务的验收。</p>
+  <p>检查失败时，从该检查的 <code class="mono">output_log</code> 读出失败用例，只重跑这些用例。为了查看失败而重跑整份列表，等于重复最贵的那一步。</p>
+
+  <h3>receipt 字段</h3>
+  <p>两条 runner 都写：<code class="mono">receipt_version</code>、<code class="mono">mode</code>、<code class="mono">role</code>、<code class="mono">tier</code>、<code class="mono">basis</code>、<code class="mono">lane_finished_at</code>、<code class="mono">report</code>（仅 report 模式带 CLI 最终消息，implement 为 null）、<code class="mono">spec_hash</code>、<code class="mono">cwd</code>、<code class="mono">producer</code>（<code class="mono">codex</code> 或 <code class="mono">grok</code>）、<code class="mono">model</code>、<code class="mono">model_requested</code>、<code class="mono">model_used</code>、<code class="mono">fallback_reason</code>、<code class="mono">effort</code>、<code class="mono">resumed_from</code>、<code class="mono">end_to_close_ms</code>、<code class="mono">max_idle_ms</code>、<code class="mono">idle_timeout_sec</code>、<code class="mono">timeout_sec</code>、<code class="mono">started_at</code>、<code class="mono">finished_at</code>、<code class="mono">exit_status</code>、<code class="mono">error_class</code>、<code class="mono">dirty_baseline</code>、<code class="mono">changed_files</code>、<code class="mono">verification</code>。</p>
+  <p>codex 另有 <code class="mono">service_tier</code>、<code class="mono">codex_session_id</code>、<code class="mono">codex_final_message</code>。grok 另有 <code class="mono">grok_session_id</code>（runner 注入 <code class="mono">--session-id</code>）、<code class="mono">stop_reason</code>、<code class="mono">usage</code>、<code class="mono">total_cost_usd</code>、<code class="mono">grok_final_message</code>。</p>
+  <p><code class="mono">fallback_reason</code> 在两条 runner 上恒为 null。它只为兼容读 receipt 的调用方而保留。</p>
+  <p><code class="mono">lane_finished_at</code> 是 CLI 进程退出的时刻，在 runner 跑验证之前记录；它是续用窗口的时间来源（第 15 节）。<code class="mono">finished_at</code> 在验证之后才记录，不用于窗口。<code class="mono">spec_invalid</code> 时 CLI 没有启动，<code class="mono">lane_finished_at</code> 为 <code class="mono">null</code>。<code class="mono">role</code>、<code class="mono">tier</code>、<code class="mono">basis</code> 记 spec 的 JSON 里写的值，缺键时为 <code class="mono">null</code>；spec 不是合法 JSON 时三者都是 <code class="mono">null</code>。读取 spec 时被拒（缺字段、值非法、未知键）和读完后路由校验未通过，都按此记录。</p>
+  <p><code class="mono">verification</code> 的每个条目有四个字段：<code class="mono">command</code>；<code class="mono">exit_code</code>；<code class="mono">output_tail</code>，即合并输出的最后 2,000 个字符；<code class="mono">output_log</code>，即完整输出日志相对于 <code class="mono">--cwd</code> 的路径 <code class="mono">.fable-advisor/receipts/&lt;spec_hash&gt;.verification-&lt;n&gt;.log</code>，<code class="mono">n</code> 从 1 开始，与命令在列表中的位置一致。日志是该命令的完整合并输出，边产生边写入；启动失败的错误信息也写进日志；同一 spec 再跑时覆盖旧日志。日志只记录，不改变被记录的命令：runner 不为日志暂停读取命令输出。写入队列超过 16 MiB 时，runner 放弃这份日志，并尽力删除不完整的文件；日志写不出时 <code class="mono">output_log</code> 为 <code class="mono">null</code>，stderr 打一行诊断，<code class="mono">exit_code</code>、<code class="mono">output_tail</code> 与 <code class="mono">error_class</code> 不受影响。没有跑检查的路径（<code class="mono">idle_timeout</code>、<code class="mono">timeout</code>、<code class="mono">interrupted</code>、<code class="mono">preparation_stalled</code> 等）的 <code class="mono">verification</code> 为空数组，不写日志。日志与 receipt 一样含命令输出，目标仓要把 <code class="mono">.fable-advisor/</code> 加进 <code class="mono">.gitignore</code>。</p>
+  <p><code class="mono">dirty_baseline</code>：拉起 CLI 之前跑一次 <code class="mono">git status --porcelain</code>。非空为 <code class="mono">true</code>，空为 <code class="mono">false</code>，这次 <code class="mono">git status</code> 本身失败为 <code class="mono">null</code>，运行继续。两条 runner、两种模式都记。</p>
+  <p><code class="mono">end_to_close_ms</code>（终端事件到进程自然关闭；没看到终端事件或管道被强制释放时为 null）与 <code class="mono">max_idle_ms</code> 是诊断，不是门。</p>
+
+  <h3>进程收尾</h3>
+  <p>CLI 进程退出后，runner 停止执行计时，最多等两秒让继承的输出管道排空。之后释放剩余管道，记一条诊断，用观察到的退出状态继续验证与写 receipt。预检、git 检查与验证命令使用同一排空上限；这不限制仍在运行的验证命令。超时与中断先启动独立的两秒清理截止，再尝试杀进程树。Windows <code class="mono">taskkill</code> 有自己的两秒运行上限与两秒清理上限。诊断说没观察到退出时，先确认并停掉残留进程，再续跑或派另一个写入者。</p>
+
+  <h3>运行中标记、心跳与等待</h3>
+  <p>runner 读完合法 spec 后，以独占创建写运行中标记 <code class="mono">.fable-advisor/running/&lt;spec_hash&gt;.json</code>，内容为 runner、pid、spec 路径、开始时间、阶段（<code class="mono">preparing | cli | verifying</code>）与事件数。runner 每 60 秒刷新一次标记，同时向 stderr 写一行进度，例如 <code class="mono">[run-grok] running 4m00s; phase cli; 132 events; last event 0m12s ago</code>。stdout 仍只放 receipt。runner 在观察到的每条退出路径上删除标记；180 秒没刷新的标记属于已死的 runner。</p>
+  <p>同一 spec 已有新鲜标记时，第二个 runner 以状态 1 退出，不写 receipt，不启动 CLI，不动对方的标记：一份 spec 同一时间至多一个 runner。标记过期则接管。</p>
+  <p>Claude Code 的等待只有两条路径。第一条是前台运行 runner，适合预计远在 Bash <code class="mono">timeout</code> 之内完成的票。第二条是把 runner 本身作为后台 Bash 调用（<code class="mono">run_in_background: true</code>）运行，然后结束本轮或做互不依赖的工作，由宿主在进程退出时唤醒会话，再判断 receipt；可能超过 60 分钟的票走这一条。第二条只属于主会话：子代理结束本轮就是把报告交还上级，receipt gate 不在那次停止时运行，所以子代理在前台运行 runner。不要自写等待循环（<code class="mono">sleep</code>、<code class="mono">while</code>、<code class="mono">until</code>、<code class="mono">pgrep</code> 轮询），也不要把循环包进后台调用；反复读输出文件也不是等待。</p>
+
+  <h3>运行中纠偏</h3>
+  <p>CLI 车道运行中没有消息通道：runner 只交付一次提示词。要中途纠偏，用 <code class="mono">kill &lt;pid&gt;</code>（pid 取自运行中标记）向 runner 发 SIGTERM，让中断路径走完，写出 <code class="mono">interrupted</code> receipt。对 runner 的后台任务用 <code class="mono">TaskStop</code> 也会发 SIGTERM，但随后很快强制结束，可能截断 receipt。然后删除旧的 pending spec，排入修正后的契约，<code class="mono">resume_session_id</code> 设为那份 <code class="mono">interrupted</code> receipt 的会话 id，车道带着上下文继续。这条续用同样只在续用窗口之内进行（第 15 节）。被中断的一轮没有验证结果，恢复后由 runner 重新验证。</p>
+
+  <h3>错误类</h3>
+  <p>共享：<code class="mono">complete</code>、<code class="mono">spec_invalid</code>、<code class="mono">preparation_stalled</code>、<code class="mono">idle_timeout</code>、<code class="mono">timeout</code>、<code class="mono">interrupted</code>、<code class="mono">verification_failed</code>、<code class="mono">no_diff</code>、<code class="mono">unexpected_diff</code>、<code class="mono">empty_report</code>、<code class="mono">git_status_failed</code>。</p>
+  <p>codex 另有 <code class="mono">codex_unavailable</code>（PATH 上没有 codex）、<code class="mono">codex_failed</code>。grok 另有 <code class="mono">grok_unavailable</code>（拉起进程得到 <code class="mono">ENOENT</code>）、<code class="mono">grok_failed</code>。</p>
+  <p><code class="mono">no_diff</code>：implement 模式且 <code class="mono">files</code> 非空、运行后无改动；pending 文件留下。普通 spec 要调查；返工票上这可能表示缺陷无法复现。<code class="mono">git_status_failed</code> 只在 implement 模式出现，表示 runner 无法判定改了什么，不是 <code class="mono">complete</code>。<code class="mono">idle_timeout</code> 与 <code class="mono">timeout</code> 表示时钟切断，跳过验证；恢复路径是在续用窗口之内、带该 receipt 会话 id 的返工票（<code class="mono">resume_session_id</code>），不是主代理手验工作树；窗口之外则新开会话（第 15 节）。</p>
+  <p>implement 模式应先有干净工作树：<code class="mono">git status --porcelain</code> 为空。开跑前已有脏文件时，空跑会看起来像做了工作。</p>
+
+  <h3>报告模式语义</h3>
+  <ul class="tight">
+    <li>CLI 以只读工具集运行。codex 为 <code class="mono">--sandbox read-only</code>。</li>
+    <li>前言用报告前言，不用 worker 前言。</li>
+    <li>工作树没有被本车道弄脏，是正常结果，记 <code class="mono">complete</code>。receipt 另带 <code class="mono">mode</code> 与 <code class="mono">report</code>。</li>
+    <li>开跑前干净、跑完变脏：<code class="mono">unexpected_diff</code>，不是 <code class="mono">complete</code>。</li>
+    <li><code class="mono">dirty_baseline: true</code> 时不判 <code class="mono">unexpected_diff</code>。<code class="mono">changed_files</code> 仍记录运行后观察到的路径。此时只读工具集是唯一防线。</li>
+    <li>运行后的 <code class="mono">git status</code> 失败不判 <code class="mono">git_status_failed</code>（ADR 0019）。<code class="mono">changed_files</code> 记空数组，<code class="mono">dirty_baseline</code> 保持开跑前的记录（开跑前也失败则为 null），然后照常判 <code class="mono">empty_report</code> 与 <code class="mono">complete</code>。所以没有 git 仓库的目录也能完成报告。</li>
+    <li>收集到的报告文本为空或只有空白：<code class="mono">empty_report</code>，pending spec 留下。git 不可用时同样适用。</li>
+    <li>判定顺序：先 <code class="mono">unexpected_diff</code>（本车道弄脏的树），再 <code class="mono">empty_report</code>，再 <code class="mono">complete</code>。<code class="mono">git_status_failed</code> 不在这个顺序里。</li>
+    <li>receipt gate 对报告模式的 pending spec 同样生效。</li>
+  </ul>
+</section>
+
+<section class="manual-section" id="section-7" aria-labelledby="heading-7">
+  <h2 id="heading-7"><span class="section-number">07</span>claude 车道的九份 agent 文件与别名</h2>
+  <p>一份文件对应一个（角色, 强度）。以 <code class="mono">fable-advisor:&lt;name&gt;</code> 派发。文件名与 <code class="mono">name:</code> 用缩写（<code class="mono">l</code> / <code class="mono">md</code> / <code class="mono">h</code> / <code class="mono">xh</code>）；文首字段 <code class="mono">effort:</code> 写全称。强度没有按次参数：文件钉死强度，按次 <code class="mono">model</code> 选择型号。提示词第一行写路由行，第二行写读前言的指令（第 14 节）。</p>
+  <p>按次 <code class="mono">model</code> 只接受别名 <code class="mono">haiku</code>、<code class="mono">sonnet</code>、<code class="mono">opus</code>、<code class="mono">fable</code>。别名是指针，实际型号以子代理记录（<code class="mono">~/.claude/projects/&lt;project&gt;/&lt;session&gt;/subagents/agent-*.jsonl</code>）里的 <code class="mono">message.model</code> 为准。路由档案为每个 claude 拨盘写明用哪份 agent 文件、配哪个别名。</p>
+  <p>不要传 <code class="mono">name</code>（具名队友）：传了则文首 <code class="mono">effort:</code> 被忽略，静默落到该型号在 <code class="mono">~/.claude/settings.json</code> 里的强度。省略 <code class="mono">name</code> 才是后台子代理，文首强度生效。route gate 拒绝带 <code class="mono">name</code> 的本角色池派发（第 14 节）。agent 文件只在会话启动时加载；中途新增或改名会得到 <code class="mono">Agent type '&lt;name&gt;' not found</code>，改池后必须重启会话。</p>
+  <p>型号解析顺序：按次 <code class="mono">model</code> → 文件的 <code class="mono">model:</code> → <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code> → 主会话模型。<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真值时，宿主去掉按次 <code class="mono">model</code>，子代理跑 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code>；该变量未设或为 <code class="mono">inherit</code> 时跑会话模型。别名所属家族与会话型号相同时，别名跑会话型号；否则别名按它的 <code class="mono">ANTHROPIC_DEFAULT_*_MODEL</code> 重定向变量解析（设了时）。每次本角色池派发都显式带 <code class="mono">model</code>，由 route gate 要求；例外是 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真值时，宿主已去掉 <code class="mono">model</code> 参数，route gate 不要求它（第 14 节）。内置 <code class="mono">Explore</code> 没有自己的强度；不指定 <code class="mono">model</code> 时跑会话模型（Claude API 上限 Opus），按会话价格计费。它不是任何档位的候选。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">name</th><th scope="col">角色</th><th scope="col">effort</th><th scope="col">模型处理与前言</th></tr>
+    <tr><td class="mono">explorer-h</td><td>explorer</td><td class="mono">high</td><td>无 <code class="mono">model:</code> 键。工具仅 <code class="mono">Read</code>、<code class="mono">Grep</code>、<code class="mono">Glob</code>。指向报告前言。按次 <code class="mono">model</code> 必给；省略时 route gate 拒绝，<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真值时除外（宿主已去掉该参数）。<code class="mono">haiku</code> 没有强度维度，也经这份文件派发</td></tr>
+    <tr><td class="mono">explorer-xh</td><td>explorer</td><td class="mono">xhigh</td><td>同上</td></tr>
+    <tr><td class="mono">worker-md</td><td>worker</td><td class="mono">medium</td><td>无 <code class="mono">model:</code>。服务于档案点名的任何 <code class="mono">medium</code> worker 拨盘</td></tr>
+    <tr><td class="mono">worker-h</td><td>worker</td><td class="mono">high</td><td>无 <code class="mono">model:</code>。指向 worker 前言。<code class="mono">sonnet-5-5[high]</code>（配 <code class="mono">sonnet</code>）与 <code class="mono">opus-5-5[high]</code>（配 <code class="mono">opus</code>）的 worker 拨盘都经它派发</td></tr>
+    <tr><td class="mono">worker-xh</td><td>worker</td><td class="mono">xhigh</td><td>同上。<code class="mono">sonnet-5-5[xhigh]</code>（配 <code class="mono">sonnet</code>）与 <code class="mono">opus-5-5[xhigh]</code>（配 <code class="mono">opus</code>）的 worker 拨盘经它派发</td></tr>
+    <tr><td class="mono">advisor-l</td><td>advisor</td><td class="mono">low</td><td><code class="mono">model: fable</code>；<code class="mono">readonly: true</code>；工具 <code class="mono">Read</code>、<code class="mono">Grep</code>、<code class="mono">Glob</code>。按次 <code class="mono">model</code> 优先于文件的 <code class="mono">model:</code></td></tr>
+    <tr><td class="mono">advisor-md</td><td>advisor</td><td class="mono">medium</td><td>同上</td></tr>
+    <tr><td class="mono">advisor-h</td><td>advisor</td><td class="mono">high</td><td>同上。服务于档案点名的任何 <code class="mono">high</code> advisor 拨盘，不再自称默认拨盘</td></tr>
+    <tr><td class="mono">advisor-xh</td><td>advisor</td><td class="mono">xhigh</td><td>同上</td></tr>
+  </table></div>
+  <p>插件不固定 advisor 的缺省拨盘。哪个 advisor 拨盘回答决策类型门或第 3 层验收，由路由档案的 advisor 映射决定（见第 12 节）；落到哪份 agent 文件由所选拨盘的强度决定。</p>
+  <p>没有 <code class="mono">explorer-l</code>。从 Claude 主代理派本车道时须披露：同族（没有跨厂商复核）、共享 Anthropic 额度。Fable 走 usage credits，账户需要先启用。</p>
+  <p>后台子代理运行中可以纠偏：按派发结果返回的 <code class="mono">agentId</code> 调 <code class="mono">SendMessage</code>，不传 <code class="mono">name</code>，消息第一行写路由行（第 14 节）。消息在子代理下一次调用工具时送达；它正在执行一个长工具调用（例如前台 runner）时，消息要等那次调用返回。纠偏改变契约：只在 Objective、Constraint 或 Verification 某一项有错时发送，验收依据契约加这条消息。续派同样受续用窗口约束（第 15 节）。</p>
+</section>
+
+<section class="manual-section" id="section-8" aria-labelledby="heading-8">
+  <h2 id="heading-8"><span class="section-number">08</span>Cursor：钉派发、cursor lane、runner 经 Shell、用户级门禁</h2>
+  <p>Cursor 经 Claude 插件兼容路径加载本插件。grok lane、claude lane 与 cursor lane 是原生 Task 派发，各自钉模型。codex lane 不在 Task 枚举里。</p>
+  <h3>钉模型的 Task</h3>
+  <ul class="tight">
+    <li>worker：<code class="mono">generalPurpose</code> + 显式 <code class="mono">model</code>，prompt 第一行是路由行，第二行是读取 <code class="mono">lane-preamble.md</code> 的指令。</li>
+    <li>explorer：<code class="mono">explore</code>（或 <code class="mono">generalPurpose</code>）+ 显式 <code class="mono">model</code>，prompt 第一行是路由行，第二行是读取 <code class="mono">lane-preamble-report.md</code> 的指令。</li>
+    <li>advisor：具名 <code class="mono">advisor-*</code> agent，显式钉模型，prompt 第一行是路由行，第二行是读取报告前言的指令。</li>
+  </ul>
+  <p>Cursor 里 <code class="mono">Task</code> 派发的路由只有文本规则：没有 hook 校验路由行，用户级的钉模型 hook 也不校验它。<code class="mono">resume</code> 的提示词同样以路由行开头。</p>
+  <p>钉的家族就是车道：Grok 家族是 grok lane，Claude 家族是 claude lane，Cursor 自家模型是 <strong>cursor lane</strong>。钉的型号名是一个拨盘，即该格档位内的一个型号加强度。插件 agent 的文首 <code class="mono">model:</code> 在 Cursor 不生效；省略 <code class="mono">model</code> 会继承会话模型。Cursor 不向主代理回传执行元数据，披露时标「已请求，未确认」。</p>
+  <p>强度钉在型号名上。档案里的 <code class="mono">model[…]</code> 在这里映射为型号名变体。当回合的允许名单只约束钉型号的 Task 派发：某个候选需要的变体不在名单里，就跳过这个候选，并在披露里说明。</p>
+  <p>同模派发是唯一允许省略 <code class="mono">model</code> 的派发：编排姿态下，服务本仓 <code class="mono">AGENTS.md</code> 点名的类别（<code class="mono">plugin/skills/**</code>——不含 <code class="mono">routing-profile.md</code>——与 <code class="mono">plugin/agents/**</code> 下的准则散文），<code class="mono">generalPurpose</code> 继承会话模型。披露里写 <code class="mono">inherit</code>，以免被当成漏钉。它的路由写 <code class="mono">tier=same-model</code>。</p>
+  <p>验收走技能正文的三层；Task 派发没有 receipt，也没有 runner，所以契约检查列表归车道，在结尾跑一次，报告里的输出就是全部证据。返工用 Task <code class="mono">resume</code> 加返工契约，且只在 1 小时的续用窗口之内。窗口从 Task 结果返回的时刻算起：主代理在结果到达时用 Shell（<code class="mono">date -u +%Y-%m-%dT%H:%M:%SZ</code>）把时刻记进任务件；没有记录就按窗口已过处理，新开会话（第 15 节）。再失败则按升级梯归因，能力失败进入下一档，用新派发加接管契约。竞赛用隔离工作树的派发类型（Task 枚举里的 <code class="mono">best-of-n-runner</code>）。并发契约若会共用工作区，同样用这个派发类型（一次尝试），否则依次执行；经 Shell 并发的 codex runner 各用一个 <code class="mono">git worktree</code> 作 <code class="mono">--cwd</code>。</p>
+
+  <h3>codex runner 经 Shell</h3>
+  <p>GPT 家族：<code class="mono">node "&lt;plugin-root&gt;/scripts/run-codex.mjs" --spec … --cwd "$(pwd)"</code>，经 Shell。spec、pending/receipt、等待协议、<code class="mono">resume_session_id</code>、<code class="mono">mode: "report"</code> 与 Claude Code 相同。两处不同：没有 receipt gate（本车道不依赖插件 Stop hook）；等待跟 Shell 时钟，长票后台跑、按 shell id 等。codex runner 在 Cursor 中同样写运行中标记，同样拒绝对同一 spec 重复启动。spec 带路由字段，runner 在启动 CLI 之前校验（第 6 节）。</p>
+
+  <h3>用户级门禁与钉模型规则</h3>
+  <p><strong>lane family gate</strong> 是用户级 <code class="mono">preToolUse</code> 脚本 <code class="mono">cursor-hooks/fable-lane-family-gate.py</code>（活体 <code class="mono">~/.cursor/hooks/fable-lane-family-gate.py</code>）。它防止静默继承会话模型，不查家族。对 <code class="mono">advisor-</code> 前缀的 <code class="mono">subagent_type</code>，<code class="mono">model</code> 缺失、为空串或为 <code class="mono">inherit</code> 时 <code class="mono">deny</code>。<code class="mono">resume</code> 跳过型号检查。<code class="mono">explore</code> / <code class="mono">generalPurpose</code> 不在此门范围内。空 stdin 则 <code class="mono">deny</code>。</p>
+  <p>钉模型规则是用户级 Cursor 规则 <code class="mono">cursor-hooks/fable-lane-pin.mdc</code>（活体 <code class="mono">~/.cursor/rules/fable-lane-pin.mdc</code>）：提醒每次显式钉允许名单里的型号名；省略 <code class="mono">model</code> 的 <code class="mono">generalPurpose</code> 是同模派发，不是厂商车道。</p>
+</section>
+
+<section class="manual-section" id="section-9" aria-labelledby="heading-9">
+  <h2 id="heading-9"><span class="section-number">09</span>用户级文件与伴生安装器</h2>
+  <p>正典是仓内编辑源。活体是宿主实际读取的用户级副本。活体只由伴生安装器写入，安装时无条件覆盖，不留 <code class="mono">.bak</code>。中文备份不安装。路由档案随插件发布，没有活体，见第 12 节。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">正典</th><th scope="col">活体</th></tr>
+    <tr><td class="mono">cursor-hooks/fable-lane-pin.mdc</td><td class="mono">~/.cursor/rules/fable-lane-pin.mdc</td></tr>
+    <tr><td class="mono">cursor-hooks/fable-lane-family-gate.py</td><td class="mono">~/.cursor/hooks/fable-lane-family-gate.py</td></tr>
+  </table></div>
+  <p>伴生安装器是仓库检出内的 <code class="mono">scripts/install-user-level.py</code>。它不进 <code class="mono">plugin/</code>，不作为插件 hook，也不随 <code class="mono">claude plugin update</code> 自动运行。插件更新后由用户在每侧手动跑一次。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">旗标</th><th scope="col">行为</th></tr>
+    <tr><td>（无）</td><td>默认家目录为当前用户，写入两件活体</td></tr>
+    <tr><td class="mono">--home &lt;目录&gt;</td><td>可重复；逐个家目录写入</td></tr>
+    <tr><td class="mono">--check</td><td>只比对，不写。任一活体缺失或字节不同 → 退出非零并列出</td></tr>
+    <tr><td class="mono">--also &lt;目录&gt;</td><td>把同一批英文正典按源文件名（不含目录）平铺写入该备份目录</td></tr>
+  </table></div>
+  <p>每个目标打印动作前缀：<code class="mono">installed</code> / <code class="mono">unchanged</code> / <code class="mono">warning</code>。</p>
+  <p><code class="mono">~/.cursor/hooks.json</code>：只检测 <code class="mono">preToolUse</code> 里是否有包含 <code class="mono">fable-lane-family-gate.py</code> 的命令字段。文件不存在或没有该条目时打印 <code class="mono">warning</code>，退出码不变，不修改该文件。</p>
+  <p>本机两侧一次写入：</p>
+  <pre class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</pre>
+</section>
+
+<section class="manual-section" id="section-10" aria-labelledby="heading-10">
+  <h2 id="heading-10"><span class="section-number">10</span>receipt gate</h2>
+  <p>插件 Stop hook，针对<strong>主会话自己</strong>：排了 spec 却不跑，或把非 <code class="mono">complete</code> 的 receipt 当完成。实现是 <code class="mono">plugin/hooks/hooks.json</code> 调 <code class="mono">plugin/hooks/receipt-gate.py</code>。</p>
+  <ul class="tight">
+    <li>扫描 <code class="mono">&lt;cwd&gt;/.fable-advisor/pending/*.json</code>。按 spec 文件 sha256 找 <code class="mono">.fable-advisor/receipts/&lt;digest&gt;.json</code>。</li>
+    <li>没有 receipt，或 <code class="mono">error_class</code> 不是 <code class="mono">complete</code>，并且没有新鲜的运行中标记：stderr 列出 pending 文件，退出 2，拦住结束。拦截消息指引以后台 Bash 调用运行 runner，然后结束本轮。</li>
+    <li>有新鲜运行中标记（<code class="mono">.fable-advisor/running/&lt;digest&gt;.json</code>，180 秒内刷新过）的 pending spec 不计入未匹配：车道在跑，放行结束，宿主在后台 runner 退出时唤醒会话。标记只覆盖它自己的 spec。</li>
+    <li>没有 pending 目录：放行。</li>
+    <li><code class="mono">stop_hook_active</code> 为真：放行，避免重入。</li>
+    <li>stdin 不是合法 JSON：失败时放行（退出 0）。没有 python 运行时：hook 包装同样失败时放行，并在 stderr 说明。</li>
+  </ul>
+  <p>门禁分不清「结束本轮等待唤醒」与「runner 跑完前声称完成」；后者由等待规则与验收约束，runner 退出后的下一次结束照常检查。门禁只强制 receipt 存在且为 <code class="mono">complete</code>；内容仍由主代理判断。放弃或改道时要亲手删 pending 文件并说明，不能只靠这扇门。handoff 目录在 <code class="mono">.fable-advisor/handoff/</code>，故意不在此视野内。Cursor 经 Shell 的 runner 按没有这扇门设计。</p>
+  <p><code class="mono">plugin/hooks/hooks.json</code> 现在登记两个 hook：<code class="mono">Stop</code> 的 receipt gate，和 <code class="mono">PreToolUse</code> 的 route gate（第 14 节）。两者在没有 python 运行时都放行。</p>
+</section>
+
+<section class="manual-section" id="section-11" aria-labelledby="heading-11">
+  <h2 id="heading-11"><span class="section-number">11</span>测试套件</h2>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">文件</th><th scope="col">证明什么</th></tr>
+    <tr><td class="mono">tests/test_runner_contract.py</td><td>两条 runner 在进程边界的契约，共 23 个用例：<code class="mono">mode</code> 校验；路由档案解析与路由校验（缺 <code class="mono">role</code> 或 <code class="mono">tier</code>、角色与模式不符、拨盘在格外、缺依据、<code class="mono">same-model</code>、非法依据都判 <code class="mono">spec_invalid</code> 且不拉起子进程；三个档位的合法路由写进 receipt，<code class="mono">lane_finished_at</code> 早于 <code class="mono">finished_at</code>；grok 缺 <code class="mono">model</code> 或 <code class="mono">effort</code> 同样被拒）；implement / report 分流与前言拼装；runner 是检查列表的唯一执行者（注入句按条件出现，计数文件证明恰好执行一次）；检查输出日志（完整输出写进按序号命名的日志，开头的标记不在尾部而在日志里，旧日志被覆盖；日志写不出时 <code class="mono">output_log</code> 为 null，判定不变）；<code class="mono">empty_report</code>；<code class="mono">dirty_baseline</code>（含报告模式运行后 <code class="mono">git status</code> 失败时判 <code class="mono">complete</code> 或 <code class="mono">empty_report</code>）；<code class="mono">title</code>；真实前言文件；字段缺省与越界（<code class="mono">gpt-6-luna</code>、<code class="mono">gpt-6.1-sol</code> 被接受，<code class="mono">gpt-6-sol</code> 与 <code class="mono">gpt-5.6-*</code> 判 <code class="mono">spec_invalid</code> 且不拉起子进程）；grok <code class="mono">effort</code> 白名单；前言缺失则不拉起子进程；<code class="mono">*_unavailable</code> 字段；<code class="mono">no_diff</code> / <code class="mono">git_status_failed</code>；<code class="mono">resume</code> 调用；codex 不换型号及其边界（会话前失败只调用一次、<code class="mono">model_used</code> 为请求型号、<code class="mono">fallback_reason</code> 为 null）；终端事件驱动计时；空闲诊断；中断与进程树；空闲截止与整段时限；运行中标记（运行中记有 runner、pid、阶段与事件数，stderr 有进度行，结束后删除；同一 spec 重复启动以状态 1 退出、不写 receipt、不启动 CLI；过期标记被接管）。假 CLI、假 git、真实 spec 与 receipt。</td></tr>
+    <tr><td class="mono">tests/test_runner_lifecycle.py</td><td>进程收尾的离线回归：两条 runner 在 CLI 退出后遗留继承管道时（重定向、继承、非零退出、排空、超时、空闲、中断、杀进程失败）按时完成并写 receipt；预检、git 检查、验证三个阶段的辅助进程遗留管道时触发清理截止。</td></tr>
+    <tr><td class="mono">tests/test_runner_lifecycle_windows.cjs</td><td>同一组收尾行为在原生 Windows Node 上的版本，含 <code class="mono">taskkill</code> 挂起。夹具复制共享解析模块并写入夹具档案，spec 带路由字段。非 Windows 平台打印 <code class="mono">SKIP</code> 并退出 0。</td></tr>
+    <tr><td class="mono">tests/test_install_user_level.py</td><td>安装器在命令行边界：空家目录装两件且逐字节一致，家目录内的实际文件集合恰好是这两件；改活体后 <code class="mono">--check</code> 非零，再安装覆盖；<code class="mono">--also</code> 按源文件名写出，且该目录内文件集合恰好是这两个源文件名；家目录里预先存在的无关文件在安装与 <code class="mono">--check</code> 之后原样保留；<code class="mono">hooks.json</code> 缺失或无门禁条目时打印 <code class="mono">warning</code> 且退出 0、不改文件；有门禁条目则无 <code class="mono">warning</code>；两个 <code class="mono">--home</code> 都写。</td></tr>
+    <tr><td class="mono">tests/test_user_level_archive.py</td><td>英文正典存在；钉模型规则中文备份存在、含中文、含「不是活体」。对每个存在的家目录调用 <code class="mono">install-user-level.py --check</code>。</td></tr>
+    <tr><td class="mono">tests/test_zh_mirror.py</td><td>每个 <code class="mono">plugin/**/*.md</code> 在 <code class="mono">docs/zh/</code> 有同一相对路径的孪生；没有孤儿孪生。只查存在，不查译文内容。</td></tr>
+    <tr><td class="mono">tests/test_receipt_gate.py</td><td>Stop hook 进程边界：无 pending 目录放行；<code class="mono">complete</code> receipt 放行；无 receipt 或非 complete（含 <code class="mono">timeout</code>）拦住；<code class="mono">stop_hook_active</code> 放行；非法 JSON 失败时放行；报告模式 pending 同样拦住；新鲜运行中标记放行；过期标记拦住；标记只覆盖它自己的 spec，其他 pending 照旧拦住并被点名。</td></tr>
+    <tr><td class="mono">tests/test_route_gate.py</td><td>route gate 在进程边界的行为，共 43 项。<code class="mono">Agent</code>：合法的 <code class="mono">mainstay</code> 与 <code class="mono">crux</code> 路由；缺路由行与格式错误；<code class="mono">name</code> 键（字符串、空串、null 都拒）；缺 <code class="mono">model</code>（理由带合法拨盘）；角色或拨盘不符；拨盘在格外；缺依据与依据种类不合规；别名重定向；别名所属家族与会话型号相同；<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code>；同模派发（合法、跳过 <code class="mono">&lt;synthetic&gt;</code> 记录、型号不在档案里、explorer 不适用、会话里没有助手记录、其他 agent 文件）；非本角色池的 agent 放行。<code class="mono">SendMessage</code>：与目标记录相符、跳过 <code class="mono">&lt;synthetic&gt;</code> 记录、缺路由、记录没有 <code class="mono">effort</code>、<code class="mono">meta.json</code> 没有 <code class="mono">model</code> 与 <code class="mono">meta.json</code> 回落、找不到的 agentId 被拒、名字与 <code class="mono">main</code> 目标放行、只订阅放行、其他 agent 类型放行、<code class="mono">message</code> 不是字符串。另有：档案读不出与解析失败被拒；agent 文件读不出被拒；<code class="mono">TaskStop</code> 放行；stdin 不是合法 JSON 被拒；<code class="mono">hooks.json</code> 的 <code class="mono">PreToolUse</code> 匹配器。</td></tr>
+    <tr><td class="mono">tests/test_routing_profile_parity.py</td><td>共 29 项：一张手写的预期表（按真实档案逐格手写，不由任何一个解析器生成）分别核对 route gate 里的 Python 解析器与 runner 用的 JS 解析器对真实档案的输出，JS 另核对 Cursor 表。两个解析器一起漏读某一格时，测试也失败。可以传入另一份档案路径，预期表仍是真实档案的表。</td></tr>
+    <tr><td class="mono">tests/test_shipped_wording.py</td><td><code class="mono">plugin/**</code> 与 <code class="mono">docs/zh/**</code> 孪生中随插件发布的文本，以及 <code class="mono">README.md</code>：不含已知的描述文本自身的措辞；拨盘用锚定型号 id 与规范方括号；路由档案每个格子都是锚定 id；不出现已知的松散型号名。</td></tr>
+    <tr><td class="mono">tests/test_lane_family_gate.py</td><td>Cursor Task 钉模型门：advisor 缺 model、<code class="mono">inherit</code> 或空串则 <code class="mono">deny</code>，文案不含 <code class="mono">family</code>；显式型号则 <code class="mono">allow</code>；<code class="mono">resume</code> 跳过；worker / <code class="mono">generalPurpose</code> / <code class="mono">explore</code> 不在范围内；未知 <code class="mono">advisor-*</code> 仍守；空 stdin 则 <code class="mono">deny</code>；父信封上的 model 不算子代理的钉。另比对仓内正典与两侧活体（若存在）。带 <code class="mono">--self-test</code>。</td></tr>
+  </table></div>
+  <p class="note">已知措辞与型号写法由 <code class="mono">tests/test_shipped_wording.py</code> 检查；它通过不等于整条措辞规则成立。旧档位词不进测试文件，由任务件里的扫描命令检查。</p>
+</section>
+
+<section class="manual-section" id="section-12" aria-labelledby="heading-12">
+  <h2 id="heading-12"><span class="section-number">12</span>路由档案</h2>
+  <p>填充表是（角色, 档位）→ 候选车道与拨盘的有序表，属于用户判断，随插件发布，但不是插件机制。技能直接读插件内的档案，不接受调用方点名的其他档案；首次分配模型前读；档案变化或滑出上下文时重读；读不到则报缺口，不假定内容。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">角色</th><th scope="col">路径</th></tr>
+    <tr><td>档案（唯一来源，随插件发布，技能直接读取）</td><td class="mono">plugin/skills/orchestration/routing-profile.md</td></tr>
+    <tr><td>中文译本（镜像孪生，不发布）</td><td class="mono">docs/zh/skills/orchestration/routing-profile.md</td></tr>
+  </table></div>
+  <p>结构：声明日期与锚定型号 → 档位与格内选择 → 型号排名 → 已声明假设 → advisor 映射 → 会话续用窗口 → Claude Code 候选（到达方式、每个 claude 拨盘的 agent 文件与别名、表）→ Cursor 候选（按实际调用入口判断可用性、表）。表头形状是角色 ×（<code class="mono">mainstay</code> / <code class="mono">crux</code> / <code class="mono">rescue</code>）。口头声明与调整方法两节已从档案移出，规则并入 <code class="mono">SKILL.md</code> 与本仓 <code class="mono">AGENTS.md</code>。</p>
+
+  <h3>格内选择规则的含义</h3>
+  <ul class="tight">
+    <li>格内第一个候选是默认。没有声明，也没有合适的擅长点时，取它的 <code class="mono">*</code> 拨盘，不取最便宜的候选。</li>
+    <li>格内顺序是用户写定的偏好。档案写明了一处刻意排序的理由：explorer 的 <code class="mono">rescue</code> 把 <code class="mono">opus-5-5</code> 排在价格更低的 <code class="mono">gpt-6.1-sol</code> 之前，因为 Claude Code 里的 explorer 优先 Claude 家族。</li>
+    <li>擅长点是开放的示例清单：各家族的擅长点写在型号排名表里，价格低也算，想听另一家厂商的意见也算；简单、大量的工作偏向 <code class="mono">gpt-6-luna</code>，只在列有它的格里适用。任务落在某个候选的擅长点上时取那个候选。</li>
+    <li>车道默认顺序只管两件事：几个候选同样合适时的平手，以及候选必须替换时换到谁。Claude Code 中的 explorer 有例外：Claude Code 自带 explorer 但不能指定模型，本插件补上这一块，所以它优先 Claude 候选。这个理由在 Cursor 不成立，所以 Cursor 的 explorer 格按车道顺序排。</li>
+    <li>档案同时声明按家族定位的能力排名（<code class="mono">starter</code>、<code class="mono">midrange</code>、<code class="mono">premium</code>、<code class="mono">flagship</code>）、跨家族的价格链、两条已声明假设及其失效条件。不同家族的型号只按定位比较。升级梯的下限依据这份排名，见第 3 节。</li>
+  </ul>
+
+  <h3>advisor 映射的含义</h3>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">场合</th><th scope="col">用哪一格</th></tr>
+    <tr><td>验收形状（第 3 层）</td><td><code class="mono">mainstay</code> 格的默认拨盘</td></tr>
+    <tr><td>决策形状（决策类型门）</td><td><code class="mono">mainstay</code> 格，取默认之后的那一档强度</td></tr>
+    <tr><td>verdict 自报低置信度</td><td><code class="mono">crux</code> 格</td></tr>
+    <tr><td><code class="mono">rescue</code> 格</td><td>只凭用户声明</td></tr>
+  </table></div>
+  <p>advisor 的用法由这四条映射固定下来。决策形状比验收形状高一档强度，两者不落在同一拨盘。落到哪份 agent 文件由所选拨盘的强度决定，见第 7 节。</p>
+
+  <h3>会话续用窗口一节</h3>
+  <p>档案的「Session reuse windows」一节写四个窗口：Claude Code 里发给子代理的 <code class="mono">SendMessage</code> 1 小时，codex 车道 30 分钟，grok 车道 1 小时，Cursor 的 <code class="mono">Task</code> <code class="mono">resume</code> 1 小时。窗口是椰椰声明的续用政策，不是实测的缓存寿命。机制见第 15 节。</p>
+
+  <h3>Claude Code 部分</h3>
+  <p>到达方式：grok 经 runner，spec 必须同时写 <code class="mono">model</code> 与 <code class="mono">effort</code>；GPT 经 codex runner；Claude 经本插件的 agent 文件加按次 <code class="mono">model</code>，不传 <code class="mono">name</code>。claude 拨盘到 agent 文件的映射写在档案里：worker 的 <code class="mono">sonnet-5-5[high]</code>、<code class="mono">[xhigh]</code> 经 <code class="mono">worker-h</code>、<code class="mono">worker-xh</code> 加 <code class="mono">sonnet</code>；<code class="mono">opus-5-5[medium]</code>、<code class="mono">[high]</code>、<code class="mono">[xhigh]</code> 经 <code class="mono">worker-md</code>、<code class="mono">worker-h</code>、<code class="mono">worker-xh</code> 加 <code class="mono">opus</code>。route gate 以 Claude Code 表为准，runner 取两张表的并集（第 14 节、第 6 节）。</p>
+
+  <h3>Cursor 部分</h3>
+  <p>worker 与 advisor 行与 Claude Code 相同，explorer 行单列。可用性按每个候选的实际调用入口判断：GPT 候选经 Shell 走 codex runner；<code class="mono">grok-4.7</code>、Claude 候选与 Cursor 自家模型都经钉型号的 Task。当回合的允许名单只约束钉型号的 Task 派发。型号名（slug）不写进档案，缺席的变体跳过并披露。</p>
+  <p>易变状态（额度、截止日期）只在开场口头声明，只对当次会话有效，不落盘；没有声明时取格内第一个候选的 <code class="mono">*</code> 拨盘。handoff lane 只在用户按任务或按会话声明后进入候选。</p>
+
+  <h3>如何调整</h3>
+  <ol>
+    <li>只改 <code class="mono">plugin/skills/orchestration/routing-profile.md</code> 里的格子。中文文件是译文，不是第二来源。改表时更新文首的声明日期。</li>
+    <li>发布插件并在两侧更新（<code class="mono">docs/agents/plugin-release.md</code>）；改格算次版本。运行中的会话重启之前仍用旧档案。</li>
+    <li>不必改技能正文，也不必跑伴生安装器。任一相关型号换代时重估对应的格子。</li>
+  </ol>
+  <p class="note">本说明书不复述档案的逐格取值与型号排名。那些是用户在声明日写下的判断，随格子而变。</p>
+</section>
+
+<section class="manual-section" id="section-13" aria-labelledby="heading-13">
+  <h2 id="heading-13"><span class="section-number">13</span>已知限制</h2>
+  <p>以下限制在 6.2.0 仍然成立。观测日期写在各条里。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">范围</th><th scope="col">限制</th><th scope="col">怎么处理</th></tr>
+    <tr><td>claude lane 别名</td><td>派发工具的 <code class="mono">model</code> 只接受 <code class="mono">haiku</code>、<code class="mono">sonnet</code>、<code class="mono">opus</code>、<code class="mono">fable</code>，不接受完整型号 id。2026-09-27 观测：前三个别名分别解析为 <code class="mono">claude-haiku-4-5-20251001</code>、<code class="mono">claude-sonnet-5</code>、<code class="mono">claude-opus-5-5</code>。2026-09-29 起，当前 Claude Code 版本上 <code class="mono">sonnet</code> 别名指向 Sonnet 5.5（<code class="mono">sonnet-5-5</code>）；旧版本仍解析为 <code class="mono">claude-sonnet-5</code>。</td><td>实际型号看子代理记录的 <code class="mono">message.model</code>。别名改指其他型号时，按档案的失效条件重估。</td></tr>
+    <tr><td>fable</td><td><code class="mono">fable</code> 送到 API 的是 <code class="mono">claude-fable-5-1</code>，但账号没有开通 usage credits 时请求被拒（HTTP 429）。2026-09-27 在一份配置下观测到。</td><td>按第 2 节换候选。需要 fable 的拨盘在开通 credits 的配置下派发。</td></tr>
+    <tr><td>grok 型号</td><td>grok runner 要求 spec 显式写 <code class="mono">model</code> 与 <code class="mono">effort</code>，提交给 CLI 的就是 spec 写的型号，不跟随 CLI 默认型号。receipt 的 <code class="mono">model_requested</code> 与 <code class="mono">model_used</code> 记提交值，不是观测值。</td><td>实际型号看 grok 会话目录 <code class="mono">~/.grok/sessions/&lt;cwd 编码&gt;/&lt;会话 id&gt;/events.jsonl</code> 中 <code class="mono">turn_started.model_id</code>（2026-09-27 观测到的 CLI 默认型号为 <code class="mono">grok-4.7</code>）；消息级 <code class="mono">model_id</code> 是服务端构建名。换代时重估档案。</td></tr>
+    <tr><td>receipt 的型号与强度</td><td>receipt 记的是 runner 提交的值，不是观测到的值。</td><td>引用时写「已提交，未观测」。codex 的实际配置看 <code class="mono">~/.codex/sessions/**/rollout-*.jsonl</code> 中 <code class="mono">turn_context</code> 的 <code class="mono">payload.model</code> 与 <code class="mono">payload.effort</code>。</td></tr>
+    <tr><td>codex 型号</td><td><code class="mono">gpt-6.1-sol</code> 已实跑：2026-10-02 经 codex runner 以报告模式运行 <code class="mono">gpt-6.1-sol[medium]</code>，会话记录的 <code class="mono">turn_context</code> 为 <code class="mono">gpt-6.1-sol</code>、<code class="mono">medium</code>。其他拨盘没有逐一实机核对。</td><td>某个拨盘首次派发时，以会话记录为证。跑不起来时按第 2 节换候选。</td></tr>
+    <tr><td>Cursor slug</td><td>各候选在 Cursor 当回合允许名单里的型号名没有核实。Cursor 不向主代理回传执行元数据。</td><td>派发时用当回合允许名单里的名字；缺席的变体跳过并披露；披露标「已请求，未确认」。</td></tr>
+    <tr><td>原生 Windows</td><td><code class="mono">test_runner_lifecycle_windows.cjs</code> 只在原生 Windows Node 上执行；在 WSL 上打印 <code class="mono">SKIP</code>。</td><td>在 Windows 侧用原生 Node 运行它。</td></tr>
+    <tr><td>检查范围与批次</td><td>提示词不是机制。架构师仍可能把全量测试放进每份契约，车道仍可能在开发中跑宽检查；契约测试只能证明 runner 执行一次并保存了完整输出，证明不了主代理会去读日志。项目记忆与宿主的全局规则（例如要求每张契约都写全量测试命令的记忆）在插件之外，插件改不了。</td><td>按 ADR 0029 复盘条件统计：实现 receipt 的 <code class="mono">verification</code> 含全量命令的条数；收尾时仍为待跑的批次检查；为查看失败而重跑整份列表的次数。再按 ADR 0030 复盘条件看：同一区域的票是否仍逐票验收、逐票提交，没有依赖的契约是否仍串行派发，宽检查或渲染是否仍逐票跑。</td></tr>
+    <tr><td>输出日志上限</td><td>写盘落后检查命令的输出超过 16 MiB 时，runner 放弃这条检查的日志，<code class="mono">output_log</code> 为 null，只剩 2,000 字符的尾部。本机实测 200 MiB 的快速输出没有触发上限。</td><td>看 stderr 的诊断；需要完整输出时，单独重跑失败用例并把输出重定向到文件。</td></tr>
+    <tr><td>运行中标记的端到端</td><td>已安装插件上「receipt gate 放行在跑的车道、runner 退出后宿主唤醒会话」在发布前只有单元测试与进程边界测试覆盖。</td><td>更新后在新会话里以后台 Bash 调用运行一次 runner 并结束本轮，确认没有被拦、退出后被唤醒。</td></tr>
+    <tr><td><code class="mono">TaskStop</code> 宽限</td><td><code class="mono">TaskStop</code> 先发 SIGTERM，约 1 到 2 秒后强制结束。这个时长只测过一次，没有平台文档依据。</td><td>纠偏时用 <code class="mono">kill &lt;pid&gt;</code> 停 runner。</td></tr>
+    <tr><td>route gate 的覆盖</td><td>route gate 只覆盖 Claude Code 里本角色池的 <code class="mono">Agent</code> 与 <code class="mono">SendMessage</code>。Cursor 的 <code class="mono">Task</code>（含 <code class="mono">resume</code>）只有文本规则；内置代理不在本角色池；没有 Python 时 hook 放行，stderr 写一行说明。</td><td>在 Cursor 里，主代理自己核对路由行。route gate 需要装有 Python 的机器。</td></tr>
+    <tr><td>路由校验不查真假</td><td>程序只查依据存在与格式，产物类别也由主代理判断。route gate 校验的是提交的配置；子代理实际跑的型号，以它记录里的 <code class="mono">message.model</code> 为准。</td><td>引用型号时读子代理记录。依据是否属实仍由主代理判断。</td></tr>
+    <tr><td>会话型号的读取</td><td>会话型号取会话记录里最后一条带真实型号的助手记录（<code class="mono">&lt;synthetic&gt;</code> 记录被跳过），而 hook 运行时本条回复还没写进记录。所以会话第一条回复里的同模派发被拒；用 <code class="mono">/model</code> 换型号后的第一条回复里，hook 看到的仍是旧型号；会话型号读不到时，别名解析跳过家族这一步。</td><td>同模派发放到会话的第一条回复之后；换型号后的第一条回复里不做同模派发。</td></tr>
+    <tr><td>runner 的校验宽于单个宿主</td><td>runner 按 Claude Code 表与 Cursor 表的并集校验。在 Claude Code 里，runner 也接受只出现在 Cursor 表里的拨盘。</td><td>按所在宿主的表选拨盘。</td></tr>
+    <tr><td>强制型号变量</td><td><code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真、<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code> 未设时，子代理继承会话型号。这一条取自 Claude Code 2.1.287 的代码，没有样本。</td><td>用到这个组合时读子代理记录确认型号。</td></tr>
+    <tr><td>宿主版本</td><td>hook 的输入、<code class="mono">SendMessage</code> 的字段和子代理记录的格式会随 Claude Code 版本变化。hook 的输入格式在 2.1.287 上用探针核实过。hook 遇到不认识的输入时拒绝。</td><td>Claude Code 升级后 hook 拒绝合法输入时，先重跑任务件 <code class="mono">.scratch/trial-6-1-0-feedback/spec.md</code> 记载的探针（样本在 <code class="mono">.scratch/trial-6-1-0-feedback/evidence/phase0/</code>）。</td></tr>
+    <tr><td>已安装插件上的 route gate</td><td>route gate 的端到端检查用 <code class="mono">claude -p</code> 加 <code class="mono">--plugin-dir</code> 做过，没有在已安装的 6.2.0 上做。</td><td>更新并重启后，在新会话里派一次不带路由行的 <code class="mono">fable-advisor:explorer-h</code>，确认被拒。</td></tr>
+    <tr><td>续用窗口</td><td>续用窗口没有机械校验。窗口取值是椰椰声明的续用政策，不是实测的缓存寿命。</td><td>按 ADR 0030 复盘条件统计超出窗口的续用。</td></tr>
+  </table></div>
+</section>
+
+<section class="manual-section" id="section-14" aria-labelledby="heading-14">
+  <h2 id="heading-14"><span class="section-number">14</span>路由行与 route gate</h2>
+  <p>每次派发都写明路由。runner 的路由是 spec 的字段（第 6 节）；claude 车道和 Cursor 的路由写在提示词里。Claude Code 的 <code class="mono">Agent</code> 与 <code class="mono">SendMessage</code> 由 route gate 校验。</p>
+
+  <h3>路由行</h3>
+  <p>claude 车道派发的提示词第一行是路由行，第二行是读取所需前言的指令（按绝对路径）。发给本角色池子代理的每条 <code class="mono">SendMessage</code> 消息，第一行也是路由行；暂停、纠正这类消息同样要带。格式：</p>
+  <pre class="mono">Route: role=&lt;explorer|worker|advisor&gt; tier=&lt;mainstay|crux|rescue|same-model&gt; dial=&lt;model&gt;[&lt;effort&gt;] basis=&lt;kind&gt; ref=&lt;text to end of line&gt;</pre>
+  <ul class="tight">
+    <li><code class="mono">dial</code> 是档案记法里的一个具体拨盘，例如 <code class="mono">opus-5-5[medium]</code>，不写一格里的强度列表；<code class="mono">haiku-4-5</code> 不带方括号。</li>
+    <li><code class="mono">mainstay</code> 省略 <code class="mono">basis</code> 和 <code class="mono">ref</code>。高于它时，<code class="mono">basis</code> 是该角色、该档位接受的依据种类（第 2 节的表），<code class="mono">ref</code> 写到行尾。</li>
+    <li>同模派发写 <code class="mono">role=worker tier=same-model</code> 与 <code class="mono">basis=same-model</code>，<code class="mono">ref</code> 写产物类别。</li>
+  </ul>
+  <p>例：<code class="mono">Route: role=explorer tier=mainstay dial=haiku-4-5</code>；<code class="mono">Route: role=worker tier=crux dial=opus-5-5[medium] basis=key-difficulty ref=three interfaces constrain each other</code>。</p>
+
+  <h3>route gate</h3>
+  <p>route gate 是插件的 <code class="mono">PreToolUse</code> hook。<code class="mono">plugin/hooks/hooks.json</code> 以匹配器 <code class="mono">Agent|SendMessage</code> 调 <code class="mono">plugin/hooks/route-gate.py</code>。它检查 <code class="mono">subagent_type</code> 以 <code class="mono">fable-advisor:</code> 开头的每次 <code class="mono">Agent</code> 派发，和发给本角色池子代理的每条 <code class="mono">SendMessage</code> 消息。不合规的调用被 <code class="mono">permissionDecision: deny</code> 拒绝，不用 <code class="mono">ask</code>。拒绝理由以 <code class="mono">fable-advisor route gate:</code> 开头，写明缺了什么；路由行能解析时，理由还列出该角色、该档位的合法拨盘。主代理改正后重发。在无界面会话的 <code class="mono">auto</code> 与 <code class="mono">bypassPermissions</code> 模式下，拒绝都生效，被拒的子代理不会启动。</p>
+  <p>route gate 校验提交的配置；子代理实际跑的型号，以子代理记录里的 <code class="mono">message.model</code> 为准。每个被检查的调用满足下面八条规则：</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">规则</th><th scope="col">内容</th></tr>
+    <tr><td>1 角色</td><td>路由行的角色与 agent 文件一致：<code class="mono">explorer-*</code> 是 explorer，<code class="mono">worker-*</code> 是 worker，<code class="mono">advisor-*</code> 是 advisor。</td></tr>
+    <tr><td>2 拨盘</td><td>每次本角色池 <code class="mono">Agent</code> 派发都显式带 <code class="mono">model</code>；不带时型号还受 agent 文件的 <code class="mono">model:</code> 与 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code> 影响，所以拒绝。拨盘由 <code class="mono">model</code> 与 agent 文件 frontmatter 的 <code class="mono">effort:</code> 推出，路由行写的拨盘必须与推出的相同。别名按顺序解析：别名所属家族与会话型号相同时取会话型号；否则取别名的重定向变量（<code class="mono">ANTHROPIC_DEFAULT_HAIKU_MODEL</code>、<code class="mono">ANTHROPIC_DEFAULT_SONNET_MODEL</code>、<code class="mono">ANTHROPIC_DEFAULT_OPUS_MODEL</code>、<code class="mono">ANTHROPIC_DEFAULT_FABLE_MODEL</code>）；都没有时取档案锚点：<code class="mono">haiku</code> 为 <code class="mono">haiku-4-5</code>，<code class="mono">sonnet</code> 为 <code class="mono">sonnet-5-5</code>，<code class="mono">opus</code> 为 <code class="mono">opus-5-5</code>，<code class="mono">fable</code> 为 <code class="mono">fable-5-1</code>。会话型号读不到时，跳过家族这一步。推出的型号规范化后不是锚点型号时拒绝：会话在 <code class="mono">claude-sonnet-4-5</code> 上、派发写 <code class="mono">sonnet</code>，就属于这种情况。<code class="mono">haiku-4-5</code> 没有强度可比；<code class="mono">explorer-h</code> 配 <code class="mono">sonnet</code> 按 <code class="mono">sonnet-5-5[high]</code> 校验。例外：<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真值（<code class="mono">1</code>、<code class="mono">true</code>、<code class="mono">yes</code>、<code class="mono">on</code>）时，宿主去掉了 <code class="mono">Agent</code> 的 <code class="mono">model</code> 参数，hook 不要求它，改按 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code> 推出拨盘；该变量未设或为 <code class="mono">inherit</code> 时取会话型号。</td></tr>
+    <tr><td>3 档位</td><td>（角色，拨盘）出现在档案 Claude Code 表里该角色、该档位的格里。</td></tr>
+    <tr><td>4 依据</td><td><code class="mono">crux</code> 与 <code class="mono">rescue</code> 要有依据：种类按角色和档位合规（第 2 节的表），<code class="mono">ref</code> 非空。只查存在与格式，不查真假。<code class="mono">mainstay</code> 可以省略依据；写了的话，种类必须是四种之一，<code class="mono">ref</code> 非空。</td></tr>
+    <tr><td>5 同模派发</td><td>只限 <code class="mono">worker-*</code>：<code class="mono">tier=same-model</code>，依据种类 <code class="mono">same-model</code>，<code class="mono">ref</code> 非空。推出的型号必须等于会话型号，并且出现在档案 Claude Code 表的某个格里。会话型号取会话记录里最后一条真实助手记录的 <code class="mono">message.model</code>，读不到就拒绝。<code class="mono">message.model</code> 为 <code class="mono">&lt;synthetic&gt;</code> 的助手记录（宿主在 API 报错等情况下写入）被跳过；全是 synthetic 记录，等于没有助手记录。产物类别与依据的真假仍由主代理判断。</td></tr>
+    <tr><td>6 name</td><td>本角色池的派发带 <code class="mono">name</code> 键就拒绝（值为字符串、空串或 null 都拒），因为 <code class="mono">name</code> 会让 agent 文件的强度失效。</td></tr>
+    <tr><td>7 SendMessage</td><td>消息第一行是路由行。拨盘取目标子代理的实际配置：它的记录里最后一条真实助手记录的 <code class="mono">message.model</code> 与 <code class="mono">effort</code>（规范化）；目标还没有助手记录时，取它的 <code class="mono">meta.json</code>（<code class="mono">agentType</code>、<code class="mono">model</code>），再按规则 2 推出。拒绝理由给出目标的拨盘，主代理照抄即可。放行的情况：只订阅（<code class="mono">notify_when_idle</code> 为真、没有消息）；<code class="mono">meta.json</code> 的 <code class="mono">agentType</code> 不属于 <code class="mono">fable-advisor:</code>；目标是名字、<code class="mono">main</code> 或别的会话（本角色池不带 <code class="mono">name</code> 派发，所以按名字寻址的目标一定不在池里）。目标形如 agentId，却在本会话找不到记录：拒绝。<code class="mono">TaskStop</code> 不检查。</td></tr>
+    <tr><td>8 拒绝</td><td>字段缺失、格式错误或互相矛盾，拒绝。档案读不出或解析失败，拒绝。输入不是合法 JSON，或出现意外异常，也拒绝。</td></tr>
+  </table></div>
+
+  <h3>拒绝理由里的关键字</h3>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">理由里的字样</th><th scope="col">含义</th></tr>
+    <tr><td><code class="mono">route line is missing</code> / <code class="mono">route line is malformed</code></td><td>第一行不是路由行，或路由行的格式不对。</td></tr>
+    <tr><td><code class="mono">model is required</code></td><td>本角色池的 <code class="mono">Agent</code> 派发没有带 <code class="mono">model</code>（<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真值时除外）。</td></tr>
+    <tr><td><code class="mono">name is set, so the agent file effort does not apply</code></td><td>派发带了 <code class="mono">name</code> 键。</td></tr>
+    <tr><td><code class="mono">route role … does not match agent role …</code></td><td>路由行的角色与 agent 文件不一致。</td></tr>
+    <tr><td><code class="mono">route dial … does not match derived dial …</code></td><td>路由行的拨盘与推出的拨盘不同。</td></tr>
+    <tr><td><code class="mono">derived dial … is outside …; legal dials: …</code></td><td>拨盘不在档案里该角色、该档位的格里；后面列出合法拨盘。</td></tr>
+    <tr><td><code class="mono">basis is required at …</code> / <code class="mono">basis kind … is not allowed …</code> / <code class="mono">basis ref is empty</code></td><td>缺依据，依据种类不合规，或 <code class="mono">ref</code> 为空。</td></tr>
+    <tr><td><code class="mono">same-model requires session model …; derived model is …</code> / <code class="mono">session model unavailable: …</code> / <code class="mono">derived model … is not in the profile</code> / <code class="mono">same-model applies only to a worker agent</code></td><td>同模派发的四种失败：型号不是会话型号，读不到会话型号，型号不在档案里，不是 worker。</td></tr>
+    <tr><td><code class="mono">target record agent-&lt;id&gt;.meta.json is missing</code></td><td><code class="mono">SendMessage</code> 的目标形如 agentId，本会话却没有它的记录。</td></tr>
+    <tr><td><code class="mono">routing profile unreadable: …</code> / <code class="mono">routing profile unparseable: …</code></td><td>档案读不出或解析失败。</td></tr>
+  </table></div>
+
+  <h3>route gate 覆盖不到的地方</h3>
+  <ul class="tight">
+    <li>Cursor 钉型号的 <code class="mono">Task</code>（含 <code class="mono">resume</code>）：路由只有文本规则（第 8 节）。Cursor 经 Shell 跑的 codex runner 受 runner 校验。</li>
+    <li>没有 Python 的机器：hook 放行，stderr 写一行说明，和 receipt gate 一样。</li>
+    <li>内置代理（<code class="mono">general-purpose</code>、<code class="mono">Explore</code> 等）不属于本角色池，hook 不管。</li>
+    <li>会话第一条回复里的同模派发会被拒，因为那时会话记录里还没有助手记录；hook 运行时，本条回复也还没写进记录（第 13 节）。</li>
+    <li>hook 只校验提交的配置，不校验依据是否属实。</li>
+  </ul>
+
+  <h3>档案是唯一来源</h3>
+  <p>route gate 与 runner 都读随插件发布的路由档案，不另建路由配置。解析档案、校验规则、取宿主的值是三件分开的事。Python 解析器（route gate）和 JS 解析器（<code class="mono">plugin/scripts/routing-profile.mjs</code>，runner）各有一份，由 <code class="mono">tests/test_routing_profile_parity.py</code> 对照一张手写的预期表。档案的表格语法改动时，这条测试先失败；改语法要同时改两个解析器。</p>
+</section>
+
+<section class="manual-section" id="section-15" aria-labelledby="heading-15">
+  <h2 id="heading-15"><span class="section-number">15</span>会话续用窗口</h2>
+  <p>车道会话只在续用窗口之内续用。窗口的取值是椰椰声明的续用政策，不是实测的缓存寿命，写在路由档案的「Session reuse windows」一节。</p>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="可横向滚动的数据表格"><table>
+    <tr><th scope="col">车道</th><th scope="col">窗口</th><th scope="col">时间来源</th></tr>
+    <tr><td>claude 车道（Claude Code 里 <code class="mono">SendMessage</code> 发给子代理）</td><td>1 小时</td><td>子代理记录 <code class="mono">subagents/agent-&lt;id&gt;.jsonl</code> 里最后一条助手记录的时刻</td></tr>
+    <tr><td>codex 车道</td><td>30 分钟</td><td>runner 回执的 <code class="mono">lane_finished_at</code></td></tr>
+    <tr><td>grok 车道</td><td>1 小时</td><td>runner 回执的 <code class="mono">lane_finished_at</code></td></tr>
+    <tr><td>Cursor 的 <code class="mono">Task</code> <code class="mono">resume</code></td><td>1 小时</td><td>主代理在 <code class="mono">Task</code> 结果返回时用 Shell（<code class="mono">date -u +%Y-%m-%dT%H:%M:%SZ</code>）记进任务件的时刻</td></tr>
+  </table></div>
+  <p>窗口从车道上次活动算起。时间不明时，按超出窗口处理：例如 Cursor 上没有记下时刻，窗口就按已过处理。不能用回执的 <code class="mono">finished_at</code>，因为它在验证之后才记录。</p>
+
+  <h3>哪些续用受窗口约束</h3>
+  <ul class="tight">
+    <li>返工票；</li>
+    <li>修正契约；</li>
+    <li>被时钟切断（<code class="mono">idle_timeout</code>、<code class="mono">timeout</code>）之后的续跑；</li>
+    <li>发给子代理的后续消息（<code class="mono">SendMessage</code>）；</li>
+    <li>新票。</li>
+  </ul>
+
+  <h3>超出窗口</h3>
+  <p>在同一档位、同一拨盘上新开会话。返工票或修正契约带上缺陷、原契约、上轮报告和回执。新开会话不算升档，失败计数不变。续用时不改强度。runner 车道新开会话时，spec 里省略 <code class="mono">resume_session_id</code>。</p>
+
+  <h3>例外</h3>
+  <p>超出窗口仍要续用时，派发说明要做到四点：</p>
+  <ul class="tight">
+    <li>点名原会话独有的可观察状态或证据；</li>
+    <li>列出已检查的磁盘材料与日志；</li>
+    <li>说明为何不能靠交接保留这些状态，并写出重建的具体步骤与代价；</li>
+    <li>披露接受冷缓存的输入成本。</li>
+  </ul>
+  <p>「原会话熟悉代码」或「交接麻烦」不算理由。</p>
+
+  <h3>新票</h3>
+  <p>新票只在四个条件同时成立时续用已有会话：同一区域、确实需要共享上下文、同一拨盘、在窗口之内；否则新开会话。</p>
+
+  <h3>没有机械校验</h3>
+  <p class="note">本版不对续用做机械拦截。runner 跨工作目录查不到会话的上次活动，按文件修改时间判断的可靠性也没有证据。将来要做，要先定下：哪些事件算活动、边界时刻、运行中的纠正消息怎么算、例外写在哪个字段。</p>
+</section>
+
+<div class="part-heading"><span>02</span><h2>相对上一版的变化</h2></div>
+<section class="manual-section changes" id="section-16" aria-labelledby="heading-16">
+  <h2 id="heading-16"><span class="section-number">16</span>全局规划、按结果验收与宽检查（ADR 0030 决策 1 至 3）</h2>
+  <p>椰椰 2026-10-03 报告了 6.1.0 试用中的三个问题，证据来自 cc-usage 的一次会话（2026-10-02 至 10-03，加载 6.1.0）。本节与后两节逐个说明。第一个问题是逐票验证：前端 5 张票逐张派发、逐张验收、逐张提交，下一张等上一张提交后才派；01 与 02 改同一张表，03 与 04 改同一张图表，都没有并成一份契约，而合票规则当时已写在 <code class="mono">SKILL.md</code> 里；会话至少跑了 141 次检查，其中定向检查至少 104 次；主代理把「每票验收后提交」作为推荐项提给椰椰，没有给出按契约提交的选项。椰椰 2026-10-04 的说明把重点放在主代理的全局意识上。证据与诊断在 <code class="mono">.scratch/trial-6-1-0-feedback/problem-report.md</code>。</p>
+
+  <h3>派发前做全局规划，只等真实的依赖</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>任务有两张以上的票时，主代理在第一次派发前把依赖、契约、隔离、宽检查四项写进任务件。没有全局的阶段屏障：一份契约在它需要的契约验收通过、判定检查就绪后就派发，只有它需要的结果只能由某项宽检查证明时才等这项宽检查。提交仍按授权和回滚边界拆，与验收分开；向椰椰问提交粒度时给出按契约提交的选项。同时进行的契约若共用工作目录，各用独立的工作目录，只换分支名而共用一个工作目录不算隔离；Cursor 的普通 <code class="mono">Task</code> 共用工作区，并发契约改用 <code class="mono">best-of-n-runner</code> 或依次执行。</p>
+    <p><strong>为什么</strong>椰椰 2026-10-04 的说明要点：关键在主代理要有全局意识；没有依赖关系的票尽量并发，可以用规定修改范围、切分支等方式来限制；测试是某个环节要结束了验收完好进行下一个环节。</p>
+    <p><strong>依据</strong>ADR 0030 决策 1；任务件 <code class="mono">.scratch/trial-6-1-0-feedback/spec.md</code> D1 第 1、2 条。Cursor 的隔离是 ADR 0030「决策门核对」第 6 项里主代理补定的。</p>
+  </div>
+
+  <h3>按结果验收，不只看测试</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>第 1 层验收对照契约逐条核对三样东西：报告对每条标准的说法、车道的检查证据、承载 Objective 所述行为的文件的限定路径差异。差异实现的是别的行为时，即使检查全部通过也拒收。差异太大时交 advisor 阅读，主代理核对标准、证据、结论是否一一对应，再读 advisor 标出的片段。第 3 层的触发条件不变。README 的默认验收说明随之改写。</p>
+    <p><strong>为什么</strong>旧写法是接受验证证据加 <code class="mono">git diff --stat</code>，测试只证明它覆盖的断言。椰椰要求主代理看子代理交回的结果是否符合要求，不能纯依赖测试来判断。</p>
+    <p><strong>依据</strong>ADR 0030 决策 2；任务件 D1 第 3 条。README 的改动由实施后的 advisor 验收提出。</p>
+  </div>
+
+  <h3>宽检查一批只跑一次，恢复「共用昂贵准备」</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>宽检查包括全量测试、渲染或浏览器检查、端到端套件、完整构建或打包、与其他契约的检查共用昂贵准备（服务、浏览器、设备、构建）的检查，以及主代理自己的渲染和人工检查。每项在它覆盖的契约都落地并验收之后跑一次，只挡需要它结果的工作。一次失败要能归因到一份契约，做不到就把批次分小。契约仍只放本契约的判定检查（ADR 0029 决策 1 不变）。worker 前言同步补上共用准备的检查和调用方自己的渲染、人工检查。</p>
+    <p><strong>为什么</strong>ADR 0029 决策 2 退役了「共用昂贵准备」这个触发词，按条文只覆盖一张票的渲染检查仍归那张票。渲染截图这类检查只覆盖一张票，却共用服务和浏览器，所以恢复这个触发词。票 01 单独做了一轮约 8 分钟的渲染验收。</p>
+    <p><strong>依据</strong>ADR 0030 决策 3，修订 ADR 0029 决策 2；任务件 D1 第 4 条。</p>
+  </div>
+</section>
+
+<section class="manual-section changes" id="section-17" aria-labelledby="heading-17">
+  <h2 id="heading-17"><span class="section-number">17</span>档位准入、路由行与机械校验（ADR 0030 决策 4 至 6）</h2>
+  <p>第二个问题是档位形同虚设。首轮直接进 <code class="mono">rescue</code> 的有 4 张票，都没有椰椰的声明。椰椰只声明了前端由 Claude、后端由 <code class="mono">gpt-6-astra</code>，主代理把家族声明读成可以任选强度。条文有准入规则，派发说明却从不写档位，也没有任何机制核对。新票经 <code class="mono">SendMessage</code> 和 codex 会话续跑进入已有会话，只在首次派发时把关挡不住这条路。</p>
+
+  <h3>椰椰声明的家族或型号只筛选候选</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>档位先按任务难点或升级梯定。声明的家族或型号只筛选候选。主代理取满足三个条件的最低一档：不低于难点或升级梯定下的档位；格里有符合声明的候选；有该档接受的依据（<code class="mono">mainstay</code> 不需要）。家族或型号声明可以作为 <code class="mono">crux</code> 的 <code class="mono">user-declaration</code> 依据，<code class="mono">ref</code> 写椰椰的原话；它不算 <code class="mono">rescue</code> 的准入。三个条件同时满足不了时向椰椰报告冲突，不自动降档。</p>
+    <p><strong>为什么</strong>椰椰只声明了前端由 Claude、后端由 <code class="mono">gpt-6-astra</code>，主代理把家族声明读成可以任选强度。<code class="mono">crux</code> 一句是实施中契约 02 报告缺口后由主代理补定的。</p>
+    <p><strong>依据</strong>ADR 0030 决策 4，及「决策门核对」第 6 项；任务件 D2「文本」。</p>
+  </div>
+
+  <h3>每次派发写明路由行</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>路由是角色、档位、拨盘，高于 <code class="mono">mainstay</code> 时加依据。claude 车道的提示词和发给本角色池子代理的 <code class="mono">SendMessage</code> 消息，第一行是 <code class="mono">Route: role=… tier=… dial=… basis=… ref=…</code>，第二行是读前言的指令。依据种类按角色和档位定：worker 与 explorer 在 <code class="mono">crux</code> 接受 <code class="mono">key-difficulty</code>、<code class="mono">failure</code>、<code class="mono">user-declaration</code>，在 <code class="mono">rescue</code> 接受 <code class="mono">failure</code>、<code class="mono">user-declaration</code>；advisor 在 <code class="mono">crux</code> 接受 <code class="mono">low-confidence</code>、<code class="mono">user-declaration</code>，在 <code class="mono">rescue</code> 只接受 <code class="mono">user-declaration</code>。<code class="mono">ref</code> 不能为空。同模派发只限 worker：<code class="mono">tier=same-model</code>，依据种类 <code class="mono">same-model</code>，<code class="mono">ref</code> 写产物类别。</p>
+    <p><strong>为什么</strong>派发说明从不写档位，也没有任何机制核对。新票经 <code class="mono">SendMessage</code> 和 codex 会话续跑进入已有会话，只在首次派发时把关，挡不住这条路，所以续派的消息也写路由。</p>
+    <p><strong>依据</strong>ADR 0030 决策 5；任务件 D2「格式」与规则 4、5。</p>
+  </div>
+
+  <h3>runner spec 新增 role、tier、basis</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>两条 runner 的 spec 新增必填的 <code class="mono">role</code> 与 <code class="mono">tier</code>；高于 <code class="mono">mainstay</code> 时 <code class="mono">basis {kind, ref}</code> 也必填。runner 在启动 CLI 之前校验：角色与模式匹配，拨盘在档案该角色、该档位的格里（取 Claude Code 表与 Cursor 表同一格的并集，因为 runner 在两个宿主上都运行），依据种类合规；两个 runner 都拒绝 <code class="mono">same-model</code>。codex 按补齐省略默认值之后的有效拨盘校验。校验失败判 <code class="mono">spec_invalid</code>，不拉起子进程；回执原样记录 <code class="mono">role</code>、<code class="mono">tier</code>、<code class="mono">basis</code>。新增 <code class="mono">plugin/scripts/routing-profile.mjs</code> 作为 runner 的档案解析模块。</p>
+    <p><strong>为什么</strong>准入规则早就写着，仍被越过，所以在 runner 启动 CLI 之前加机械校验。程序只查依据存在、格式合规，不查真假。</p>
+    <p><strong>依据</strong>ADR 0030 决策 5、6；任务件 D2「机械校验的入口」与规则 1 至 4。</p>
+  </div>
+
+  <h3>grok runner 必须显式写 model 与 effort</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>grok spec 的 <code class="mono">model</code> 与 <code class="mono">effort</code> 都必填，缺失判 <code class="mono">spec_invalid</code>。旧版省略 <code class="mono">model</code> 时不传 <code class="mono">-m</code>，跟随 CLI 默认型号；省略 <code class="mono">effort</code> 时不传强度旗标。档案的 grok 到达方式、<code class="mono">README.md</code>、车道文档同步。</p>
+    <p><strong>为什么</strong>runner 无从得知 CLI 自己的默认值，没有显式的拨盘就无法校验路由。</p>
+    <p><strong>依据</strong>ADR 0030 决策 6、8，修订 ADR 0021 决策 10 与 ADR 0009 的「跟随 CLI 默认型号」；任务件 D2 规则 2。</p>
+  </div>
+
+  <h3>新的 PreToolUse hook：route gate</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>新增 <code class="mono">plugin/hooks/route-gate.py</code>，由 <code class="mono">plugin/hooks/hooks.json</code> 以匹配器 <code class="mono">Agent|SendMessage</code> 登记。它按八条规则检查本角色池的 <code class="mono">Agent</code> 派发与发给本角色池子代理的 <code class="mono">SendMessage</code>，用 <code class="mono">permissionDecision: deny</code> 拒绝，不用 <code class="mono">ask</code>；理由写明缺了什么，并列出合法拨盘。八条规则、拒绝理由与覆盖缺口见第 14 节。覆盖不到的地方：Cursor 的 <code class="mono">Task</code>（含 <code class="mono">resume</code>）只有文本规则；内置代理不在本角色池；没有 Python 时放行，stderr 写一行说明。</p>
+    <p><strong>为什么</strong>准入规则早就写着，仍被越过，只改文本不够，所以选了文本加机械校验。被拒的派发由主代理自己改正，不把校验转给椰椰，所以不用 <code class="mono">ask</code>。型号推导依据在 Claude Code 2.1.287 上用探针核实的宿主事实：单次派发的 <code class="mono">model</code> 优先于 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code>；<code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真时宿主去掉 <code class="mono">model</code> 参数；别名所属家族与会话型号相同时跑会话型号；拒绝在无界面会话的 <code class="mono">auto</code> 与 <code class="mono">bypassPermissions</code> 模式下都生效。发布前用 <code class="mono">claude -p</code> 加 <code class="mono">--plugin-dir</code> 做过端到端检查（2026-10-04）。</p>
+    <p><strong>依据</strong>ADR 0030 决策 6，「未采纳」中的 2A、2B 与「钩子用 <code class="mono">ask</code>」，「已知能力上限」；任务件 D2 规则 1 至 8 与「宿主事实」。</p>
+  </div>
+
+  <h3>同模派发要求会话型号，且该型号在档案里</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>同模派发只在 route gate 里成立，只限 <code class="mono">worker-*</code>：推出的型号必须等于会话型号，读不到会话型号就拒绝；推出的型号还必须出现在档案 Claude Code 表的某个格里。</p>
+    <p><strong>为什么</strong>实施后的 advisor 验收指出：同模派发只免去格子校验，不免去规则 2 对锚点型号的要求，所以机制要补上这一条。</p>
+    <p><strong>依据</strong>ADR 0030 决策 6，「决策门核对」第 7 项；任务件 D2 规则 5。</p>
+  </div>
+
+  <h3>hook 跳过 &lt;synthetic&gt; 助手记录</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>读会话型号或子代理的实际配置时，route gate 取最后一条带真实型号的助手记录，跳过 <code class="mono">message.model</code> 为 <code class="mono">&lt;synthetic&gt;</code> 的记录；全是 synthetic 记录时按没有助手记录处理。</p>
+    <p><strong>为什么</strong>宿主在 API 报错等情况下写入 <code class="mono">&lt;synthetic&gt;</code> 记录，这类记录的 <code class="mono">message.model</code> 不是真实型号。</p>
+    <p><strong>依据</strong>ADR 0030「已知能力上限」。契约 04 的修正契约（<code class="mono">&lt;synthetic&gt;</code> 记录、拒绝理由列出合法拨盘）记在 <code class="mono">.scratch/trial-6-1-0-feedback/handoff-2026-10-04.md</code> 与 <code class="mono">evidence/04/acceptance.md</code>；任务件 D2 没有单列这一条。</p>
+  </div>
+
+  <h3>hook 拒绝任何 name 键</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>本角色池的派发只要带 <code class="mono">name</code> 键就拒绝，值为空串或 null 时也拒绝。</p>
+    <p><strong>为什么</strong><code class="mono">name</code> 会让 agent 文件的强度失效。实施后的 advisor 验收发现，值为空时旧实现放行了。</p>
+    <p><strong>依据</strong>ADR 0030 决策 6、「决策门核对」第 7 项；任务件 D2 规则 6。</p>
+  </div>
+</section>
+
+<section class="manual-section changes" id="section-18" aria-labelledby="heading-18">
+  <h2 id="heading-18"><span class="section-number">18</span>会话续用窗口（ADR 0030 决策 7）</h2>
+  <p>第三个问题是冷会话续用。codex 车道在上回合结束 143.7 分钟后续用会话，第一次请求的 146,061 个输入词元只命中 3,968 个。那一次间隔、强度、工作目录同时变了，原因分不开。升级梯 R1、「Rework tickets」和车道文件都没有时间条件，也没有规定新票能否续用；回执的 <code class="mono">finished_at</code> 在验证之后记录，不等于车道最后活动的时刻。</p>
+
+  <h3>续用窗口与适用范围</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>返工票、修正契约、被时钟切断后的续跑、发给子代理的后续消息、新票，都只在车道的窗口之内续用已有会话。窗口取值写在路由档案新增的「Session reuse windows」：claude 车道（Claude Code 的 <code class="mono">SendMessage</code>）1 小时，codex 车道 30 分钟，grok 车道 1 小时，Cursor 的 <code class="mono">Task</code> <code class="mono">resume</code> 1 小时。窗口从车道上次活动算起。</p>
+    <p><strong>为什么</strong>取值是椰椰声明的续用政策，不是实测的缓存寿命。椰椰 2026-10-03 声明 Claude Code 1 小时、Codex 30 分钟，并选定 grok 车道与 Cursor <code class="mono">resume</code> 取 1 小时；2026-10-04 的补充：grok 的缓存时间官方没说，按一小时来，太久了再捡起之前的会话意义不大。</p>
+    <p><strong>依据</strong>ADR 0030 决策 7，「决策门核对」第 2 项；任务件 D3。</p>
+  </div>
+
+  <h3>时间来源，与回执新字段 lane_finished_at</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>两条 runner 的回执新增 <code class="mono">lane_finished_at</code>：CLI 进程退出的时刻，在 runner 跑验证之前记录。claude 车道取子代理记录最后一条助手记录的时刻；Cursor 取主代理在 <code class="mono">Task</code> 结果返回时用 Shell 记下的时刻。时间不明时按超出窗口处理。</p>
+    <p><strong>为什么</strong>回执的 <code class="mono">finished_at</code> 在验证之后才记录，不等于车道最后活动的时刻。Cursor 的时间来源是实施中契约 02 报告缺口后由主代理补定的。</p>
+    <p><strong>依据</strong>ADR 0030 决策 7，「决策门核对」第 6 项；任务件 D3「规则」。</p>
+  </div>
+
+  <h3>超出窗口、例外与新票</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>超出窗口时，在同一档位、同一拨盘上新开会话，带上缺陷、原契约、上轮报告和回执。新开会话不算升档，失败计数不变；续用时不改强度。超出窗口仍要续用时，派发说明要点名原会话独有的可观察状态，列出已检查的磁盘材料与日志，说明为何不能交接，写出重建的步骤和代价，并披露接受冷缓存的成本。新票只在同一区域、确实需要共享上下文、同一拨盘、在窗口之内四个条件同时成立时续用。<code class="mono">SKILL.md</code> 新增「Session reuse」一节，R1 与「Rework tickets」随之改写。</p>
+    <p><strong>为什么</strong>例外的措辞来自 <code class="mono">gpt-6-astra[xhigh]</code> 对问题报告的第一轮评审。新票一律新开（3C 取法一）没有采纳：同一区域、确实需要共享上下文时，续用更便宜。</p>
+    <p><strong>依据</strong>ADR 0030 决策 7 与「未采纳」；任务件 D3「超出窗口」「例外」「新票」。</p>
+  </div>
+
+  <h3>不做机械拦截</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>本版只有条文，不对续用做机械拦截。</p>
+    <p><strong>为什么</strong>runner 跨工作目录查不到会话的上次活动，按文件修改时间判断的可靠性也没有证据。将来要做，先定下：哪些事件算活动、边界时刻、运行中的纠正消息怎么算、例外写在哪个字段。</p>
+    <p><strong>依据</strong>ADR 0030「未采纳」中的 3B 与「已知能力上限」。</p>
+  </div>
+</section>
+
+<section class="manual-section changes" id="section-19" aria-labelledby="heading-19">
+  <h2 id="heading-19"><span class="section-number">19</span>路由档案、词数上限与版本（ADR 0030 决策 8 至 12）</h2>
+  <p>用户 2026-10-03 声明路由档案 worker 行两格的新值；2026-10-04 声明去掉 <code class="mono">SKILL.md</code> 的词数上限，并决定版本号。</p>
+
+  <h3>路由档案：worker 行与声明日期</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>两张表（Claude Code 与 Cursor）的 worker 行相同。<code class="mono">mainstay</code> 从 <code class="mono">grok-4.7[high*, xhigh] › gpt-6-luna[xhigh*, max] › gpt-6.1-sol[high]</code> 改为 <code class="mono">grok-4.7[high*, xhigh] › sonnet-5-5[high*, xhigh] › gpt-6.1-sol[medium*, high]</code>；<code class="mono">crux</code> 从 <code class="mono">gpt-6.1-sol[xhigh*, max] › opus-5-5[medium*, high] › gpt-6-astra[low*, medium]</code> 改为 <code class="mono">opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › gpt-6.1-sol[xhigh*, max]</code>。声明日期从 2026-10-01 改为 2026-10-03。「格内选择」里刻意排序的说明从两处减为一处：删去了 worker <code class="mono">mainstay</code> 把 <code class="mono">grok-4.7</code> 排在 <code class="mono">gpt-6-luna</code> 之前的那一条，该格现在不再列 <code class="mono">gpt-6-luna</code>；<code class="mono">gpt-6-luna</code> 的擅长点改为只对列有它的格适用。</p>
+    <p><strong>为什么</strong>这是椰椰 2026-10-03 声明的值。</p>
+    <p><strong>依据</strong>ADR 0030 决策 8；任务件 D4。</p>
+  </div>
+
+  <h3>路由档案：档位句</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>「档位按型号划分，强度只做档内细分」改为：档位是每个角色的一组拨盘；同一型号可以按强度分在不同档位。档案、<code class="mono">SKILL.md</code>、<code class="mono">CONTEXT.md</code> 三处一起改，<code class="mono">README.md</code> 同步。</p>
+    <p><strong>为什么</strong>旧句说档位按型号划分，表格里同一型号却跨档。</p>
+    <p><strong>依据</strong>ADR 0030 决策 8，修订 ADR 0021 决策 1；任务件 D4。</p>
+  </div>
+
+  <h3>路由档案：续用窗口一节、grok 到达方式与 sonnet 映射</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>新增「Session reuse windows」一节，写四个窗口（第 15 节）。grok 的到达方式改为显式写 <code class="mono">model</code> 和 <code class="mono">effort</code>。worker 的 <code class="mono">sonnet-5-5</code> 拨盘经 <code class="mono">worker-h</code>、<code class="mono">worker-xh</code> 加 <code class="mono">sonnet</code> 到达；<code class="mono">opus-5-5</code> 的映射不变。</p>
+    <p><strong>为什么</strong>椰椰 2026-10-03 声明的 worker 行含 <code class="mono">sonnet-5-5</code>。档案是 route gate 与 runner 的唯一来源，不另建路由配置。</p>
+    <p><strong>依据</strong>ADR 0030 决策 8；任务件 D4 与契约 01。</p>
+  </div>
+
+  <h3>SKILL.md 不再设词数上限</h3>
+  <div class="card">
+    <p><strong>改了什么</strong><code class="mono">SKILL.md</code> 不设词数上限，计划中的词数预算全部取消。这取代 ADR 0021 决策 11、ADR 0022 决策 5、ADR 0029 决策 8 的上限，以及 ADR 0024 决策 4 的预算测试；这些 ADR 的其余决策不受影响。ADR 0024 决策 1 的分层规则不变：<code class="mono">SKILL.md</code> 只收跨车道、跨宿主的规则，它决定内容放在哪里，与字数无关。</p>
+    <p><strong>为什么</strong>椰椰 2026-10-04 指出，上限每次改条文都要问、都会改，数字没有依据。没有测试强制这个上限，它只写在这几篇 ADR 里。</p>
+    <p><strong>依据</strong>ADR 0030 决策 9；任务件 D5。</p>
+  </div>
+
+  <h3>版本号：6.2.0，不是 7.0.0</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>本版为 6.2.0。版本规则改为：主版本只用于颠覆性改动，并由椰椰确认；不兼容的 runner 字段和条文改动用次版本；只改文字用修订版本。规则写进 <code class="mono">docs/agents/plugin-release.md</code>。本版的 runner spec 新增必填字段，不向后兼容，按这条规则属于次版本。</p>
+    <p><strong>为什么</strong>椰椰 2026-10-04 决定：升太快了，后续无颠覆性改动一律不升大版本，所以不发 7.0.0。</p>
+    <p><strong>依据</strong>ADR 0030 决策 10 与「未采纳」；任务件 D6；<code class="mono">docs/agents/plugin-release.md</code>。</p>
+  </div>
+
+  <h3>协调件同步，与插件之外的事项</h3>
+  <div class="card">
+    <p><strong>改了什么</strong>协调件随本版同步：<code class="mono">CONTEXT.md</code>（改「档位」「批次验收」「升级梯」，新增「续用窗口」「路由行」）、<code class="mono">docs/agents/issue-tracker.md</code>（批次的定义）、<code class="mono">docs/agents/plugin-release.md</code>（版本规则），以及 ADR 0009、0021、0022、0024、0029 的状态行，只注明被修订或取代的条款。中文孪生五份、<code class="mono">README.md</code> 与测试同批更新。插件之外有两件事，不属于本版的发布内容：cc-usage 的四条项目记忆（椰椰已授权）按任务件 D7 修改；发布之后核对 codex-advisor 是否有同样的三个问题，有就写交接文档进该仓，该仓的提交另行请椰椰授权。</p>
+    <p><strong>为什么</strong>这些安排由 ADR 0030 决策 11、12 记录；椰椰已授权 cc-usage 的记忆修改。</p>
+    <p><strong>依据</strong>ADR 0030 决策 11、12；任务件 D7、D8。</p>
+  </div>
+</section>
+
+<section class="manual-section changes" id="section-20" aria-labelledby="heading-20">
+  <h2 id="heading-20"><span class="section-number">20</span>升级步骤与注意点</h2>
+  <p>从 6.1.0 升级到 6.2.0 有不兼容改动，下面五处要留意，升级步骤在本节末尾。</p>
+  <div class="card">
+    <p><strong>runner spec</strong>6.1.0 的 spec 没有 <code class="mono">role</code> 与 <code class="mono">tier</code>，现在判 <code class="mono">spec_invalid</code>，不拉起 CLI。给每份 spec 加上 <code class="mono">role</code>（implement 用 <code class="mono">worker</code>，report 用 <code class="mono">explorer</code> 或 <code class="mono">advisor</code>）与 <code class="mono">tier</code>；高于 <code class="mono">mainstay</code> 时再加 <code class="mono">basis</code>。</p>
+    <p><strong>省略的默认值</strong>codex spec 省略 <code class="mono">model</code> 或 <code class="mono">effort</code> 时，runner 按省略默认值补齐后再校验路由。补齐后的拨盘不在该角色、该档位的格里，就判 <code class="mono">spec_invalid</code>。省略 <code class="mono">model</code> 时补齐为 <code class="mono">gpt-6-astra</code>，worker 的 <code class="mono">mainstay</code> 格里没有它，所以 <code class="mono">tier: mainstay</code> 的 worker spec 会被拒。省略 <code class="mono">effort</code> 时按型号补齐，<code class="mono">gpt-6.1-sol</code> 补齐为 <code class="mono">high</code>：它在 worker <code class="mono">mainstay</code> 格里，不在 <code class="mono">crux</code> 格里。建议 spec 总是写明 <code class="mono">model</code> 与 <code class="mono">effort</code>。</p>
+    <p><strong>grok spec</strong>现在必须同时写 <code class="mono">model</code> 与 <code class="mono">effort</code>；缺一个就判 <code class="mono">spec_invalid</code>。</p>
+    <p><strong>claude 车道提示词与 SendMessage</strong>发给本角色池子代理的 <code class="mono">Agent</code> 提示词和 <code class="mono">SendMessage</code> 消息，第一行必须是路由行，route gate 检查它。第二行是读前言的指令，这只是文本规则，route gate 不检查它是否存在或正确。每次 <code class="mono">Agent</code> 派发都要显式带 <code class="mono">model</code>，不能带 <code class="mono">name</code>；例外是 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 为真值时，宿主去掉了 <code class="mono">model</code> 参数，route gate 不要求它，改按 <code class="mono">CLAUDE_CODE_SUBAGENT_MODEL</code>（未设或为 <code class="mono">inherit</code> 时按会话型号）推出拨盘。路由行、<code class="mono">model</code> 或 <code class="mono">name</code> 不合规的调用被 route gate 拒绝。</p>
+    <p><strong>receipt 新字段</strong>receipt 多了 <code class="mono">role</code>、<code class="mono">tier</code>、<code class="mono">basis</code> 与 <code class="mono">lane_finished_at</code>。按固定键集合严格解析 receipt 的调用方要接受这些键。</p>
+  </div>
+
+  <div class="box warn" id="upgrade">
+    <strong>升级后要做什么</strong>
+    <ol>
+      <li>两侧都跑插件更新：<code class="mono">claude plugin marketplace update fable-advisor</code>，然后 <code class="mono">claude plugin update fable-advisor@fable-advisor</code>。Windows 侧从 WSL 执行：<code class="mono">cd /mnt/c &amp;&amp; cmd.exe /c "claude plugin marketplace update fable-advisor &amp;&amp; claude plugin update fable-advisor@fable-advisor"</code>。</li>
+      <li>确认两侧缓存都出现 <code class="mono">6.2.0</code>，并抽查新内容已落地：缓存里的 <code class="mono">skills/orchestration/SKILL.md</code> 含 <code class="mono">Wait only for real dependencies</code>，<code class="mono">scripts/run-codex.mjs</code> 含 <code class="mono">lane_finished_at</code>，<code class="mono">hooks/route-gate.py</code> 存在。</li>
+      <li>从本仓检出跑伴生安装器：<code class="mono">python3 scripts/install-user-level.py --home ~ --home /mnt/c/Users/Shy</code>，再加 <code class="mono">--check</code> 确认没有漂移。本版没有改动用户级文件。</li>
+      <li>重启两侧正在运行的 Claude Code 与 Cursor 会话。route gate、插件缓存、agent 文件和路由档案只在新会话生效。</li>
+      <li>在新会话里派一次不带路由行的 <code class="mono">fable-advisor:explorer-h</code>，确认被拒，理由以 <code class="mono">fable-advisor route gate:</code> 开头；再带正确的路由行派一次，确认放行。</li>
+    </ol>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="footer-title"><span>fable-advisor · 6.2.0 版本说明书</span><a href="#overview">回到顶部 ↑</a></div>
+  真源：<code class="mono">plugin/skills/orchestration/</code>、<code class="mono">plugin/scripts/run-*.mjs</code>、<code class="mono">plugin/scripts/routing-profile.mjs</code>、<code class="mono">plugin/agents/</code>、<code class="mono">plugin/hooks/</code>、<code class="mono">scripts/install-user-level.py</code>、<code class="mono">cursor-hooks/</code>、<code class="mono">tests/</code>、<code class="mono">docs/adr/0019-report-mode-skips-git-status-failed.md</code>、<code class="mono">docs/adr/0020-one-executor-per-check-list.md</code>、<code class="mono">docs/adr/0021-tiers-mainstay-crux-rescue.md</code>、<code class="mono">docs/adr/0022-orchestration-load-on-events.md</code>、<code class="mono">docs/adr/0023-routing-profile-in-plugin.md</code>、<code class="mono">docs/adr/0026-sol-6-1-advisor-row-and-segments.md</code>、<code class="mono">docs/adr/0027-runner-running-marker-and-background-wait.md</code>、<code class="mono">docs/adr/0028-mid-run-correction.md</code>、<code class="mono">docs/adr/0029-scoped-contract-checks-and-batch-defaults.md</code>、<code class="mono">docs/adr/0030-global-plan-route-gate-reuse-window.md</code>、<code class="mono">.scratch/trial-6-1-0-feedback/spec.md</code>、<code class="mono">.scratch/trial-6-1-0-feedback/problem-report.md</code>、<code class="mono">CONTEXT.md</code>。填充表取值以插件内的 <code class="mono">routing-profile.md</code> 为准，本页不将其当作插件机制。
+</footer>
+</div>
+<script>
+  const toc = document.querySelector('.toc');
+  const mobile = window.matchMedia('(max-width: 900px)');
+  const syncMenu = () => { toc.open = !mobile.matches; };
+  syncMenu();
+  mobile.addEventListener('change', syncMenu);
+  const links = [...document.querySelectorAll('.toc a')];
+  const sections = links.map(link => document.querySelector(link.getAttribute('href')));
+  let scheduled = false;
+  function updateCurrent() {
+    let current = 0;
+    sections.forEach((section, index) => {
+      if (section.getBoundingClientRect().top <= 140) current = index;
+    });
+    links.forEach((link, index) => {
+      if (index === current) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+    scheduled = false;
+  }
+  document.addEventListener('scroll', () => {
+    if (!scheduled) { scheduled = true; requestAnimationFrame(updateCurrent); }
+  }, { passive: true });
+  links.forEach(link => link.addEventListener('click', () => {
+    if (mobile.matches) toc.open = false;
+  }));
+  updateCurrent();
+</script>
+</body>
+</html>

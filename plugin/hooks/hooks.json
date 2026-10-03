@@ -1,5 +1,5 @@
 {
-  "description": "Receipt gate: a Stop hook that blocks claiming completion while a spec under .fable-advisor/pending/ lacks a complete receipt and no runner is in flight for it (fails open without python; pending specs are re-checked once python is available).",
+  "description": "Receipt gate and route gate. The receipt gate is a Stop hook that blocks claiming completion while a spec under .fable-advisor/pending/ lacks a complete receipt and no runner is in flight for it. The route gate is a PreToolUse hook that denies an Agent whose subagent_type starts with fable-advisor:, and a SendMessage to such an agent, when the route line does not match the agent file and the Claude Code routing profile. Both fail open without python; pending specs are re-checked once python is available.",
   "hooks": {
     "Stop": [
       {
@@ -9,6 +9,19 @@
             "command": "payload=$(cat); if py -c 'pass' >/dev/null 2>&1; then R=py; elif python3 -c 'pass' >/dev/null 2>&1; then R=python3; elif python -c 'pass' >/dev/null 2>&1; then R=python; else R=; fi; if [ -n \"$R\" ]; then printf '%s' \"$payload\" | \"$R\" \"${CLAUDE_PLUGIN_ROOT}/hooks/receipt-gate.py\"; else echo 'fable-advisor receipt gate skipped: python runtime missing (fail open; pending specs are re-checked when a python runtime returns)' >&2; fi",
             "timeout": 10,
             "statusMessage": "Checking receipt gate"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "payload=$(cat); if py -c 'pass' >/dev/null 2>&1; then R=py; elif python3 -c 'pass' >/dev/null 2>&1; then R=python3; elif python -c 'pass' >/dev/null 2>&1; then R=python; else R=; fi; if [ -n \"$R\" ]; then printf '%s' \"$payload\" | \"$R\" \"${CLAUDE_PLUGIN_ROOT}/hooks/route-gate.py\"; else echo 'fable-advisor route gate skipped: python runtime missing (fail open)' >&2; fi",
+            "timeout": 10,
+            "statusMessage": "Checking route gate"
           }
         ]
       }

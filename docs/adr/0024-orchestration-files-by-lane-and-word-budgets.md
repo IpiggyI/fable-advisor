@@ -1,6 +1,6 @@
 # 0024 — 编排技能按车道机制分文件，每个文件设词数预算并由测试强制
 
-- **Status**: proposed（2026-09-29 椰椰要求按审查清单的建议执行；P11 采纳 (a)、(b1)、(c)，(b2) 暂缓；时点为 6.0.0 推送之后的 6.1.0。决策类型门经 `gpt-6-astra` medium advisor 裁决：修改后接受，置信度高，五点意见已并入决策 2、4、6 与实施契约；2026-10-02 发布的 6.1.0 包含 ADR 0026 至 0029，不含 P11，P11 的时点待椰椰重定）
+- **Status**: proposed（2026-09-29 椰椰要求按审查清单的建议执行；P11 采纳 (a)、(b1)、(c)，(b2) 暂缓；时点为 6.0.0 推送之后的 6.1.0。决策类型门经 `gpt-6-astra` medium advisor 裁决：修改后接受，置信度高，五点意见已并入决策 2、4、6 与实施契约；2026-10-02 发布的 6.1.0 包含 ADR 0026 至 0029，不含 P11，P11 的时点待椰椰重定；决策 4 的词数预算已被 [ADR 0030](./0030-global-plan-route-gate-reuse-window.md) 决策 9 取消，2026-10-04 椰椰决定，其余决策不变）
 - **Date**: 2026-09-29
 - **影响范围**: `plugin/skills/orchestration/SKILL.md` 的宿主指针；`plugin/skills/orchestration/lanes-claude-code.md` 拆出新文件 `plugin/skills/orchestration/runners.md`；`plugin/skills/orchestration/lanes-cursor.md` 的指针；`docs/zh/skills/orchestration/` 的对应孪生；新增 `tests/test_word_budget.py`；`README.md` 若引用被拆文件；版本 6.1.0 与说明书。
 - **关联**: 修订 [ADR 0012](./0012-orchestration-skill-progressive-disclosure.md) 决策 1、2（分层只按宿主一条轴），复核其决策 5；[ADR 0022](./0022-orchestration-load-on-events.md) 决策 5 的 2210 词上限改由测试预算承接；[ADR 0020](./0020-one-executor-per-check-list.md) 决策 6 与 [ADR 0021](./0021-tiers-mainstay-crux-rescue.md) 决策 11 的"新规则必须到达每个主代理"仍成立。任务件 `.scratch/doc-healthcheck-6-0/review.md` 的 P11、R15、RI2、PS3；实施契约 `.scratch/doc-healthcheck-6-0/p11-contract.md`。

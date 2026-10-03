@@ -76,6 +76,7 @@ raise SystemExit(7 if mode == "nonzero" else 0)
             result, receipt = run_runner(
                 runner, cwd,
                 base_spec(
+                    **({"effort": "high"} if binary == "grok" else {}),
                     model=("gpt-6-astra" if mode == "kill_failed" else "gpt-6-luna")
                     if binary == "codex" else "grok-test",
                     **({"timeout_sec": 0.3} if mode == "timeout" else {}),

@@ -11,6 +11,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from datetime import datetime
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -19,6 +20,8 @@ NODE = shutil.which("node")
 
 def base_spec(**overrides):
     spec = {
+        "role": "explorer" if overrides.get("mode") == "report" else "worker",
+        "tier": "mainstay",
         "objective": "exercise the runner contract",
         "files": [],
         "interfaces": "none",
@@ -29,14 +32,29 @@ def base_spec(**overrides):
     return spec
 
 
+def fixture_profile():
+    cell = "gpt-6-astra[low*, medium, high, xhigh] › gpt-6-luna[high, xhigh*, max] › gpt-6.1-sol[medium, high*, xhigh, max] › grok-test[low, medium, high*, xhigh]"
+    table = "| Role | `mainstay` | `crux` | `rescue` |\n|---|---|---|---|\n"
+    table += "".join("| %s | %s | %s | %s |\n" % (role, cell, cell, cell)
+                     for role in ("explorer", "worker", "advisor"))
+    return "## Tiers and choosing inside a cell\n\n" + table + "\n## Cursor candidates\n\n" + table
+
+
+def prepare_grok_spec(spec):
+    spec.setdefault("model", "grok-test")
+    spec.setdefault("effort", "high")
+    return spec
+
+
 def copy_runner(tmp, name, *, preamble=True, report_preamble=True):
     plugin = Path(tmp) / "plugin"
     scripts = plugin / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
     shutil.copy2(REPO_ROOT / "plugin" / "scripts" / name, scripts / name)
+    shutil.copy2(REPO_ROOT / "plugin" / "scripts" / "routing-profile.mjs", scripts / "routing-profile.mjs")
     orch = plugin / "skills" / "orchestration"
-    if preamble or report_preamble:
-        orch.mkdir(parents=True, exist_ok=True)
+    orch.mkdir(parents=True, exist_ok=True)
+    (orch / "routing-profile.md").write_text(fixture_profile(), encoding="utf-8")
     if preamble:
         (orch / "lane-preamble.md").write_text("STUB LANE PREAMBLE", encoding="utf-8")
     if report_preamble:
@@ -51,7 +69,9 @@ def write_executable(directory, name, contents):
     return path
 
 
-def run_runner(runner, cwd, spec, path_dir, env_extra=None, *, pending=False, timeout=None):
+def run_runner(runner, cwd, spec, path_dir, env_extra=None, *, pending=False, timeout=None, route_defaults=True):
+    if runner.name == "run-grok.mjs" and route_defaults:
+        prepare_grok_spec(spec)
     spec_path = (
         Path(cwd) / ".fable-advisor" / "pending" / "job.json"
         if pending
@@ -202,6 +222,113 @@ else:
     )
 
 
+def case_routing_profile_parser():
+    module = REPO_ROOT / "plugin" / "scripts" / "routing-profile.mjs"
+    with tempfile.TemporaryDirectory() as tmp:
+        profile = Path(tmp) / "profile.md"
+        text = fixture_profile().replace("grok-test[low, medium, high*, xhigh]", "bare-model › grok-test[high*, low, high]")
+        profile.write_text(text)
+        result = subprocess.run([NODE, str(module), "--dump", str(profile)], capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        tables = json.loads(result.stdout)
+        assert set(tables) == {"claude_code", "cursor"}, tables
+        for table in tables.values():
+            assert set(table) == {"explorer", "worker", "advisor"}
+            for tiers in table.values():
+                assert set(tiers) == {"mainstay", "crux", "rescue"}
+                for dials in tiers.values():
+                    assert dials == sorted(set(dials))
+                    assert {"bare-model", "grok-test[high]", "grok-test[low]"} <= set(dials)
+                    assert all("*" not in dial for dial in dials)
+        for malformed in ("invalid", text.replace("| advisor |", "| worker |"),
+                          text.replace("high*, low, high", "high,,low"),
+                          text.replace("## Cursor candidates", "## Other candidates")):
+            profile.write_text(malformed)
+            result = subprocess.run([NODE, str(module), "--dump", str(profile)], capture_output=True, text=True)
+            assert result.returncode == 1 and str(profile) in result.stderr, result
+        profile.unlink()
+        result = subprocess.run([NODE, str(module), "--dump", str(profile)], capture_output=True, text=True)
+        assert result.returncode == 1 and str(profile) in result.stderr
+    print("ASSERT parser: two tables; sorted expanded unique dials; bare models; malformed and unreadable profiles rejected")
+
+
+def case_route_validation():
+    for binary in ("codex", "grok"):
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            (fake_codex if binary == "codex" else fake_grok)(bin_dir)
+            fake_git(bin_dir)
+            runner = copy_runner(tmp, "run-%s.mjs" % binary)
+            cwd = Path(tmp) / "work"
+            cwd.mkdir()
+            call_log = Path(tmp) / "calls"
+            env = {"CALL_LOG": str(call_log), "PROMPT_LOG": str(Path(tmp) / "prompt")}
+            spec = base_spec()
+            if binary == "grok":
+                prepare_grok_spec(spec)
+            invalid = []
+            for key in ("role", "tier"):
+                missing = dict(spec)
+                del missing[key]
+                invalid.append(("missing " + key, missing, key))
+            invalid.extend([
+                ("implement advisor", dict(spec, role="advisor"), "role"),
+                ("report worker", dict(spec, mode="report"), "role"),
+                ("outside cell", dict(spec, effort="low" if binary == "codex" else "medium"), "legal dials"),
+                ("missing basis", dict(spec, tier="crux"), "basis"),
+                ("rescue advisor failure", dict(spec, mode="report", role="advisor", tier="rescue",
+                    basis={"kind": "failure", "ref": "previous run"}), "user-declaration"),
+                ("same-model tier", dict(spec, tier="same-model"), "tier"),
+                ("unknown basis", dict(spec, basis={"kind": "unknown", "ref": "ref"}), "must be one of"),
+                ("malformed basis", dict(spec, basis={"kind": "failure", "ref": " "}), "non-empty"),
+            ])
+            if binary == "grok":
+                for key in ("model", "effort"):
+                    missing = dict(spec)
+                    del missing[key]
+                    invalid.append(("missing " + key, missing, key))
+            profile = runner.parent.parent / "skills" / "orchestration" / "routing-profile.md"
+            # Remove one dial in both tables so the outside-cell case is independent of defaults.
+            profile.write_text(fixture_profile().replace("low*, medium", "medium").replace("low, medium, high*", "low, high*"))
+            for label, candidate, message in invalid:
+                result, receipt = run_runner(runner, cwd, candidate, bin_dir, env, route_defaults=False)
+                assert result.returncode != 0 and receipt["error_class"] == "spec_invalid", (label, receipt)
+                assert message in result.stderr, (label, result.stderr)
+                assert receipt["lane_finished_at"] is None, (label, receipt)
+                assert not call_log.exists(), label + " spawned CLI"
+            legal_basis = {"kind": "user-declaration", "ref": "contract route"}
+            for tier in ("mainstay", "crux", "rescue"):
+                legal = dict(spec, tier=tier, basis=legal_basis, verification=["sleep 2"] if tier == "crux" else ["true"])
+                result, receipt = run_runner(runner, cwd, legal, bin_dir, env, route_defaults=False)
+                assert result.returncode == 0 and receipt["error_class"] == "complete", (result.stderr, receipt)
+                assert (receipt["role"], receipt["tier"], receipt["basis"]) == ("worker", tier, legal_basis)
+                lane = datetime.fromisoformat(receipt["lane_finished_at"])
+                finished = datetime.fromisoformat(receipt["finished_at"])
+                if tier == "crux":
+                    assert (finished - lane).total_seconds() >= 2, receipt
+            call_log.unlink()
+            # The Claude Code cell lacks this dial; the Cursor cell still permits it.
+            claude, cursor = fixture_profile().split("## Cursor candidates")
+            if binary == "codex":
+                claude = claude.replace("low*, medium, high, xhigh", "low*, high, xhigh")
+            else:
+                claude = claude.replace("low, medium, high*, xhigh", "low, medium, xhigh")
+            profile.write_text(claude + "## Cursor candidates" + cursor)
+            result, receipt = run_runner(runner, cwd, spec, bin_dir, env, route_defaults=False)
+            assert result.returncode == 0 and receipt["basis"] is None, (result.stderr, receipt)
+            call_log.unlink()
+            profile.unlink()
+            result, receipt = run_runner(runner, cwd, spec, bin_dir, env, route_defaults=False)
+            assert receipt["error_class"] == "spec_invalid" and str(profile) in result.stderr
+            assert not call_log.exists() and receipt["lane_finished_at"] is None
+            profile.write_text("invalid profile")
+            result, receipt = run_runner(runner, cwd, spec, bin_dir, env, route_defaults=False)
+            assert receipt["error_class"] == "spec_invalid" and str(profile) in result.stderr
+            assert not call_log.exists()
+            print("ASSERT route %s: legal routes and receipts; invalid routes spawn-free; lane_finished_at precedes verification by >=2s" % binary)
+
+
 def case_mode_validation():
     for binary in ("codex", "grok"):
         with tempfile.TemporaryDirectory() as tmp:
@@ -263,6 +390,7 @@ def case_report_and_implement_modes():
                 spec = base_spec(files=files)
                 if mode is not None:
                     spec["mode"] = mode
+                    spec["role"] = "explorer" if mode == "report" else "worker"
                 if mode == "report":
                     spec["verification"] = []
                 if expected == "verification_failed":
@@ -405,6 +533,8 @@ def case_verification_output_log():
                 "echo %s; printf '%%03000d\\n' 0; exit 3" % marker,
                 "echo second",
             ])
+            if binary == "grok":
+                prepare_grok_spec(spec)
             spec_hash = hashlib.sha256(json.dumps(spec).encode("utf-8")).hexdigest()
             logs = [".fable-advisor/receipts/%s.verification-%d.log" % (spec_hash, n) for n in (1, 2)]
             (cwd / logs[1]).write_text("STALE\n", encoding="utf-8")
@@ -419,6 +549,8 @@ def case_verification_output_log():
             assert (cwd / logs[1]).read_text(encoding="utf-8") == "second\n"
 
             spec = base_spec(verification=["echo kept"])
+            if binary == "grok":
+                prepare_grok_spec(spec)
             spec_hash = hashlib.sha256(json.dumps(spec).encode("utf-8")).hexdigest()
             (receipts / ("%s.verification-1.log" % spec_hash)).mkdir()
             result, receipt = run_runner(runner, cwd, spec, bin_dir, env)
@@ -448,6 +580,7 @@ def case_empty_report():
                         spec = base_spec()
                         if mode is not None:
                             spec["mode"] = mode
+                            spec["role"] = "explorer" if mode == "report" else "worker"
                         result, receipt = run_runner(
                             runner, cwd, spec, bin_dir,
                             {"CALL_LOG": str(Path(tmp) / "calls"),
@@ -568,11 +701,12 @@ def case_grok_effort():
             cwd.mkdir()
             call_log = Path(tmp) / "calls"
             result, receipt = run_runner(
-                runner, cwd, base_spec(**overrides), bin_dir,
+                runner, cwd, base_spec(model="grok-test", **overrides), bin_dir,
                 {"CALL_LOG": str(call_log), "PROMPT_LOG": str(Path(tmp) / "prompt")},
+                route_defaults=False,
             )
             effort = overrides.get("effort")
-            if overrides and effort not in valid_efforts:
+            if effort not in valid_efforts:
                 assert result.returncode != 0, result.stderr
                 assert receipt["error_class"] == "spec_invalid", receipt
                 assert receipt["effort"] is None
@@ -593,7 +727,7 @@ def case_grok_effort():
                 receipt["spec_hash"] + ".json"
             )
             assert json.loads(receipt_path.read_text()) == receipt
-    print("ASSERT grok effort: valid=low,medium,high,xhigh invalid=spawn-free omitted=null,no-flag")
+    print("ASSERT grok effort: valid=low,medium,high,xhigh invalid=spawn-free omitted=spec_invalid,spawn-free")
 
 
 def case_preamble_missing_is_spawn_free():
@@ -669,7 +803,7 @@ def case_unavailable_receipt_fields():
             cwd.mkdir()
             _, receipt = run_runner(runner, cwd, base_spec(), bin_dir)
             assert receipt["error_class"] == error_class
-            expected_model = "gpt-6-astra" if "codex" in name else None
+            expected_model = "gpt-6-astra" if "codex" in name else "grok-test"
             assert receipt["model_requested"] == expected_model
             assert receipt["model_used"] == expected_model
             assert receipt["fallback_reason"] is None
@@ -984,6 +1118,8 @@ def case_interrupted_receipt_and_process_tree():
                         spec["resume_session_id"] = "resume-123"
                     spec_path = cwd / ".fable-advisor" / "pending" / "job.json"
                     spec_path.parent.mkdir(parents=True)
+                    if binary == "grok":
+                        prepare_grok_spec(spec)
                     raw = json.dumps(spec).encode()
                     spec_path.write_bytes(raw)
                     env = os.environ.copy()
@@ -1536,6 +1672,8 @@ def case_running_marker():
                 cwd = Path(tmp) / "work"
                 cwd.mkdir()
                 spec = base_spec()
+                if binary == "grok":
+                    prepare_grok_spec(spec)
                 spec_hash = hashlib.sha256(json.dumps(spec).encode("utf-8")).hexdigest()
                 running_dir = cwd / ".fable-advisor" / "running"
                 marker = running_dir / ("%s.json" % spec_hash)
@@ -1575,6 +1713,8 @@ def case_running_marker():
 
 
 CASES = [
+    ("routing profile parser", case_routing_profile_parser),
+    ("route validation", case_route_validation),
     ("mode validation", case_mode_validation),
     ("report and implement modes", case_report_and_implement_modes),
     ("runner owns verification list", case_runner_owns_verification_list),

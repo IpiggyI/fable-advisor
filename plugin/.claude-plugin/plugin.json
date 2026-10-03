@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "description": "A role pool: any model can be the main agent; two postures (orchestrating: deliverables only through a worker; implementing: the main agent may edit directly); explorer, worker, and advisor at mainstay, crux, and rescue tiers; grok, codex, claude, and handoff lanes named by mechanism; a fill table in the bundled routing profile maps (role, tier) to models. The advisor has decision and acceptance shapes; escalation climbs a ladder (rework ticket, then the next tier).",
   "author": {
     "name": "Dan McAteer",

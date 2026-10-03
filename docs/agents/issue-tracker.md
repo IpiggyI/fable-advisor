@@ -13,9 +13,9 @@ Issues and specs (you may know a spec as a PRD) for this repo live as markdown f
 
 ## Batch checks
 
-A delivery contract carries only the checks scoped to its own change; a costly check wider than one contract's change (full suite, browser or end-to-end suite, full build or package) is a batch check (`CONTEXT.md`, "批次验收"). A batch check has no mechanical keeper — the receipt gate does not see it and no runner records it — so the task artifact is where it lives.
+A delivery contract carries only the checks scoped to its own change. A wide check is a batch check (`CONTEXT.md`, "批次验收"): the full suite, a render or browser check, an end-to-end suite, a full build or package, a check that shares costly setup (a service, browser, device or build) with other contracts' checks, and the main agent's own render or manual checks. Each batch check runs once, after the contracts it covers land and are accepted, and holds back only the work that needs its result. A batch check has no mechanical keeper — the receipt gate does not see it and no runner records it — so the task artifact is where it lives.
 
-Name each batch check once under `## Batch checks` in the feature's spec or closing ticket when the batch is planned, and record its result there when it runs: passed, failed or pending, with its output or the path to it. A feature with a failed or pending batch check, one left unrun by an early stop included, is not done unless the user waives it.
+Name each batch check once under `## Batch checks` in the feature's spec or closing ticket when the batch is planned, with the contracts it covers, its executor and its timing, and record its result there when it runs: passed, failed or pending, with its output or the path to it. A feature with a failed or pending batch check, one left unrun by an early stop included, is not done unless the user waives it.
 
 ## When a skill says "publish to the issue tracker"
 

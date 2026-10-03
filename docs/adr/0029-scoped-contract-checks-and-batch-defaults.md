@@ -1,6 +1,6 @@
 # 0029 — 契约只放本契约范围内的检查，昂贵的宽检查归批次，并票按契约验收
 
-- **Status**: accepted（2026-10-02 椰椰审阅修订稿，确认 `SKILL.md` 词数上限 2340，要求按修订稿实施；2026-10-01 椰椰已定车道内验收与验收、提交单位；决策类型门：`gpt-6-astra[xhigh]` 两轮评审，意见已并入）
+- **Status**: accepted（2026-10-02 椰椰审阅修订稿，确认 `SKILL.md` 词数上限 2340，要求按修订稿实施；2026-10-01 椰椰已定车道内验收与验收、提交单位；决策类型门：`gpt-6-astra[xhigh]` 两轮评审，意见已并入；决策 2 的范围已被 [ADR 0030](./0030-global-plan-route-gate-reuse-window.md) 决策 3 扩大，恢复「共用昂贵准备」并纳入主会话自己的检查；决策 8 的词数上限已被 ADR 0030 决策 9 取代）
 - **Date**: 2026-10-01
 - **影响范围**: `plugin/skills/orchestration/SKILL.md`（交付契约第 5 部、"Upstream task artifacts"、"Rework tickets"、"Parallelism"、第 1 层验收、"Run each check once"）、`plugin/skills/orchestration/lane-preamble.md`（Posture、Verification）、`plugin/skills/orchestration/lanes-claude-code.md`（第 4 节回执字段、执行者段、"Rework tickets"）、`plugin/skills/orchestration/lanes-cursor.md`（Rework 一条）、`plugin/scripts/run-grok.mjs`、`plugin/scripts/run-codex.mjs`、`tests/test_runner_contract.py`、`docs/zh/` 四份孪生；协调件 `CONTEXT.md`（「批次验收」词条）、`docs/agents/issue-tracker.md`、ADR 0020 与 ADR 0022 的状态行。任务件 `.scratch/verification-defaults/spec.md`，问题报告 `.scratch/verification-defaults/problem-report.md`
 - **关联**: 修订 [ADR 0020](./0020-one-executor-per-check-list.md) 决策 2、3、8；上调 [ADR 0022](./0022-orchestration-load-on-events.md) 决策 5 的词数上限（决策 8）；先于 [ADR 0024](./0024-orchestration-files-by-lane-and-word-budgets.md) 的拆分落地；[ADR 0013](./0013-delivery-contract-not-build-instructions.md) 的五部契约不变。上游交接 `/mnt/d/Development/Local/prompts/docs/plans/fable-advisor-verification-handoff-2026-09.md`

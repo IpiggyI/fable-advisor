@@ -11,7 +11,7 @@ Write `docs/manuals/<version>.html` before bumping any version field. The versio
 - `plugin/.claude-plugin/plugin.json` → `version`
 - `.claude-plugin/marketplace.json` → `plugins[0].version`
 
-Both must move together. The marketplace version drives update discovery; leaving it stale means `claude plugin update` sees nothing new. Major for a breaking runner or doctrine change, minor for a backward-compatible semantic change, patch for text-only fixes.
+Both must move together. The marketplace version drives update discovery; leaving it stale means `claude plugin update` sees nothing new. Major only for a disruptive change, and only after the user confirms it; minor for incompatible runner fields and doctrine changes; patch for text-only fixes (ADR 0030 decision 10).
 
 Only `plugin/` ships: `marketplace.json` sets `"source": "./plugin"`, and Claude Code copies that directory wholesale into the versioned cache (it does not honor `.pluginignore` or `export-ignore`). `source` stays `./plugin`.
 

@@ -60,12 +60,18 @@ async function run(binary, killMode) {
   for (const folder of [scripts, preambles, cwd]) fs.mkdirSync(folder, {recursive: true});
   const runner = path.join(scripts, 'run-' + binary + '.mjs');
   fs.copyFileSync(path.join(root, 'plugin', 'scripts', 'run-' + binary + '.mjs'), runner);
+  fs.copyFileSync(path.join(root, 'plugin', 'scripts', 'routing-profile.mjs'), path.join(scripts, 'routing-profile.mjs'));
+  const cell = 'gpt-6-luna[max] › grok-test[high]';
+  const table = '| Role | `mainstay` | `crux` | `rescue` |\n|---|---|---|---|\n' +
+    ['explorer', 'worker', 'advisor'].map(role => `| ${role} | ${cell} | ${cell} | ${cell} |\n`).join('');
+  fs.writeFileSync(path.join(preambles, 'routing-profile.md'), '## Tiers and choosing inside a cell\n\n' + table + '\n## Cursor candidates\n\n' + table);
   fs.writeFileSync(path.join(preambles, 'lane-preamble.md'), 'Fixture preamble');
   fs.writeFileSync(path.join(preambles, 'lane-preamble-report.md'), 'Fixture report preamble');
   const specPath = path.join(cwd, '.fable-advisor', 'pending', 'job.json');
   fs.mkdirSync(path.dirname(specPath), {recursive:true});
   fs.writeFileSync(specPath, JSON.stringify({
     objective:'native pipes', files:[], interfaces:'none', constraints:'none',
+    role:'explorer', tier:'mainstay', effort:binary === 'codex' ? 'max' : 'high',
     mode:'report', verification:[], model:binary === 'codex' ? 'gpt-6-luna' : 'grok-test',
     ...(killMode ? {timeout_sec:0.3} : {}),
   }));
