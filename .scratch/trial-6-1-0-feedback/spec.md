@@ -289,9 +289,13 @@ Status: ready-for-agent（`gpt-6-astra[xhigh]` 评审裁决为「修改后采纳
 
 提交、推送、两侧 `claude plugin update`、伴生安装器，按 `docs/agents/plugin-release.md` 执行。
 
+结果：完成，2026-10-04。发布提交 `fd1904c` 已推送。WSL 的 `~/.claude-a/plugins` 是指向 `~/.claude/plugins` 的符号链接，一次更新覆盖两个配置目录；WSL 与 Windows 都从 6.1.0 更新到 6.2.0，两侧缓存里的 `hooks/route-gate.py`、`SKILL.md` 与 `run-codex.mjs` 的新内容都已落地。伴生安装器四个文件都未变化，`--check` 退出码 0。已安装的 route gate 在真实会话里的拒绝没有单独模拟，由后续真实任务观察。
+
 ### 阶段四
 
 D8。
+
+结果：完成，2026-10-04。codex-advisor（基线 `bffc0ce`，插件 `0.3.2`）只对照了条文和机制：问题二、三存在；问题一部分存在，缺派发前写下规划、提交规则和并发工作目录的隔离。交接文档 `.scratch/plan-route-reuse-window/handoff.md` 已在该仓提交并推送（`255734c`，椰椰授权）。
 
 ## 需要椰椰授权的操作
 
@@ -304,8 +308,8 @@ D8。
 
 | 检查 | 时点 | 结果 |
 |---|---|---|
-| 全部 Python 测试 | 阶段一合入后；advisor 返工后重跑 | 通过。终版：2026-10-03T18:24Z（本地 10-04 02:24），在返工与版本字段修改之后的工作树上跑，`for t in tests/test_*.py` 循环退出码 0，10 个文件都通过：route_gate 43/43、routing_profile_parity 29/29、runner_contract 23/23、shipped_wording 43/43、zh_mirror 16/16、receipt_gate 11/11、lane_family_gate 18/18、install_user_level 8/8、user_level_archive 5/5；runner_lifecycle 只打印 PASS 行，没有 FAIL。日志 `evidence/batch/batch-python-final.log`。第一次运行（17:33Z 前后，route_gate 40/40）在 advisor 返工之前，日志 `evidence/batch/batch-python.log` |
+| 全部 Python 测试 | 阶段一合入后；advisor 返工后重跑 | 通过。终版：2026-10-03T18:24Z（本地 10-04 02:24），在返工与版本字段修改之后的工作树上跑，`for t in tests/test_*.py` 循环退出码 0，10 个文件都通过：route_gate 43/43、routing_profile_parity 29/29、runner_contract 23/23、shipped_wording 43/43、zh_mirror 16/16、receipt_gate 11/11、lane_family_gate 18/18、install_user_level 8/8、user_level_archive 5/5；runner_lifecycle 只打印 PASS 行，没有 FAIL。日志 `evidence/batch/batch-python-final.log`。第一次运行（2026-10-03 17:33Z 前后，route_gate 40/40）在 advisor 返工之前，日志 `evidence/batch/batch-python.log` |
 | Windows 原生 Node 测试 | 阶段一合入后 | 通过，2026-10-04。`cmd.exe` 跑 Windows 原生 Node，退出码 0，codex 与 grok 的 inherited、timeout、hang 共 6 项 PASS。日志 `evidence/batch/batch-windows.log` |
 | 钩子端到端检查 | 阶段一合入后 | 通过，2026-10-04，Claude Code 2.1.287，主会话 `sonnet`，`bypassPermissions`，cwd 为 `/tmp/fa-e2e/cwd`。init 记录的插件表里 fable-advisor 只有 `fable-advisor@inline`，已安装的 6.1.0 被取代。第一次运行：合法路由放行（子代理跑 `claude-haiku-4-5-20251001`）；缺路由行、缺 `model`（理由带合法拨盘）、拨盘不在格里、同模派发的型号不是会话型号，都被拒；`SendMessage` 带路由放行，缺路由被拒（理由给出目标拨盘 `haiku-4-5`），找不到的 agentId 被拒，名字目标和只订阅不被钩子拒绝（宿主自己回 `success: false`）；同模派发 `sonnet-5-5[high]` 放行（子代理跑 `claude-sonnet-5-5`，强度 `high`）；内置 `Explore` 放行。第二次运行设 `ANTHROPIC_DEFAULT_OPUS_MODEL=claude-sonnet-5-5`：`opus` 推出 `sonnet-5-5[high]`，路由写 `opus-5-5[high]` 被拒。第三次运行设 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` 与 `CLAUDE_CODE_SUBAGENT_MODEL=haiku`：路由写 `sonnet-5-5[high]` 被拒（推出 `haiku-4-5`），写 `haiku-4-5` 放行。所有拒绝理由都以 `fable-advisor route gate:` 开头。`name` 无法覆盖：本版本的 `Agent` 没有 `name` 参数。记录与摘要在 `evidence/batch/e2e/`。范围：这次运行用的是 advisor 返工之前的钩子逻辑；返工改的同模型号核对与 `name` 空值由 `test_route_gate.py` 43/43 覆盖，`hooks.json` 与钩子接线没有再改 |
-| advisor 验收（02 至 05，含行为场景） | 阶段一合入后 | 第一轮：2026-10-04 17:35Z 至 17:41Z，`gpt-6.1-sol[medium]`（已提交，未观测），codex 报告模式，会话 `01a102d5-f0d1-7390-b5b0-5ab1a0561b18`，回执 `evidence/batch/advisor-acceptance-1.json`。裁决「完成以下修改后接受」，提出三处修改，主会话全部采纳：同模派发也要求推出的型号是档案里的型号（改机制，D2 规则 2）；`README.md:76` 仍写证据加差异统计是默认验收（D1 第 3 条）；`name` 为空值时被放行（D2 规则 6）。中文孪生和四个行为场景都通过。三处修改按返工票完成，主会话读差异验收（`evidence/04/acceptance.md`「批次 advisor 验收后的返工」）。复核：同一会话续用，17:48Z 至 17:50Z，回执 `evidence/batch/advisor-acceptance-2.json`，裁决「接受」，三处都已解决，没有引入新的条文与机制差异。**通过** |
+| advisor 验收（02 至 05，含行为场景） | 阶段一合入后 | 第一轮：2026-10-03 17:35Z 至 17:41Z，`gpt-6.1-sol[medium]`（已提交，未观测），codex 报告模式，会话 `01a102d5-f0d1-7390-b5b0-5ab1a0561b18`，回执 `evidence/batch/advisor-acceptance-1.json`。裁决「完成以下修改后接受」，提出三处修改，主会话全部采纳：同模派发也要求推出的型号是档案里的型号（改机制，D2 规则 2）；`README.md:76` 仍写证据加差异统计是默认验收（D1 第 3 条）；`name` 为空值时被放行（D2 规则 6）。中文孪生和四个行为场景都通过。三处修改按返工票完成，主会话读差异验收（`evidence/04/acceptance.md`「批次 advisor 验收后的返工」）。复核：同一会话续用，17:48Z 至 17:50Z，回执 `evidence/batch/advisor-acceptance-2.json`，裁决「接受」，三处都已解决，没有引入新的条文与机制差异。**通过** |
 | 说明书渲染检查（`docs/manuals/6.2.0.html`） | 契约 06 验收后 | 通过，2026-10-04。`chrome-headless-shell` 1243，经 DevTools 协议把第 14、15、16、20 节滚到视口顶部后截图，宽度 1440×1000 与 390×844（移动模式）。四节在两种宽度下标题都停在顶部 36 像素处（与 `scroll-padding-top` 一致），排版、代码块、表格正常。两种宽度下页面 `scrollWidth` 都等于 `clientWidth`，没有横向溢出；窄屏超出视口的只有表格，装在带「左右滑动查看完整表格」提示的滑动容器里。观察项，不阻塞：侧栏目录是可滚动容器，停在第 20 节时高亮条目在视口下方，侧栏不自动跟随；这是 6.1.0 沿用的脚本行为，契约要求 CSS 与 JS 与 6.1.0 逐字节相同。说明书没有暗色模式。截图在 `evidence/manual-render/` |
