@@ -34,7 +34,7 @@ PROFILE = "\n".join([
     "| Role | `mainstay` | `crux` | `rescue` |",
     "|---|---|---|---|",
     "| explorer | %s | %s | %s |" % (
-        cell("haiku-4-5", "gpt-6-luna[high*, xhigh]"),
+        cell("haiku-5-5[medium*, high]", "haiku-4-5", "gpt-6-luna[high*, xhigh]"),
         cell("sonnet-5-5[medium*, high]", "grok-4.7[xhigh]"),
         cell("opus-5-5[high*, xhigh]"),
     ),
@@ -58,6 +58,7 @@ PROFILE = "\n".join([
 ])
 
 AGENTS = {
+    "explorer-md": "medium",
     "explorer-h": "high",
     "worker-h": "high",
     "advisor-xh": "xhigh",
@@ -253,7 +254,10 @@ def case_parse_profile():
     table = module.parse_routing_profile(PROFILE)
     assert set(table) == {"claude_code"}, table.keys()
     mainstay = table["claude_code"]["explorer"]["mainstay"]
-    assert mainstay == ["gpt-6-luna[high]", "gpt-6-luna[xhigh]", "haiku-4-5"]
+    assert mainstay == [
+        "gpt-6-luna[high]", "gpt-6-luna[xhigh]",
+        "haiku-4-5", "haiku-5-5[high]", "haiku-5-5[medium]",
+    ]
     assert mainstay == sorted(mainstay)
     assert "sonnet-5-5[medium]" in table["claude_code"]["explorer"]["crux"]
     assert "sonnet-5-5[high]" in table["claude_code"]["explorer"]["crux"]
@@ -266,11 +270,21 @@ def case_parse_profile():
 
 
 def case_agent_mainstay():
-    """Legal mainstay route for a bare haiku dial."""
+    """Legal mainstay route: haiku resolves to haiku-5-5, explorer-md gives medium."""
+    with fixture() as fx:
+        line = route("explorer", "mainstay", "haiku-5-5[medium]")
+        payload = agent_call(prompt_of(line), "fable-advisor:explorer-md", model="haiku")
+        assert_allow(run_hook(payload, fx.plugin))
+
+
+def case_agent_mainstay_bare():
+    """A model written bare in the cell routes as a bare dial, whatever the file's effort."""
     with fixture() as fx:
         line = route("explorer", "mainstay", "haiku-4-5")
         payload = agent_call(prompt_of(line), "fable-advisor:explorer-h", model="haiku")
-        assert_allow(run_hook(payload, fx.plugin))
+        assert_allow(run_hook(payload, fx.plugin, {
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
+        }))
 
 
 def case_agent_crux():
@@ -483,7 +497,7 @@ def case_agent_same_model_other():
 def case_agent_same_model_no_assistant():
     with fixture() as fx:
         transcript = fx.transcript([user("only a user")])
-        line = route("worker", "same-model", "haiku-4-5", "same-model", "plugin/**")
+        line = route("worker", "same-model", "haiku-5-5[high]", "same-model", "plugin/**")
         payload = agent_call(
             prompt_of(line), "fable-advisor:worker-h", model="haiku", transcript=transcript)
         assert_deny(run_hook(payload, fx.plugin), "no assistant record")
@@ -687,6 +701,7 @@ CASES = [
     ("1: parse profile shape", case_parse_profile),
     ("2: Agent legal mainstay allows", case_agent_mainstay),
     ("3: Agent legal crux with basis allows", case_agent_crux),
+    ("3b: Agent bare dial through an alias override allows", case_agent_mainstay_bare),
     ("4: Agent missing route denies", case_agent_missing_route),
     ("5: Agent malformed route denies", case_agent_malformed_route),
     ("6: Agent name present denies", case_agent_name),

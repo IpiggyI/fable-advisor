@@ -29,7 +29,8 @@ CLAUDE_CODE = {
             "gpt-6-luna[xhigh]",
             "grok-4.7[high]",
             "grok-4.7[medium]",
-            "haiku-4-5",
+            "haiku-5-5[high]",
+            "haiku-5-5[medium]",
         ],
         "crux": [
             "gpt-6-luna[max]",
@@ -95,14 +96,10 @@ CURSOR = {
     "explorer": {
         "mainstay": [
             "composer-2.5-fast",
-            "gpt-6-luna[high]",
-            "gpt-6-luna[xhigh]",
             "grok-4.7[high]",
             "grok-4.7[medium]",
-            "haiku-4-5",
         ],
         "crux": [
-            "gpt-6-luna[max]",
             "grok-4.7[xhigh]",
             "sonnet-5-5[high]",
             "sonnet-5-5[medium]",

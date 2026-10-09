@@ -25,7 +25,7 @@ A **lane** answers how a vendor is reached; roles and tiers answer what is dispa
 |---|---|---|
 | grok lane | Grok family (`grok-4.7`); the runner spec requires an explicit `model` and `effort` | `scripts/run-grok.mjs` runner (Claude Code); pinned-model dispatch (Cursor) |
 | codex lane | GPT family, via the codex runner (`gpt-6-astra`, default with omitted effort `medium`; `gpt-6-luna`, omitted effort `max`; `gpt-6.1-sol`, omitted effort `high`) | `scripts/run-codex.mjs` (Claude Code). In Cursor: the same runner through the Shell tool, with no receipt gate |
-| claude lane | Claude subagents: one agent file per (role, effort) — `explorer-h`, `explorer-xh`, `worker-md`, `worker-h`, `worker-xh`, `advisor-l`, `advisor-md`, `advisor-h`, `advisor-xh`; no external CLI | the file fixes the effort, the per-dispatch `model` picks the fill |
+| claude lane | Claude subagents: one agent file per (role, effort) — `explorer-md`, `explorer-h`, `explorer-xh`, `worker-md`, `worker-h`, `worker-xh`, `advisor-l`, `advisor-md`, `advisor-h`, `advisor-xh`; no external CLI | the file fixes the effort, the per-dispatch `model` picks the fill |
 | handoff lane | Any harness you pick | `.fable-advisor/handoff/<slug>.md`, run by hand — never routed here unless you declare it |
 
 **Spend judgment where it is scarce. Keep volume out of the main agent's context. In the orchestrating posture every deliverable change has a reader other than its author.** For high-stakes work, race two fills on the same spec and pick the stronger diff.
@@ -120,7 +120,7 @@ consult your advisor before committing, then implement.
 
 **Is this Anthropic's "advisor tool"?** No — that's a server-side API feature. These are plain Claude Code subagents plus a skill: readable, editable, no beta flags.
 
-**Does this work on claude.ai?** No — subagent model routing is Claude Code only (CLI, desktop, VS Code, web). Cursor is supported via its Claude-plugin compatibility paths (see above).
+**Does this work on claude.ai?** No — claude.ai has no subagent model routing. Claude Code (CLI, desktop, VS Code, web) is the primary host. Cursor is supported via its Claude-plugin compatibility paths (see above). Another host that loads the skill has no lanes file: it reads the Claude Code fill table, dispatches only through its own entrances, uses no runner, receipt gate or model pin from another host, and states the route as unchecked text.
 
 **Why not just run everything on one model?** You can. Volume is still most of a session's tokens, and lanes keep that volume out of the main agent's context. Spend judgment where it is scarce — on contracts, routing, and acceptance — and let workers type.
 

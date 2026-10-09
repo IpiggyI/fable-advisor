@@ -1,6 +1,6 @@
 # 0030 — 6.2.0：派发前做全局规划、按结果验收；派发写明路由，由 runner 与钩子校验；车道会话设续用窗口
 
-- **Status**: accepted（2026-10-03 至 10-04 椰椰的决定见「决策门核对」；`gpt-6-astra[xhigh]` 两轮评审的意见已并入；实施进度与批次检查记在任务件的 `## Batch checks`）
+- **Status**: accepted（2026-10-03 至 10-04 椰椰的决定见「决策门核对」；`gpt-6-astra[xhigh]` 两轮评审的意见已并入；实施进度与批次检查记在任务件的 `## Batch checks`；决策 7 已被 [ADR 0031](./0031-haiku-5-5-rework-limit-other-hosts.md) 修订，加了返工上限）
 - **Date**: 2026-10-04
 - **影响范围**:
   - `plugin/skills/orchestration/SKILL.md`：同模派发、角色与档位、路由第一阶段、升级梯 R1、"Rework tickets"、新增的 "Session reuse"、"Parallelism"、第 1 与第 2 层验收、"Run each check once"。

@@ -1,6 +1,6 @@
 # Fable Advisor 路由档案（中文译本，不随插件发布）
 
-本用户路由档案于 2026-10-03 声明。锚定 `grok-4.7`、`gpt-6-luna`、`gpt-6.1-sol`、`gpt-6-astra`、`haiku-4-5`、`sonnet-5-5`、`opus-5-5`、`fable-5-1` 与 Cursor 的 `composer-2.5-fast`。任一相关模型换代时重估对应条目。`fable-advisor:orchestration` 读取本档案并拥有编排行为，包括档位准入与升级梯。运行中的会话重启之前仍用旧档案。
+本用户路由档案于 2026-10-09 声明。锚定 `grok-4.7`、`gpt-6-luna`、`gpt-6.1-sol`、`gpt-6-astra`、`haiku-5-5`、`sonnet-5-5`、`opus-5-5`、`fable-5-1` 与 Cursor 的 `composer-2.5-fast`。任一相关模型换代时重估对应条目。`fable-advisor:orchestration` 读取本档案并拥有编排行为，包括档位准入与升级梯。运行中的会话重启之前仍用旧档案。
 
 ## 档位与格内选择
 
@@ -18,7 +18,7 @@
 
 | 家族 | `starter` | `midrange` | `premium` | `flagship` | 擅长 |
 |---|---|---|---|---|---|
-| Claude | haiku-4-5 | sonnet-5-5 | opus-5-5 | fable-5-1 | 前端 |
+| Claude | haiku-5-5 | sonnet-5-5 | opus-5-5 | fable-5-1 | 前端 |
 | GPT | gpt-6-luna | — | gpt-6.1-sol | gpt-6-astra | 后端、复杂任务 |
 | Grok | composer-2.5-fast | grok-4.7 | — | — | 价智比高 |
 
@@ -52,13 +52,13 @@
 
 到达方式：Grok 经 grok runner，`model` 和 `effort` 两者都设；runner 拒绝省略其中任一项的 spec；GPT 经 codex runner（spec `model`、`effort`）；Claude 经本插件的 agent 文件加按次 `model`（派发不带 `name`）。按次 `model` 只接受别名 `haiku`、`sonnet`、`opus`、`fable`；别名是指针，实际运行的型号以子代理记录中的 `message.model` 为准。每个 Claude 拨盘对应的 agent 文件：
 
-- explorer：`haiku-4-5` → `explorer-h` 配 `haiku`（没有强度维度，文件的强度无效果）；`sonnet-5-5[high]` → `explorer-h` 配 `sonnet`；`opus-5-5[high]` → `explorer-h`，`opus-5-5[xhigh]` → `explorer-xh`，都配 `opus`。没有 explorer 文件携带 `medium`，所以 `sonnet-5-5[medium]` 同样经 `explorer-h` 派发，以 `high` 运行。
+- explorer：`[medium]` → `explorer-md`，`[high]` → `explorer-h`，都配 `haiku` 或 `sonnet`；`opus-5-5[high]` → `explorer-h`，`opus-5-5[xhigh]` → `explorer-xh`，都配 `opus`。
 - worker：`sonnet-5-5[high]` → `worker-h`，`sonnet-5-5[xhigh]` → `worker-xh`，都配 `sonnet`；`opus-5-5[medium]` → `worker-md`，`[high]` → `worker-h`，`[xhigh]` → `worker-xh`，都配 `opus`。
 - advisor：`[low]` → `advisor-l`，`[medium]` → `advisor-md`，`[high]` → `advisor-h`，`[xhigh]` → `advisor-xh`，配 `opus` 或 `fable`。
 
 | 角色 | `mainstay` | `crux` | `rescue` |
 |---|---|---|---|
-| explorer | haiku-4-5 › gpt-6-luna[high*, xhigh] › grok-4.7[medium*, high] | sonnet-5-5[medium*, high] › gpt-6-luna[max] › grok-4.7[xhigh] | opus-5-5[high*, xhigh] › gpt-6.1-sol[high*, xhigh] |
+| explorer | haiku-5-5[medium*, high] › gpt-6-luna[high*, xhigh] › grok-4.7[medium*, high] | sonnet-5-5[medium*, high] › gpt-6-luna[max] › grok-4.7[xhigh] | opus-5-5[high*, xhigh] › gpt-6.1-sol[high*, xhigh] |
 | worker | grok-4.7[high*, xhigh] › sonnet-5-5[high*, xhigh] › gpt-6.1-sol[medium*, high] | opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › gpt-6.1-sol[xhigh*, max] | opus-5-5[xhigh] › gpt-6-astra[high*, xhigh] |
 | advisor | gpt-6.1-sol[medium*, high] › opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › fable-5-1[low*, medium] | gpt-6.1-sol[xhigh] › opus-5-5[xhigh] › gpt-6-astra[high] › fable-5-1[high] | gpt-6-astra[xhigh] › fable-5-1[xhigh] |
 
@@ -70,6 +70,6 @@ worker 与 advisor 行同 Claude Code。explorer 行按车道默认顺序排，`
 
 | 角色 | `mainstay` | `crux` | `rescue` |
 |---|---|---|---|
-| explorer | composer-2.5-fast › grok-4.7[medium*, high] › gpt-6-luna[high*, xhigh] › haiku-4-5 | grok-4.7[xhigh] › gpt-6-luna[max] › sonnet-5-5[medium*, high] | gpt-6.1-sol[high*, xhigh] › opus-5-5[high*, xhigh] |
+| explorer | composer-2.5-fast › grok-4.7[medium*, high] | grok-4.7[xhigh] › sonnet-5-5[medium*, high] | gpt-6.1-sol[high*, xhigh] › opus-5-5[high*, xhigh] |
 | worker | grok-4.7[high*, xhigh] › sonnet-5-5[high*, xhigh] › gpt-6.1-sol[medium*, high] | opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › gpt-6.1-sol[xhigh*, max] | opus-5-5[xhigh] › gpt-6-astra[high*, xhigh] |
 | advisor | gpt-6.1-sol[medium*, high] › opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › fable-5-1[low*, medium] | gpt-6.1-sol[xhigh] › opus-5-5[xhigh] › gpt-6-astra[high] › fable-5-1[high] | gpt-6-astra[xhigh] › fable-5-1[xhigh] |

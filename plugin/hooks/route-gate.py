@@ -19,7 +19,7 @@ REASON = "fable-advisor route gate: "
 HEADER = ["Role", "`mainstay`", "`crux`", "`rescue`"]
 TIERS = ("mainstay", "crux", "rescue")
 ALIAS_ANCHORS = {
-    "haiku": "haiku-4-5",
+    "haiku": "haiku-5-5",
     "sonnet": "sonnet-5-5",
     "opus": "opus-5-5",
     "fable": "fable-5-1",

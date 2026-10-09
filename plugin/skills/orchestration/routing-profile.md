@@ -1,6 +1,6 @@
 # Fable Advisor routing profile
 
-This user routing profile was declared on 2026-10-03. It is anchored to `grok-4.7`, `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6-astra`, `haiku-4-5`, `sonnet-5-5`, `opus-5-5`, `fable-5-1`, and Cursor's `composer-2.5-fast`. Re-evaluate an entry when any model it involves changes generation. `fable-advisor:orchestration` consumes this profile and owns orchestration behaviour, including tier entry and the escalation ladder. A running session keeps the old profile until it restarts.
+This user routing profile was declared on 2026-10-09. It is anchored to `grok-4.7`, `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6-astra`, `haiku-5-5`, `sonnet-5-5`, `opus-5-5`, `fable-5-1`, and Cursor's `composer-2.5-fast`. Re-evaluate an entry when any model it involves changes generation. `fable-advisor:orchestration` consumes this profile and owns orchestration behaviour, including tier entry and the escalation ladder. A running session keeps the old profile until it restarts.
 
 ## Tiers and choosing inside a cell
 
@@ -18,7 +18,7 @@ This user routing profile was declared on 2026-10-03. It is anchored to `grok-4.
 
 | Family | `starter` | `midrange` | `premium` | `flagship` | Specialty |
 |---|---|---|---|---|---|
-| Claude | haiku-4-5 | sonnet-5-5 | opus-5-5 | fable-5-1 | frontend |
+| Claude | haiku-5-5 | sonnet-5-5 | opus-5-5 | fable-5-1 | frontend |
 | GPT | gpt-6-luna | — | gpt-6.1-sol | gpt-6-astra | backend, complex work |
 | Grok | composer-2.5-fast | grok-4.7 | — | — | more capability per unit of price |
 
@@ -52,13 +52,13 @@ Each window counts from the lane's last activity. The windows are my reuse polic
 
 Reach: Grok through the grok runner with both `model` and `effort` set; the runner rejects a spec that omits either; GPT through the codex runner (spec `model`, `effort`); Claude through this plugin's agent files with a per-dispatch `model` (dispatch without `name`). The per-dispatch `model` accepts only the aliases `haiku`, `sonnet`, `opus`, `fable`; an alias is a pointer, and the model actually run is the `message.model` in the subagent's record. Agent file per Claude dial:
 
-- explorer: `haiku-4-5` → `explorer-h` with `haiku` (no effort dimension; the file's effort has no effect); `sonnet-5-5[high]` → `explorer-h` with `sonnet`; `opus-5-5[high]` → `explorer-h`, `opus-5-5[xhigh]` → `explorer-xh`, both with `opus`. No explorer file carries `medium`, so `sonnet-5-5[medium]` is also dispatched through `explorer-h` and runs at `high`.
+- explorer: `[medium]` → `explorer-md`, `[high]` → `explorer-h`, both with `haiku` or `sonnet`; `opus-5-5[high]` → `explorer-h`, `opus-5-5[xhigh]` → `explorer-xh`, both with `opus`.
 - worker: `sonnet-5-5[high]` → `worker-h`, `sonnet-5-5[xhigh]` → `worker-xh`, both with `sonnet`; `opus-5-5[medium]` → `worker-md`, `[high]` → `worker-h`, `[xhigh]` → `worker-xh`, all with `opus`.
 - advisor: `[low]` → `advisor-l`, `[medium]` → `advisor-md`, `[high]` → `advisor-h`, `[xhigh]` → `advisor-xh`, with `opus` or `fable`.
 
 | Role | `mainstay` | `crux` | `rescue` |
 |---|---|---|---|
-| explorer | haiku-4-5 › gpt-6-luna[high*, xhigh] › grok-4.7[medium*, high] | sonnet-5-5[medium*, high] › gpt-6-luna[max] › grok-4.7[xhigh] | opus-5-5[high*, xhigh] › gpt-6.1-sol[high*, xhigh] |
+| explorer | haiku-5-5[medium*, high] › gpt-6-luna[high*, xhigh] › grok-4.7[medium*, high] | sonnet-5-5[medium*, high] › gpt-6-luna[max] › grok-4.7[xhigh] | opus-5-5[high*, xhigh] › gpt-6.1-sol[high*, xhigh] |
 | worker | grok-4.7[high*, xhigh] › sonnet-5-5[high*, xhigh] › gpt-6.1-sol[medium*, high] | opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › gpt-6.1-sol[xhigh*, max] | opus-5-5[xhigh] › gpt-6-astra[high*, xhigh] |
 | advisor | gpt-6.1-sol[medium*, high] › opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › fable-5-1[low*, medium] | gpt-6.1-sol[xhigh] › opus-5-5[xhigh] › gpt-6-astra[high] › fable-5-1[high] | gpt-6-astra[xhigh] › fable-5-1[xhigh] |
 
@@ -70,6 +70,6 @@ Availability is decided by each candidate's actual entrance: GPT candidates thro
 
 | Role | `mainstay` | `crux` | `rescue` |
 |---|---|---|---|
-| explorer | composer-2.5-fast › grok-4.7[medium*, high] › gpt-6-luna[high*, xhigh] › haiku-4-5 | grok-4.7[xhigh] › gpt-6-luna[max] › sonnet-5-5[medium*, high] | gpt-6.1-sol[high*, xhigh] › opus-5-5[high*, xhigh] |
+| explorer | composer-2.5-fast › grok-4.7[medium*, high] | grok-4.7[xhigh] › sonnet-5-5[medium*, high] | gpt-6.1-sol[high*, xhigh] › opus-5-5[high*, xhigh] |
 | worker | grok-4.7[high*, xhigh] › sonnet-5-5[high*, xhigh] › gpt-6.1-sol[medium*, high] | opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › gpt-6.1-sol[xhigh*, max] | opus-5-5[xhigh] › gpt-6-astra[high*, xhigh] |
 | advisor | gpt-6.1-sol[medium*, high] › opus-5-5[medium*, high] › gpt-6-astra[low*, medium] › fable-5-1[low*, medium] | gpt-6.1-sol[xhigh] › opus-5-5[xhigh] › gpt-6-astra[high] › fable-5-1[high] | gpt-6-astra[xhigh] › fable-5-1[xhigh] |

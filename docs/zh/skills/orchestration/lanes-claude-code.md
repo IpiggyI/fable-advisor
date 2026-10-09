@@ -1,6 +1,6 @@
 # Claude Code 中的 CLI 车道 —— runner
 
-在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者，没有 subagent 启动成本。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner。两条 CLI 都缺失时，它让插件保持自包含。它的角色池按（角色，effort）每组一份 agent 文件随插件发布，派发时寻址为 `fable-advisor:<name>`，名字里的强度用缩写（`l`、`md`、`h`、`xh`）：`explorer-h`、`explorer-xh`、`worker-md`、`worker-h`、`worker-xh`、`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`。frontmatter 的 `effort:` 仍写全称，只有文件名与 `name:` 用缩写。因为 effort 没有按次参数而 model 有，拨盘被拆成两半：文件定死 effort，派发时的 `model` 选定具体填充。所以 `explorer-*` 与 `worker-*` 根本不带 `model:` 键——派发时省略 `model`，跑的是 `CLAUDE_CODE_SUBAGENT_MODEL`，该变量未设时跑会话模型，而不是填充表点名的那个填充；因此路由门拒绝不带 `model` 的本角色池派发（第 0 节规则 2）。`advisor-*` 都写 `model: fable`。把一个 `worker` 的 `model` 钉为会话模型，即同模派发。宿主内置的 `Explore` agent 自己没有 effort——不给显式 `model` 时它跑在会话模型上（Claude API 上封顶为 Opus），因此未钉死的 `Explore` 按会话价格计费。`claude lane` 的报告在 `Task` 结果内返回；后台派发的报告从该任务的输出文件读取。Claude Code 把主会话之下的 subagent 嵌套限制为三层。
+在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner。两条 CLI 都缺失时，它让插件保持自包含。它的角色池按（角色，effort）每组一份 agent 文件随插件发布，派发时寻址为 `fable-advisor:<name>`，名字里的强度用缩写（`l`、`md`、`h`、`xh`）：`explorer-md`、`explorer-h`、`explorer-xh`、`worker-md`、`worker-h`、`worker-xh`、`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`。frontmatter 的 `effort:` 仍写全称，只有文件名与 `name:` 用缩写。因为 effort 没有按次参数而 model 有，拨盘被拆成两半：文件定死 effort，派发时的 `model` 选定具体填充。所以 `explorer-*` 与 `worker-*` 根本不带 `model:` 键——派发时省略 `model`，跑的是 `CLAUDE_CODE_SUBAGENT_MODEL`，该变量未设时跑会话模型，而不是填充表点名的那个填充；因此路由门拒绝不带 `model` 的本角色池派发（第 0 节规则 2）。`advisor-*` 都写 `model: fable`。把一个 `worker` 的 `model` 钉为会话模型，即同模派发。宿主内置的 `Explore` agent 自己没有 effort——不给显式 `model` 时它跑在会话模型上（Claude API 上封顶为 Opus），因此未钉死的 `Explore` 按会话价格计费。`claude lane` 的报告在 `Task` 结果内返回；后台派发的报告从该任务的输出文件读取。Claude Code 把主会话之下的 subagent 嵌套限制为三层。
 
 agent 文件只在会话启动时加载。会话中途新增或改名的文件无法派发——调用会以 `Agent type '<name>' not found` 失败——所以对这个角色池的改动只有在会话重启之后才生效。
 
@@ -10,7 +10,7 @@ agent 文件只在会话启动时加载。会话中途新增或改名的文件�
 
 frontmatter 的 `effort:` 双向覆盖运行模型所设置的强度。
 
-agent 定义**没写** `effort:` 时，强度跟它实际运行其上的那个模型在 `settings.json` 里设置的强度走，不是跟会话的 effort 走；只有子代理模型与会话模型相同时两者才重合。`claude-haiku-4-5` 根本没有 effort 这一维——它的记录里没有该字段。
+agent 定义**没写** `effort:` 时，强度跟它实际运行其上的那个模型在 `settings.json` 里设置的强度走，不是跟会话的 effort 走；只有子代理模型与会话模型相同时两者才重合。
 
 观察点是 `~/.claude/projects/<项目>/<会话>/subagents/agent-*.jsonl`，其中每条 assistant 记录都带着实际生效的 `model` 与 `effort`。`/tasks` 不是这件事的观察点：它只列具名 teammate，显示成员名与状态，既不显示 model 也不显示 effort，而且完全不列后台子代理。
 
@@ -34,18 +34,18 @@ Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时�
 Route: role=<explorer|worker|advisor> tier=<mainstay|crux|rescue|same-model> dial=<model>[<effort>] basis=<kind> ref=<text to end of line>
 ```
 
-- `dial` 是按档案记法写的一个具体拨盘，例如 `opus-5-5[medium]`，从不是某一格的强度列表。`haiku-4-5` 不带方括号。
+- `dial` 是按档案记法写的一个具体拨盘，例如 `opus-5-5[medium]`，从不是某一格的强度列表。
 - 在 `mainstay`，省略 `basis` 与 `ref`。高于 `mainstay` 时，`basis` 是 SKILL.md 对该角色、该档位接受的一种依据，`ref` 一直写到行尾。
 - 同模派发写 `role=worker tier=same-model` 和 `basis=same-model`，`ref` 写产物类别。
 
-例如 `Route: role=explorer tier=mainstay dial=haiku-4-5`，或 `Route: role=worker tier=crux dial=opus-5-5[medium] basis=key-difficulty ref=三个接口相互制约`。
+例如 `Route: role=explorer tier=mainstay dial=haiku-5-5[medium]`，或 `Route: role=worker tier=crux dial=opus-5-5[medium] basis=key-difficulty ref=三个接口相互制约`。
 
 ### 路由门
 
 插件的 `PreToolUse` 钩子 `hooks/route-gate.py`（**路由门**，`route gate`）校验每一次 `subagent_type` 为 `fable-advisor:*` 的 `Agent` 派发，以及每一条发给本角色池子代理的 `SendMessage` 消息。未通过的调用被拒绝：`permissionDecision: deny`，理由写明缺了什么，并列出该角色、该档位的合法拨盘；改正调用后重新发出。路由门校验提交的配置；实际运行的型号仍以子代理记录里的 `message.model` 为准。每次受校验的调用都满足下列规则：
 
 1. **角色。** 路由写的角色与 agent 文件一致：`explorer-*` 是 `explorer`，`worker-*` 是 `worker`，`advisor-*` 是 `advisor`。
-2. **拨盘。** 本角色池的每次 `Agent` 派发都显式带 `model`，因为不带时型号还受 agent 文件的 `model:` 与 `CLAUDE_CODE_SUBAGENT_MODEL` 影响。单次派发的 `model` 优先于 `CLAUDE_CODE_SUBAGENT_MODEL`，路由门据此推出拨盘。例外只有一个：`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` 为真（`1`、`true`、`yes`、`on`）时，宿主从 `Agent` 的参数里去掉 `model`，派发因此不带它；路由门改按 `CLAUDE_CODE_SUBAGENT_MODEL` 推出拨盘，该变量未设或为 `inherit` 时按会话型号推出。别名按以下顺序解析：别名所属家族与会话型号相同时，跑会话型号；否则在设了重定向变量时按变量解析（`ANTHROPIC_DEFAULT_OPUS_MODEL`、`ANTHROPIC_DEFAULT_SONNET_MODEL`、`ANTHROPIC_DEFAULT_HAIKU_MODEL`、`ANTHROPIC_DEFAULT_FABLE_MODEL`）；否则按档案锚点对应：`haiku` 对应 `haiku-4-5`，`sonnet` 对应 `sonnet-5-5`，`opus` 对应 `opus-5-5`，`fable` 对应 `fable-5-1`。会话型号按规则 5 读取；读不到时跳过家族这一步。规范化后不是锚点型号的，拒绝：在跑 `claude-sonnet-4-5` 的会话里，`sonnet` 跑的是 `claude-sonnet-4-5`，它不是锚点，所以这次派发被拒绝。强度取 agent 文件的 `effort:`；`haiku-4-5` 没有强度可比。所以 `explorer-h` 配 `sonnet` 的路由写 `sonnet-5-5[high]`。路由写的拨盘与推出的拨盘相同。
+2. **拨盘。** 本角色池的每次 `Agent` 派发都显式带 `model`，因为不带时型号还受 agent 文件的 `model:` 与 `CLAUDE_CODE_SUBAGENT_MODEL` 影响。单次派发的 `model` 优先于 `CLAUDE_CODE_SUBAGENT_MODEL`，路由门据此推出拨盘。例外只有一个：`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` 为真（`1`、`true`、`yes`、`on`）时，宿主从 `Agent` 的参数里去掉 `model`，派发因此不带它；路由门改按 `CLAUDE_CODE_SUBAGENT_MODEL` 推出拨盘，该变量未设或为 `inherit` 时按会话型号推出。别名按以下顺序解析：别名所属家族与会话型号相同时，跑会话型号；否则在设了重定向变量时按变量解析（`ANTHROPIC_DEFAULT_OPUS_MODEL`、`ANTHROPIC_DEFAULT_SONNET_MODEL`、`ANTHROPIC_DEFAULT_HAIKU_MODEL`、`ANTHROPIC_DEFAULT_FABLE_MODEL`）；否则按档案锚点对应：`haiku` 对应 `haiku-5-5`，`sonnet` 对应 `sonnet-5-5`，`opus` 对应 `opus-5-5`，`fable` 对应 `fable-5-1`。会话型号按规则 5 读取；读不到时跳过家族这一步。规范化后不是锚点型号的，拒绝：在跑 `claude-sonnet-4-5` 的会话里，`sonnet` 跑的是 `claude-sonnet-4-5`，它不是锚点，所以这次派发被拒绝。强度取 agent 文件的 `effort:`。所以 `explorer-h` 配 `sonnet` 的路由写 `sonnet-5-5[high]`。路由写的拨盘与推出的拨盘相同。
 3. **档位。** 该角色与拨盘出现在 Claude Code 表里，路由所写角色、档位的那一格。
 4. **依据。** 高于 `mainstay` 时，依据是 SKILL.md 接受的一种，`ref` 非空。路由门只查依据存在且格式合规，不查真假。
 5. **同模派发。** 只有 `worker-*` 派发可以写 `tier=same-model`，依据种类为 `same-model`。推出的型号与会话型号相同；会话型号取会话记录最后一条非合成 assistant 记录的 `message.model`，读不到就拒绝。合成记录指 `message.model` 为 `<synthetic>` 的 assistant 记录，例如宿主在 API 出错后会写一条。assistant 记录全是合成记录的会话记录，按没有 assistant 记录处理。路由门运行时，当前这条回复还没有写进会话记录，而会话的第一条回复之前没有 assistant 记录，所以在会话第一条回复里做的同模派发会被拒绝；要在任意一条别的回复之后再派。产物类别和依据的真假仍由主代理判断。
@@ -158,9 +158,9 @@ receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fabl
 
 ## 返工票
 
-返工票是一份新的五部 pending 文件，携带 `resume_session_id` —— 被返工那次运行的 `codex_session_id`（或 `grok_session_id`）。runner 调用 `codex exec resume <id>`（grok：`--resume <id>`），因此车道保留它已经付过的上下文；receipt 记录 `resumed_from`，其 session id 等于被恢复的那个。Objective = 缺陷，Files = 原范围，Verification = 能覆盖失败用例和修复波及范围的最小可运行检查——里面不写修复方案（形态见 [SKILL.md](SKILL.md)）。返工票也失败时，归因决定（SKILL.md「升级」）：契约缺口在修正契约下保留 `resume_session_id`；能力失败则按 SKILL.md 升级梯升到下一档、新会话——省略 `resume_session_id`，并把原契约、先前车道的报告及其 receipt 交给接管契约。
+返工票是一份新的五部 pending 文件，携带 `resume_session_id` —— 被返工那次运行的 `codex_session_id`（或 `grok_session_id`）。runner 调用 `codex exec resume <id>`（grok：`--resume <id>`），因此车道保留它已经付过的上下文；receipt 记录 `resumed_from`，其 session id 等于被恢复的那个。Objective = 缺陷，Files = 原范围，Verification = 能覆盖失败用例和修复波及范围的最小可运行检查——里面不写修复方案（形态见 [SKILL.md](SKILL.md)）。返工票也失败时，归因决定（SKILL.md「升级」）：契约缺口在修正契约下保留 `resume_session_id`，以返工上限为限（SKILL.md「会话续用」）；能力失败则按 SKILL.md 升级梯升到下一档、新会话——省略 `resume_session_id`，并把原契约、先前车道的报告及其 receipt 交给接管契约。
 
-车道会话的每一次续用都只在该车道的续用窗口之内进行（SKILL.md「会话续用」；取值在路由档案的「会话续用窗口」一节）。这包括返工票、修正契约、被时钟切断后的续跑所带的 `resume_session_id`，以及发给 `claude lane` 子代理的任何 `SendMessage`。窗口从车道上次活动算起。runner 车道取 receipt 的 `lane_finished_at`。`claude lane` 子代理取它的 `subagents/agent-<id>.jsonl` 里最后一条 assistant 记录的时刻。绝不用 receipt 的 `finished_at`：它在核验之后才记录。超出窗口时，省略 `resume_session_id`，在同一档位、同一拨盘上新开会话，带上缺陷、原契约、上轮报告和 receipt。
+车道会话的每一次续用都只在该车道的续用窗口之内进行（SKILL.md「会话续用」；取值在路由档案的「会话续用窗口」一节）。这包括返工票、修正契约、被时钟切断后的续跑所带的 `resume_session_id`，以及发给 `claude lane` 子代理的任何 `SendMessage`。窗口从车道上次活动算起。runner 车道取 receipt 的 `lane_finished_at`。`claude lane` 子代理取它的 `subagents/agent-<id>.jsonl` 里最后一条 assistant 记录的时刻。绝不用 receipt 的 `finished_at`：它在核验之后才记录。超出窗口或返工上限时，省略 `resume_session_id`，在同一档位、同一拨盘上新开会话，带上缺陷、原契约、上轮报告和 receipt。
 
 ## 报告模式
 
