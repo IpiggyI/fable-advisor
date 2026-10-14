@@ -894,6 +894,49 @@ def case_resume_invocations_and_preamble():
             )
 
 
+def case_codex_profile():
+    with tempfile.TemporaryDirectory() as tmp:
+        bin_dir = Path(tmp) / "bin"
+        bin_dir.mkdir()
+        fake_report_cli(bin_dir, "codex")
+        fake_git(bin_dir)
+        runner = copy_runner(tmp, "run-codex.mjs")
+        cwd = Path(tmp) / "work"
+        cwd.mkdir()
+        call_log = Path(tmp) / "calls"
+        env = {"CALL_LOG": str(call_log), "PROMPT_LOG": str(Path(tmp) / "prompt")}
+        for mode in ("implement", "report"):
+            for resume in (False, True):
+                for profile in (None, "official"):
+                    spec = base_spec(mode=mode)
+                    if mode == "report":
+                        spec["verification"] = []
+                    if resume:
+                        spec["resume_session_id"] = "resume-123"
+                    if profile is not None:
+                        spec["profile"] = profile
+                    call_log.unlink(missing_ok=True)
+                    _, receipt = run_runner(runner, cwd, spec, bin_dir, env)
+                    assert receipt["error_class"] == "complete", receipt
+                    assert receipt["profile"] == profile
+                    args = [json.loads(line) for line in call_log.read_text().splitlines()][-1]
+                    if profile is None:
+                        assert "--profile" not in args, args
+                        continue
+                    assert args[:3] == ["exec", "--profile", "official"], args
+                    if resume:
+                        assert args.index("--profile") < args.index("resume")
+        for invalid in ("", 7, []):
+            call_log.unlink(missing_ok=True)
+            _, receipt = run_runner(runner, cwd, base_spec(profile=invalid), bin_dir, env)
+            assert receipt["error_class"] == "spec_invalid", receipt
+            assert not call_log.exists(), "profile=%r spawned codex" % (invalid,)
+        grok = copy_runner(tmp, "run-grok.mjs")
+        _, receipt = run_runner(grok, cwd, base_spec(profile="official"), bin_dir, env)
+        assert receipt["error_class"] == "spec_invalid", receipt
+    print("ASSERT profile: omitted=no_flag set=exec_--profile_before_resume invalid=spec_invalid grok=spec_invalid")
+
+
 def case_codex_no_model_switch():
     with tempfile.TemporaryDirectory() as tmp:
         bin_dir = Path(tmp) / "bin"
@@ -1729,6 +1772,7 @@ CASES = [
     ("unavailable receipt fields", case_unavailable_receipt_fields),
     ("no_diff and git_status_failed", case_no_diff_and_git_status_failed),
     ("resume invocations and preamble", case_resume_invocations_and_preamble),
+    ("codex profile", case_codex_profile),
     ("codex no model switch", case_codex_no_model_switch),
     ("codex no model switch boundaries", case_codex_no_model_switch_boundaries),
     ("last terminal event drives timing", case_last_terminal_event_drives_timing),

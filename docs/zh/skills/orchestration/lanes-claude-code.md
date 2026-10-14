@@ -89,6 +89,7 @@ Route: role=<explorer|worker|advisor> tier=<mainstay|crux|rescue|same-model> dia
 - `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。省略时，runner 按型号提交默认值：`gpt-6-astra` → `medium`，`gpt-6-luna` → `max`，`gpt-6.1-sol` → `high`；这是 runner 的省略默认，不是档案的默认。一个任务用哪个拨盘，由填充表决定。
 - `title` — 可选；提示第一行，原文纯文本，不加 Markdown 标记。省略时该行是 spec 文件去掉 `.json` 的基名。
 - `service_tier` — 省略则用 Codex 自己的默认；`"fast"` 是 Codex 的速度模式：大约快 1.5 倍，ChatGPT credit 消耗大约为 2.5 倍，智力不损失。不适用于 API-key 计费。
+- `profile` — 默认省略；只在用户明确要求使用某个 Codex profile 时填写。runner 把 `--profile <name>` 紧接在 `exec` 之后传入，Codex 据此在基础配置之上叠加 `$CODEX_HOME/<name>.config.toml`（例如该 profile 指定的供应商）；新会话与续接会话都如此。
 - `idle_timeout_sec` — 静默截止（默认 600 秒）：*最后*一个事件之后多久杀掉停滞的 CLI 子进程。一直在吐事件的车道要跑多久就跑多久；被切断的只有静默，而该路径会跳过核验，因此在这里被切断的车道会完全失去它的核验证据。
 - `timeout_sec` — 对整次运行的可选绝对上限；无默认值，省略即不设上限。
 - `resume_session_id` — 先前的 codex session id；见下文「返工票」。

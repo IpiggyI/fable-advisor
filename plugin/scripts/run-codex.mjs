@@ -56,6 +56,7 @@ const SPEC_KEYS = new Set([
   "model",
   "effort",
   "service_tier",
+  "profile",
   "timeout_sec",
   "idle_timeout_sec",
   "resume_session_id",
@@ -176,6 +177,9 @@ function normalizeSpec(value) {
       throw new Error(`service_tier must be one of: ${[...VALID_SERVICE_TIERS].join(", ")}`);
     }
   }
+  if (value.profile !== undefined) {
+    requireString(value.profile, "profile", { nonEmpty: true });
+  }
   if (value.timeout_sec !== undefined) {
     requirePositiveNumber(value.timeout_sec, "timeout_sec");
   }
@@ -206,6 +210,7 @@ function normalizeSpec(value) {
     model,
     effort: value.effort ?? DEFAULT_EFFORTS.get(model),
     service_tier: value.service_tier ?? null,
+    profile: value.profile ?? null,
     timeout_sec: value.timeout_sec ?? null,
     idle_timeout_sec: value.idle_timeout_sec ?? DEFAULT_IDLE_TIMEOUT_SEC,
     resume_session_id: value.resume_session_id ?? null,
@@ -448,9 +453,12 @@ async function executeCodex(spec, cwd, promptContents) {
     eventObserved: false,
     resumed: spec.resume_session_id !== null,
   };
+  // `codex exec resume` does not accept --profile, so it follows `exec` on both paths.
+  const profileArgs = spec.profile === null ? [] : ["--profile", spec.profile];
   const args = spec.resume_session_id === null
     ? [
       "exec",
+      ...profileArgs,
       "--json",
       "--model", spec.model,
       "-c", `model_reasoning_effort=${spec.effort}`,
@@ -463,6 +471,7 @@ async function executeCodex(spec, cwd, promptContents) {
     ]
     : [
       "exec",
+      ...profileArgs,
       ...(spec.mode === "report" ? ["--sandbox", "read-only"] : []),
       "resume",
       "--json",
@@ -688,6 +697,7 @@ function initialState(startedAt) {
     fallbackReason: null,
     effort: DEFAULT_EFFORTS.get(DEFAULT_MODEL),
     service_tier: null,
+    profile: null,
     codexSessionId: null,
     resumedFrom: null,
     endToCloseMs: null,
@@ -723,6 +733,7 @@ function buildReceipt(state) {
     fallback_reason: state.fallbackReason,
     effort: state.effort,
     service_tier: state.service_tier,
+    profile: state.profile,
     codex_session_id: state.codexSessionId,
     resumed_from: state.resumedFrom,
     end_to_close_ms: state.endToCloseMs,
@@ -873,6 +884,7 @@ async function main() {
     state.modelUsed = spec.model;
     state.effort = spec.effort;
     state.service_tier = spec.service_tier;
+    state.profile = spec.profile;
     state.codexSessionId = spec.resume_session_id;
     state.resumedFrom = spec.resume_session_id;
     state.idleTimeoutSec = spec.idle_timeout_sec;

@@ -89,6 +89,7 @@ The tuning fields are optional and fail-loud — an out-of-range value or unknow
 - `effort` — `model_reasoning_effort`: `low | medium | high | xhigh | max`. When omitted, the runner submits a per-model default: `gpt-6-astra` → `medium`, `gpt-6-luna` → `max`, `gpt-6.1-sol` → `high`; these are the runner's omission defaults, not the profile's. Which dial a task gets is the fill table's call.
 - `title` — optional; first prompt line, verbatim plain text, no Markdown marker. When absent, that line is the spec file's basename without `.json` (the slug).
 - `service_tier` — omit for Codex's own default; `"fast"` is Codex's speed mode: about 1.5× faster at about 2.5× the ChatGPT credit consumption, with no loss of intelligence. It does not apply on API-key billing.
+- `profile` — omit by default; set it only when the user explicitly asks for a Codex profile. The runner passes `--profile <name>` right after `exec`, so Codex layers `$CODEX_HOME/<name>.config.toml` (for example, the provider that profile names) on top of the base config, on fresh and resumed runs alike.
 - `idle_timeout_sec` — the silence deadline (default 600 s): how long after the *last* event a stalled CLI child is killed. A lane that keeps emitting events runs as long as it takes; only silence is cut, and that path skips verification, so a lane cut here loses its verification evidence entirely.
 - `timeout_sec` — an optional absolute cap on the whole run; no default, so omitting it leaves the run uncapped.
 - `resume_session_id` — a prior codex session id; see "Rework tickets" below.
