@@ -1,6 +1,6 @@
 # Claude Code 中的 CLI 车道 —— runner
 
-在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的 subagent 派发，无 runner。两条 CLI 都缺失时，它让插件保持自包含。它的角色池按（角色，effort）每组一份 agent 文件随插件发布，派发时寻址为 `fable-advisor:<name>`，名字里的强度用缩写（`l`、`md`、`h`、`xh`）：`explorer-md`、`explorer-h`、`explorer-xh`、`worker-md`、`worker-h`、`worker-xh`、`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`。frontmatter 的 `effort:` 仍写全称，只有文件名与 `name:` 用缩写。因为 effort 没有按次参数而 model 有，拨盘被拆成两半：文件定死 effort，派发时的 `model` 选定具体填充。所以 `explorer-*` 与 `worker-*` 根本不带 `model:` 键——派发时省略 `model`，跑的是 `CLAUDE_CODE_SUBAGENT_MODEL`，该变量未设时跑会话模型，而不是填充表点名的那个填充；因此路由门拒绝不带 `model` 的本角色池派发（第 0 节规则 2）。`advisor-*` 都写 `model: fable`。把一个 `worker` 的 `model` 钉为会话模型，即同模派发。宿主内置的 `Explore` agent 自己没有 effort——不给显式 `model` 时它跑在会话模型上（Claude API 上封顶为 Opus），因此未钉死的 `Explore` 按会话价格计费。`claude lane` 的报告在 `Task` 结果内返回；后台派发的报告从该任务的输出文件读取。Claude Code 把主会话之下的 subagent 嵌套限制为三层。
+在 Claude Code 中派发车道之前阅读本文。主代理通过确定性 runner 直接驱动两个 CLI 生产者。`grok lane` 需要 [Grok CLI](https://x.ai/cli)；`codex lane` 需要 codex CLI 与 Node。`claude lane` 是普通的子代理派发，无 runner。两条 CLI 都缺失时，它让插件保持自包含。它的角色池按（角色，effort）每组一份 agent 文件随插件发布，派发时寻址为 `fable-advisor:<name>`，名字里的强度用缩写（`l`、`md`、`h`、`xh`）：`explorer-md`、`explorer-h`、`explorer-xh`、`worker-md`、`worker-h`、`worker-xh`、`advisor-l`、`advisor-md`、`advisor-h`、`advisor-xh`。frontmatter 的 `effort:` 仍写全称，只有文件名与 `name:` 用缩写。因为 effort 没有按次参数而 model 有，拨盘被拆成两半：文件定死 effort，派发时的 `model` 选定具体填充。所以 `explorer-*` 与 `worker-*` 根本不带 `model:` 键——派发时省略 `model`，跑的是 `CLAUDE_CODE_SUBAGENT_MODEL`，该变量未设时跑会话模型，而不是填充表点名的那个填充；因此路由门拒绝不带 `model` 的本角色池派发（第 0 节规则 2）。`advisor-*` 都写 `model: fable`。把一个 `worker` 的 `model` 钉为会话模型，即同模派发。宿主内置的 `Explore` agent 自己没有 effort——不给显式 `model` 时它跑在会话模型上（Claude API 上封顶为 Opus），因此未钉死的 `Explore` 按会话价格计费。`claude lane` 的报告在 `Task` 结果内返回；后台派发的报告从该任务的输出文件读取。Claude Code 把主会话之下的子代理嵌套限制为三层。
 
 agent 文件只在会话启动时加载。会话中途新增或改名的文件无法派发——调用会以 `Agent type '<name>' not found` 失败——所以对这个角色池的改动只有在会话重启之后才生效。
 
@@ -18,7 +18,7 @@ agent 定义**没写** `effort:` 时，强度跟它实际运行其上的那个�
 
 Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时，把它当作不可用的候选，按 SKILL.md「改道」改道。模型是请求值，不是执行保证：引用 receipt 的模型时写提交值，不是观测值；实际运行的模型看子代理转写里的 `message.model`。
 
-后台子代理可以在运行中被纠偏。按派发结果返回的 `agentId` 调用 `SendMessage`，不需要 `name`，第一行是路由行（第 0 节），消息在子代理下一次调用工具时送达；子代理正在执行一次很长的工具调用时（例如在前台运行 runner），消息要等那次调用返回。纠偏会改变合同：只在 Objective、Constraint 或 Verification 某一项被发现有错时发送，验收依据合同加这条消息。
+后台子代理可以在运行中被纠偏。按派发结果返回的 `agentId` 调用 `SendMessage`，不需要 `name`，第一行是路由行（第 0 节），消息在子代理下一次调用工具时送达；子代理正在执行一次很长的工具调用时（例如在前台运行 runner），消息要等那次调用返回。纠偏会改变契约：只在 Objective、Constraint 或 Verification 某一项被发现有错时发送，验收依据契约加这条消息。
 
 两条 CLI 车道流程相同；以 codex 演练为典范，grok 的差异紧随其后。两条 runner 默认服务 `worker` 角色，并在 report mode 下服务只读角色（见下文「报告模式」）。
 
@@ -26,7 +26,7 @@ Fable 作为 advisor 需要账户启用 usage credits。`fable` 派发失败时�
 
 两条 runner 都读取其 `mode` 所点名的前言——`implement` 用 `lane-preamble.md`，`report` 用 `lane-preamble-report.md`（相对它们自己的目录 `<plugin-root>/scripts/` 解析）——并将其原文前置到车道提示，排在五个部分之前。当前模式所需的前言缺失会使 runner 在拉起任何东西之前以非零退出——执行侧契约从不被静默丢掉。runner 的路由就是它的 spec：键 `role`、`tier` 与 `basis`，拨盘取自 `model` 与 `effort`（第 1 节）。
 
-`claude lane` 派发没有 runner 替它前置前言。它的提示第一行就是路由行本身；第二行是一条指令：先于其他一切，按绝对路径读取其角色所需的前言——`worker` 读 `lane-preamble.md`，`explorer` 或 `advisor` 读 `lane-preamble-report.md`——路径取自本 skill 的基础目录。只写一行裸路径标签不够。发给本角色池子代理的每条 `SendMessage` 消息，第一行同样是路由行。
+`claude lane` 派发没有 runner 替它前置前言。它的提示第一行就是路由行本身；第二行是一条指令：先于其他一切，按绝对路径读取其角色所需的前言——`worker` 读 `lane-preamble.md`，`explorer` 或 `advisor` 读 `lane-preamble-report.md`——路径取自本技能的基础目录。只写一行裸路径标签不够。发给本角色池子代理的每条 `SendMessage` 消息，第一行同样是路由行。
 
 ### 路由行
 
@@ -87,7 +87,7 @@ Route: role=<explorer|worker|advisor> tier=<mainstay|crux|rescue|same-model> dia
 
 - `model` — `gpt-6-astra`（默认）、`gpt-6-luna` 或 `gpt-6.1-sol`；codex 目录是静态白名单，因此其他名字都是 `spec_invalid`。
 - `effort` — `model_reasoning_effort`：`low | medium | high | xhigh | max`。省略时，runner 按型号提交默认值：`gpt-6-astra` → `medium`，`gpt-6-luna` → `max`，`gpt-6.1-sol` → `high`；这是 runner 的省略默认，不是档案的默认。一个任务用哪个拨盘，由填充表决定。
-- `title` — 可选；提示第一行，原文纯文本，不加 Markdown 标记。省略时该行是 spec 文件去掉 `.json` 的基名。
+- `title` — 可选；提示第一行，原文纯文本，不加 Markdown 标记。省略时该行是 spec 文件去掉 `.json` 的基名。CLI 的会话列表把这一行显示为会话名，所以它的读者是用户：用用户的语言写一个短语，说明会话目标，不超过 12 个汉字或 6 个英文词，例如「令牌续期接口」。它不带票据编号、基名、「（后端）」这类层标签、子项清单，也不在冒号后接细节；这些细节由五个部分承载。
 - `service_tier` — 省略则用 Codex 自己的默认；`"fast"` 是 Codex 的速度模式：大约快 1.5 倍，ChatGPT credit 消耗大约为 2.5 倍，智力不损失。不适用于 API-key 计费。
 - `profile` — 默认省略；只在用户明确要求使用某个 Codex profile 时填写。runner 把 `--profile <name>` 紧接在 `exec` 之后传入，Codex 据此在基础配置之上叠加 `$CODEX_HOME/<name>.config.toml`（例如该 profile 指定的供应商）；新会话与续接会话都如此。
 - `idle_timeout_sec` — 静默截止（默认 600 秒）：*最后*一个事件之后多久杀掉停滞的 CLI 子进程。一直在吐事件的车道要跑多久就跑多久；被切断的只有静默，而该路径会跳过核验，因此在这里被切断的车道会完全失去它的核验证据。
@@ -99,7 +99,7 @@ Route: role=<explorer|worker|advisor> tier=<mainstay|crux|rescue|same-model> dia
 
 ## 2. 运行 runner
 
-本 skill 的基目录是 `<plugin-root>/skills/orchestration`，因此 runner 在上两级：
+本技能的基目录是 `<plugin-root>/skills/orchestration`，因此 runner 在上两级：
 
 ```bash
 node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.json --cwd "$(pwd)"
@@ -120,9 +120,9 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 
 runner 工作期间，在 `.fable-advisor/running/<spec_hash>.json` 维护一个运行中标记（runner、pid、spec 路径、开始时间、阶段 `preparing | cli | verifying`、事件数），每 60 秒刷新一次。每次刷新同时向 stderr 写一行进度，例如 `[run-grok] running 4m00s; phase cli; 132 events; last event 0m12s ago`。runner 在它观察到的每条退出路径上都删除该标记；180 秒未刷新的标记属于已死的 runner。在标记仍新鲜的 spec 上启动的 runner 以状态 1 退出，不写 receipt，也不启动 CLI：同一份 spec 同一时间最多只有一个 runner。
 
-CLI 主进程退出后，执行器停止运行计时器，最多等待两秒来排空后代继承的输出管道。到期后，执行器释放剩余管道、记录诊断，并依据已观察到的退出状态继续核验和生成收据。预检、Git 检查和核验命令使用同样的排空期限；仍在运行的核验命令不因此获得总运行时限。
+CLI 主进程退出后，runner 停止运行计时器，最多等待两秒来排空后代继承的输出管道。到期后，runner 释放剩余管道、记录诊断，并依据已观察到的退出状态继续核验和生成 receipt。预检、Git 检查和核验命令使用同样的排空期限；仍在运行的核验命令不因此获得总运行时限。
 
-超时或中断会先启动独立的两秒收尾期限，再尝试终止进程树。Windows 的 `taskkill` 另有两秒运行上限和两秒收尾期限。即使终止失败，两处等待也会结束。若诊断说明尚未观察到退出，恢复会话或派发另一个写入任务前，先确认并停止存活进程；失败收据不证明进程树已清理。
+超时或中断会先启动独立的两秒收尾期限，再尝试终止进程树。Windows 的 `taskkill` 另有两秒运行上限和两秒收尾期限。即使终止失败，两处等待也会结束。若诊断说明尚未观察到退出，恢复会话或派发另一个写入任务前，先确认并停止存活进程；失败 receipt 不证明进程树已清理。
 
 有三个互相独立的时钟压在一次派发上，每一个都能单独结束它：
 
@@ -132,7 +132,7 @@ CLI 主进程退出后，执行器停止运行计时器，最多等待两秒来�
 
 让 runner 自己跑完，总是比杀掉它更便宜。CLI 子进程以 detached 方式拉起，处在它自己的进程组中，因此它能在一个瞄准 runner 进程组的信号下存活。runner 捕获 SIGTERM 与 SIGINT，杀掉子进程树并写下一份 `interrupted` receipt——但对 runner 的一次 SIGKILL 仍会留下 CLI 继续运行、继续改动仓库，且完全没有 receipt。
 
-CLI 车道运行期间没有传递消息的通道：runner 只交付一次提示词。要在运行中纠偏，用 `kill <pid>` 停止它的 runner，pid 取自运行中标记：这只发送 SIGTERM，中断路径能完整走完。对 runner 的后台任务调用 `TaskStop` 同样先发 SIGTERM，但随后很快强制结束，可能截断 receipt 的写入。然后删除旧的 pending spec，用 `resume_session_id` 指向那份 `interrupted` receipt 的 session id，排入修正后的合同；车道带着原有上下文继续。
+CLI 车道运行期间没有传递消息的通道：runner 只交付一次提示词。要在运行中纠偏，用 `kill <pid>` 停止它的 runner，pid 取自运行中标记：这只发送 SIGTERM，中断路径能完整走完。对 runner 的后台任务调用 `TaskStop` 同样先发 SIGTERM，但随后很快强制结束，可能截断 receipt 的写入。然后删除旧的 pending spec，用 `resume_session_id` 指向那份 `interrupted` receipt 的 session id，排入修正后的契约；车道带着原有上下文继续。
 
 ## 4. 裁决 receipt
 
@@ -151,7 +151,7 @@ runner 把 receipt 打印到 stdout，并写入 `.fable-advisor/receipts/<spec_h
 
 runner 是契约检查列表的执行者：CLI 退出之后由它自己跑 `verification`，所以车道被告知不要重复跑，receipt 里的输出就是那一次执行。检查失败时，从它的 `output_log` 读出失败用例，只重跑这些用例；为了查看失败而重跑整份列表，等于重复最贵的那一步。`complete` receipt 是它自己那张契约的证据——既不是对该契约的验收，也不是对整个任务的验收。
 
-CLI 车道验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。第 3 层是 `advisor` 的 acceptance 形状；由哪种填充来答，是填充表中 `advisor` 那一行。
+CLI 车道验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。第 3 层是 `advisor` 的验收形状；由哪种填充来答，是填充表中 `advisor` 那一行。
 
 receipt 由机械强制执行：插件 Stop hook（**receipt gate**）在 `.fable-advisor/pending/` 下任何 spec 缺少 `complete` receipt、且没有新鲜运行中标记时阻止结束。新鲜标记允许本轮结束，因为后台 runner 退出时宿主会唤醒会话。一旦 `complete`，runner 自行删除 pending spec。若你放弃或改道一项 pending 任务，删除其 pending 文件并显式说明——绝不让 gate 成为唯一知情者。gate 强制的是 receipt 的存在；其内容仍由你裁决。
 

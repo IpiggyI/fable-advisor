@@ -1,6 +1,6 @@
 """Stop hook: block claiming completion while pending specs lack receipts.
 
-Specs the architect queues for a lane runner live in <cwd>/.fable-advisor/
+Specs the main agent queues for a lane runner live in <cwd>/.fable-advisor/
 pending/. The runner writes a receipt keyed by the spec file's sha256 and
 deletes the pending spec on success. While a runner works on a spec it
 refreshes <cwd>/.fable-advisor/running/<sha256>.json; a fresh marker means the
@@ -8,7 +8,7 @@ lane is in flight, so the stop is allowed and the harness wakes the session when
 the backgrounded runner exits. A pending spec with neither a `complete` receipt
 nor a fresh marker means the work was neither finished nor consciously
 abandoned, so the stop is blocked. Deliberately fail-open on malformed input:
-this gate is a backstop, not the primary guardrail.
+this gate only backstops the main session itself; it is not the primary check.
 """
 import glob
 import hashlib
