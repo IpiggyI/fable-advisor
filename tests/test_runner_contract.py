@@ -464,10 +464,14 @@ def case_report_and_implement_modes():
 def case_runner_owns_verification_list():
     new_sentence = (
         "The runner runs these commands itself after you exit and records their "
-        "exit codes and output in the receipt; a non-zero exit is your failure. "
-        "Run what you need while you work; do not repeat this list as a closing step."
+        "exit codes and output in the receipt; that run is the receipt's evidence, "
+        "and a non-zero exit is your failure. Before you exit, run once each listed "
+        "command you have not seen pass since your last relevant edit; fix a failure "
+        "inside your scope, and report under GAPS a failure that a reserved operation "
+        "or the environment blocks."
     )
     retired = "Run the verification command and include its actual output in your final message."
+    retired_closing = "as a closing step"
     empty_fence = "# Verification\n\n```bash\n\n```"
     for binary in ("codex", "grok"):
         with tempfile.TemporaryDirectory() as tmp:
@@ -490,6 +494,7 @@ def case_runner_owns_verification_list():
             prompt = prompt_log.read_text()
             assert new_sentence in prompt
             assert retired not in prompt
+            assert retired_closing not in prompt
             assert counter.read_text().splitlines() == ["ran"]
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1755,6 +1760,106 @@ def case_running_marker():
                 print("ASSERT running marker: runner=%s scenario=%s" % (binary, scenario))
 
 
+def fake_session_marker_cli(directory, binary):
+    write_executable(
+        directory,
+        binary,
+        """#!/usr/bin/env python3
+import json, os, sys, time
+from pathlib import Path
+args = sys.argv[1:]
+log = Path(os.environ["SEEN"])
+def read_markers():
+    # The runner rewrites the marker in place, so a read can land on a truncated file.
+    for _ in range(100):
+        try:
+            return [json.loads(path.read_text())
+                    for path in Path(os.environ["RUNNING_DIR"]).glob("*.json")]
+        except json.JSONDecodeError:
+            time.sleep(0.01)
+    raise SystemExit("marker never parsed")
+def snapshot(label):
+    markers = read_markers()
+    assert len(markers) == 1, markers
+    with log.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"label": label, "args": args,
+                                 "session_id": markers[0]["session_id"]}) + "\\n")
+if args in (["--version"], ["models"]):
+    snapshot("probe")
+    if args == ["models"]:
+        print("* grok-test (default)")
+    raise SystemExit(0)
+codex = "exec" in args
+if codex:
+    sys.stdin.read()
+snapshot("start")
+if codex:
+    print(json.dumps({"type": "thread.started", "thread_id": "stream-session"}), flush=True)
+    expected = os.environ["EXPECT_AFTER"]
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        markers = read_markers()
+        if markers and markers[0]["session_id"] == expected:
+            break
+        time.sleep(0.05)
+    snapshot("after")
+    print(json.dumps({"type": "turn.completed"}), flush=True)
+else:
+    flag = "--resume" if "--resume" in args else "--session-id"
+    session = args[args.index(flag) + 1]
+    print(json.dumps({"type": "end", "sessionId": session, "stopReason": "done"}), flush=True)
+""",
+    )
+
+
+def case_running_marker_session_id():
+    for binary in ("codex", "grok"):
+        for resume in (None, "resume-123"):
+            with tempfile.TemporaryDirectory() as tmp:
+                bin_dir = Path(tmp) / "bin"
+                bin_dir.mkdir()
+                fake_session_marker_cli(bin_dir, binary)
+                fake_git(bin_dir)
+                runner = copy_runner(tmp, "run-%s.mjs" % binary)
+                if binary == "codex" and resume is None:
+                    runner.write_text(runner.read_text().replace(
+                        "const HEARTBEAT_MS = 60_000;", "const HEARTBEAT_MS = 100;",
+                    ))
+                cwd = Path(tmp) / "work"
+                cwd.mkdir()
+                spec = base_spec() if resume is None else base_spec(resume_session_id=resume)
+                running_dir = cwd / ".fable-advisor" / "running"
+                seen_path = Path(tmp) / "seen.jsonl"
+                expect_after = resume if resume is not None else "stream-session"
+                result, receipt = run_runner(
+                    runner, cwd, spec, bin_dir,
+                    {"RUNNING_DIR": str(running_dir), "SEEN": str(seen_path),
+                     "EXPECT_AFTER": expect_after},
+                    pending=True, timeout=8,
+                )
+                assert receipt["error_class"] == "complete", (receipt, result.stderr)
+                seen = {entry["label"]: entry for entry in
+                        (json.loads(line) for line in seen_path.read_text().splitlines())}
+                if binary == "grok":
+                    argv = seen["start"]["args"]
+                    flag = "--session-id" if resume is None else "--resume"
+                    injected = argv[argv.index(flag) + 1]
+                    if resume is not None:
+                        assert injected == resume, argv
+                    assert seen["probe"]["session_id"] == injected, (seen, injected)
+                    assert seen["start"]["session_id"] == injected, (seen, injected)
+                elif resume is None:
+                    assert seen["probe"]["session_id"] is None, seen
+                    assert seen["start"]["session_id"] is None, seen
+                    assert seen["after"]["session_id"] == "stream-session", seen
+                else:
+                    assert seen["probe"]["session_id"] == resume, seen
+                    assert seen["start"]["session_id"] == resume, seen
+                    assert seen["after"]["session_id"] == resume, seen
+                print("ASSERT marker session_id: runner=%s resume=%s %s" % (
+                    binary, resume, {label: entry["session_id"] for label, entry in seen.items()}))
+
+
 CASES = [
     ("routing profile parser", case_routing_profile_parser),
     ("route validation", case_route_validation),
@@ -1780,6 +1885,7 @@ CASES = [
     ("interrupted receipt and process tree", case_interrupted_receipt_and_process_tree),
     ("idle and wall deadlines", case_idle_and_wall_deadlines),
     ("running marker", case_running_marker),
+    ("running marker session_id", case_running_marker_session_id),
 ]
 
 

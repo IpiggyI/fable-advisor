@@ -38,7 +38,7 @@
 - `service_tier` — 省略则用 Codex 自己的默认；`"fast"` 是 Codex 的速度模式：大约快 1.5 倍，ChatGPT credit 消耗大约为 2.5 倍，智力不损失。不适用于 API-key 计费。
 - `profile` — 默认省略；只在用户明确要求使用某个 Codex profile 时填写。runner 把 `--profile <name>` 紧接在 `exec` 之后传入，Codex 据此在基础配置之上叠加 `$CODEX_HOME/<name>.config.toml`（例如该 profile 指定的供应商）；新会话与续接会话都如此。
 - `idle_timeout_sec` — 静默截止（默认 600 秒）：*最后*一个事件之后多久杀掉停滞的 CLI 子进程。一直在吐事件的车道要跑多久就跑多久；被切断的只有静默，而该路径会跳过核验，因此在这里被切断的车道会完全失去它的核验证据。
-- `timeout_sec` — 对整次运行的可选绝对上限；无默认值，省略即不设上限。
+- `timeout_sec` — 对整次运行的可选绝对上限；无默认值，省略即不设上限。只在当前请求给出时限时才写；项目记忆或笔记里的取值不算。
 - `resume_session_id` — 先前的 codex session id；见下文「返工票」。
 - `mode` — `implement`（默认）或 `report`；见下文「报告模式」。
 
@@ -58,15 +58,17 @@ node "<plugin-root>/scripts/run-codex.mjs" --spec .fable-advisor/pending/<slug>.
 
 完成证据是 pending 文件消失，或 receipt 出现在 `.fable-advisor/receipts/` 下。
 
-runner 工作期间，在 `.fable-advisor/running/<spec_hash>.json` 维护一个运行中标记（runner、pid、spec 路径、开始时间、阶段 `preparing | cli | verifying`、事件数），每 60 秒刷新一次。每次刷新同时向 stderr 写一行进度，例如 `[run-grok] running 4m00s; phase cli; 132 events; last event 0m12s ago`。runner 在它观察到的每条退出路径上都删除该标记；180 秒未刷新的标记属于已死的 runner。在标记仍新鲜的 spec 上启动的 runner 以状态 1 退出，不写 receipt，也不启动 CLI：同一份 spec 同一时间最多只有一个 runner。
+runner 工作期间，在 `.fable-advisor/running/<spec_hash>.json` 维护一个运行中标记（runner、pid、spec 路径、开始时间、阶段 `preparing | cli | verifying`、事件数、`session_id`），每 60 秒刷新一次。每次刷新同时向 stderr 写一行进度，例如 `[run-grok] running 4m00s; phase cli; 132 events; last event 0m12s ago`。runner 在它观察到的每条退出路径上都删除该标记；180 秒未刷新的标记属于已死的 runner。在标记仍新鲜的 spec 上启动的 runner 以状态 1 退出，不写 receipt，也不启动 CLI：同一份 spec 同一时间最多只有一个 runner。
 
 CLI 主进程退出后，runner 停止运行计时器，最多等待两秒来排空后代继承的输出管道。到期后，runner 释放剩余管道、记录诊断，并依据已观察到的退出状态继续核验和生成 receipt。预检、Git 检查和核验命令使用同样的排空期限；仍在运行的核验命令不因此获得总运行时限。
 
-超时或中断会先启动独立的两秒收尾期限，再尝试终止进程树。Windows 的 `taskkill` 另有两秒运行上限和两秒收尾期限。即使终止失败，两处等待也会结束。若诊断说明尚未观察到退出，恢复会话或派发另一个写入任务前，先确认并停止存活进程；失败 receipt 不证明进程树已清理。
+在 POSIX 上，超时或中断分两步停止 CLI 的进程树：runner 先向 CLI 的进程组发 SIGINT，让 CLI 结束当前回合并收好会话记录；五秒宽限期过后进程组仍在，才发 SIGKILL。第一个信号发出之前，runner 先启动独立的收尾期限：POSIX 上为七秒，即宽限期加两秒；Windows 上为两秒。CLI 退出之后，它的管道最多再等两秒。Windows 的 `taskkill` 另有两秒运行上限和两秒收尾期限。即使终止失败，两处等待也会结束。若诊断说明尚未观察到退出，恢复会话或派发另一个写入任务前，先确认并停止存活进程；失败 receipt 不证明进程树已清理。
 
-让 runner 自己跑完，总是比杀掉它更便宜。CLI 子进程以 detached 方式拉起，处在它自己的进程组中，因此它能在一个瞄准 runner 进程组的信号下存活。runner 捕获 SIGTERM 与 SIGINT，杀掉子进程树并写下一份 `interrupted` receipt——但对 runner 的一次 SIGKILL 仍会留下 CLI 继续运行、继续改动仓库，且完全没有 receipt。
+让 runner 自己跑完，总是比杀掉它更便宜。CLI 子进程以 detached 方式拉起，处在它自己的进程组中，因此它能在一个瞄准 runner 进程组的信号下存活。runner 捕获 SIGTERM 与 SIGINT，按上文停止子进程树并写下一份 `interrupted` receipt——但对 runner 的一次 SIGKILL 仍会留下 CLI 继续运行、继续改动仓库，且完全没有 receipt。
 
-CLI 车道运行期间没有传递消息的通道：runner 只交付一次提示词。要在运行中纠偏，用 `kill <pid>` 停止它的 runner，pid 取自运行中标记：这只发送 SIGTERM，中断路径能完整走完。在 Claude Code 中，对 runner 的后台任务调用 `TaskStop` 同样先发 SIGTERM，但随后很快强制结束，可能截断 receipt 的写入。然后删除旧的 pending spec，用 `resume_session_id` 指向那份 `interrupted` receipt 的 session id，排入修正后的契约；车道带着原有上下文继续。
+CLI 车道运行期间没有传递消息的通道：runner 只交付一次提示词。要在运行中纠偏，用 `kill <pid>` 停止它的 runner，pid 取自运行中标记：这只发送 SIGTERM，中断路径能完整走完；CLI 收到 SIGINT 不退出时，这最多需要七秒。在 Claude Code 中，对 runner 的后台任务调用 `TaskStop` 同样先发 SIGTERM，但随后很快强制结束，可能截断 receipt 的写入。然后删除旧的 pending spec，用 `resume_session_id` 指向那份 `interrupted` receipt 的 session id，排入修正后的契约；车道带着原有上下文继续。
+
+静默截止只看事件是否停止：一条车道持续吐事件却没有进展时，静默截止切不断它；不设 `timeout_sec` 时，也没有别的时钟限制它。长车道在后台运行期间，主代理在做其他工作的间隙检查它：读它最新的一行进度和工作树的改动；这种检查不代替等待 runner 退出。车道可能长时间搜索、分析或跑测试而不改任何文件，所以长时间没有改动本身不算失控；它提示主代理去 CLI 自己的会话记录里读车道最新的输出：grok 车道是 `~/.grok/sessions/<工作目录，URL 编码>/<session id>/events.jsonl`，codex 车道是 `$CODEX_HOME/sessions/<YYYY>/<MM>/<DD>/rollout-<timestamp>-<session id>.jsonl`（`$CODEX_HOME` 默认为 `~/.codex`）。要读的记录是 session id 等于运行中标记里 `session_id` 的那一份。grok 车道的标记从一开始就带着它；codex 车道的标记为 `null`，直到 runner 从 CLI 的事件流里读到 session id 之后的第一次刷新，续跑的 codex 车道从一开始就带着它的 `resume_session_id`。`session_id` 为 `null` 时，主代理不按猜测的记录停止车道。只有那份输出表明车道在原地重复、没有进展时，主代理才按上文用 `kill <pid>` 停止它的 runner。
 
 ### 经 Bash 等待（仅 Claude Code）
 
@@ -104,7 +106,7 @@ runner 把 receipt 打印到 stdout，并写入 `.fable-advisor/receipts/<spec_h
 
 `idle_timeout` 与 `timeout` 意味着某个时钟切断了这条车道，而不是它的工作有错——而且因为两条路径都跳过核验，receipt 里没有可供裁决的核验证据。被切断会话的数据在磁盘上完好，所以在续用窗口之内（见「返工票」），干净的恢复方式是一张返工票，在 `resume_session_id` 中携带该 receipt 的 session id：车道恢复运行并跑完它自己的核验。由你自己手工核验一条被切断车道的工作树，不是恢复路径。
 
-runner 是契约检查列表的执行者：CLI 退出之后由它自己跑 `verification`，所以车道被告知不要重复跑，receipt 里的输出就是那一次执行。检查失败时，从它的 `output_log` 读出失败用例，只重跑这些用例；为了查看失败而重跑整份列表，等于重复最贵的那一步。`complete` receipt 是它自己那张契约的证据——既不是对该契约的验收，也不是对整个任务的验收。
+CLI 退出之后，runner 自己跑契约的检查列表 `verification`，receipt 里那一次执行的输出就是这张契约的证据。车道被告知在退出之前，对列表里自它上次相关修改之后还没见过通过的命令，各跑一次，因为车道在自己会话里修好一处失败，比多一轮返工便宜；所以廉价检查会跑两遍。检查失败时，从它的 `output_log` 读出失败用例，只重跑这些用例；为了查看失败而重跑整份列表，等于重复最贵的那一步。`complete` receipt 是它自己那张契约的证据——既不是对该契约的验收，也不是对整个任务的验收。
 
 CLI 车道验收 = `error_class: complete`、非空 session id、可对照工作树抽查的核验输出，**并且** diff 通过 [SKILL.md](SKILL.md) 中的分层验收。缺失或非 complete 的 receipt 即未完成。第 3 层是 `advisor` 的验收形状；由哪种填充来答，是填充表中 `advisor` 那一行。
 

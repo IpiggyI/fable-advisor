@@ -87,7 +87,7 @@ raise SystemExit(7 if mode == "nonzero" else 0)
                        {"verification": ["echo verified"]}),
                 ),
                 bin_dir, env_extra,
-                pending=True, timeout=6,
+                pending=True, timeout=12 if mode == "kill_failed" else 6,
             )
             elapsed = time.monotonic() - started
             expected = {
@@ -113,7 +113,11 @@ raise SystemExit(7 if mode == "nonzero" else 0)
             elif mode != "redirected":
                 assert receipt["end_to_close_ms"] is None, receipt
                 assert "cleanup deadline reached" in result.stderr, result.stderr
-            assert elapsed < 5, elapsed
+            # kill_failed waits out the SIGINT grace (5 s) and then the cleanup bound (2 s).
+            assert elapsed < (9 if mode == "kill_failed" else 5), elapsed
+            if mode == "kill_failed":
+                assert elapsed >= 7, elapsed
+                assert "exit observed: false" in result.stderr, result.stderr
             parent, descendant = json.loads(pids_path.read_text())
             assert process_is_running(parent) == (mode == "kill_failed"), parent
             assert process_is_running(descendant) == (mode != "drain"), descendant
@@ -195,6 +199,86 @@ elif name == "grok":
                         os.kill(pid, signal.SIGKILL)
 
 
+def case_sigint_grace(binary, path, behaviour):
+    with tempfile.TemporaryDirectory() as tmp:
+        bin_dir = Path(tmp) / "bin"
+        bin_dir.mkdir()
+        fake_git(bin_dir)
+        write_executable(bin_dir, binary, """#!/usr/bin/env python3
+import json, os, signal, sys, time
+from pathlib import Path
+args = sys.argv[1:]
+if args == ["--version"]:
+    raise SystemExit(0)
+if args == ["models"]:
+    print("* grok-test (default)")
+    raise SystemExit(0)
+log = Path(os.environ["SIGNAL_LOG"])
+Path(os.environ["PIDS"]).write_text(json.dumps([os.getpid()]))
+def on_sigint(*_):
+    log.write_text("sigint\\n")
+    if os.environ["BEHAVIOUR"] == "trap":
+        time.sleep(2.5)
+        log.write_text("sigint\\nexited\\n")
+        os._exit(130)
+signal.signal(signal.SIGINT, on_sigint)
+if "exec" in args:
+    sys.stdin.read()
+    print(json.dumps({"type": "thread.started", "thread_id": "grace-session"}), flush=True)
+else:
+    print(json.dumps({"type": "text", "data": "working"}), flush=True)
+if os.environ["STOP_PATH"] == "interrupt":
+    os.kill(os.getppid(), signal.SIGTERM)
+time.sleep(60)
+""")
+        runner = copy_runner(tmp, "run-%s.mjs" % binary)
+        cwd = Path(tmp) / "work"
+        cwd.mkdir()
+        pids_path = Path(tmp) / "pids.json"
+        signal_log = Path(tmp) / "signal.log"
+        try:
+            started = time.monotonic()
+            result, receipt = run_runner(
+                runner, cwd,
+                base_spec(
+                    **({"effort": "high", "model": "grok-test"} if binary == "grok" else {}),
+                    **({"timeout_sec": 0.3} if path == "timeout" else {}),
+                    **({"idle_timeout_sec": 0.3} if path == "idle" else {}),
+                ),
+                bin_dir,
+                {"PIDS": str(pids_path), "SIGNAL_LOG": str(signal_log),
+                 "BEHAVIOUR": behaviour, "STOP_PATH": path},
+                pending=True, timeout=15,
+            )
+            elapsed = time.monotonic() - started
+            expected = {"timeout": "timeout", "idle": "idle_timeout",
+                        "interrupt": "interrupted"}[path]
+            assert receipt["error_class"] == expected, (receipt, result.stderr)
+            assert receipt["verification"] == [], receipt
+            (pid,) = json.loads(pids_path.read_text())
+            assert not process_is_running(pid), pid
+            if behaviour == "trap":
+                # The CLI finished its own SIGINT handler: no SIGKILL cut it short.
+                assert signal_log.exists(), "CLI never saw SIGINT"
+                assert signal_log.read_text() == "sigint\nexited\n", signal_log.read_text()
+                assert receipt["exit_status"] == 130, receipt
+                assert "cleanup deadline reached" not in result.stderr, result.stderr
+                assert elapsed < 5, elapsed
+            else:
+                assert signal_log.exists(), "CLI never saw SIGINT"
+                assert signal_log.read_text() == "sigint\n", signal_log.read_text()
+                assert receipt["exit_status"] is None, receipt
+                assert elapsed >= 5, elapsed
+            print("PASS sigint grace: %s %s %s exit_status=%s completed in %.2fs" % (
+                binary, path, behaviour, receipt["exit_status"], elapsed,
+            ))
+        finally:
+            if pids_path.exists():
+                for pid in json.loads(pids_path.read_text()):
+                    if process_is_running(pid):
+                        os.kill(pid, signal.SIGKILL)
+
+
 def main():
     failed = 0
     for binary in ("codex", "grok"):
@@ -206,6 +290,15 @@ def main():
                 failed += 1
                 print("FAIL pipes: %s %s: %s: %s" % (
                     binary, mode, type(error).__name__, error,
+                ))
+        for path, behaviour in (("timeout", "trap"), ("idle", "trap"),
+                                ("interrupt", "trap"), ("timeout", "ignore")):
+            try:
+                case_sigint_grace(binary, path, behaviour)
+            except Exception as error:
+                failed += 1
+                print("FAIL sigint grace: %s %s %s: %s: %s" % (
+                    binary, path, behaviour, type(error).__name__, error,
                 ))
         for stage in ("preflight", "git", "verify"):
             try:

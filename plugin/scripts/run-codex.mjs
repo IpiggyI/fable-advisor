@@ -24,10 +24,12 @@ const OUTPUT_TAIL_LENGTH = 2_000;
 const LOG_QUEUE_LIMIT = 16 * 1024 * 1024;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
 const PROCESS_GRACE_MS = 2_000;
+// A stopped CLI gets this long after SIGINT to close its session before SIGKILL.
+const INTERRUPT_GRACE_MS = 5_000;
 // The receipt gate treats a running marker older than MARKER_STALE_MS as dead; keep both values in step with hooks/receipt-gate.py.
 const HEARTBEAT_MS = 60_000;
 const MARKER_STALE_MS = 180_000;
-const progress = { phase: "preparing", events: 0, lastEventAt: null };
+const progress = { phase: "preparing", events: 0, lastEventAt: null, sessionId: null };
 let releaseRunningMarker = async () => {};
 let forcedCleanup = false;
 const IS_WINDOWS = process.platform === "win32";
@@ -235,7 +237,7 @@ function renderPrompt(spec) {
   ];
   if (spec.verification.length > 0) {
     sections.push(
-      "The runner runs these commands itself after you exit and records their exit codes and output in the receipt; a non-zero exit is your failure. Run what you need while you work; do not repeat this list as a closing step.",
+      "The runner runs these commands itself after you exit and records their exit codes and output in the receipt; that run is the receipt's evidence, and a non-zero exit is your failure. Before you exit, run once each listed command you have not seen pass since your last relevant edit; fix a failure inside your scope, and report under GAPS a failure that a reserved operation or the environment blocks.",
     );
   }
   return sections.join("\n\n");
@@ -293,6 +295,7 @@ function createDeadlineTimer(delayMs, callback) {
 function monitorProcess(child, onExit = () => {}) {
   const result = { code: null, signal: null, spawnError: null, stopped: false, closedAt: null };
   let drainTimer;
+  let drainDeadline = Infinity;
   let settled = false;
   let resolveDone;
   const done = new Promise((resolve) => { resolveDone = resolve; });
@@ -309,11 +312,14 @@ function monitorProcess(child, onExit = () => {}) {
     }
     resolveDone(result);
   };
-  const stop = () => {
+  const stop = (delayMs = PROCESS_GRACE_MS) => {
     // A descendant can retain pipes after exit, or survive a tree-kill attempt.
-    if (!settled && drainTimer === undefined) {
-      drainTimer = setTimeout(() => finish(), PROCESS_GRACE_MS);
-    }
+    // A later call only brings the deadline forward.
+    const deadline = Date.now() + delayMs;
+    if (settled || deadline >= drainDeadline) return;
+    clearTimeout(drainTimer);
+    drainDeadline = deadline;
+    drainTimer = setTimeout(() => finish(), delayMs);
   };
   child.once("exit", (code, signal) => {
     result.code = code;
@@ -389,17 +395,38 @@ async function killProcessTree(child) {
     return;
   }
 
+  if (!signalProcessGroup(child, "SIGINT")) return;
+  if (await processGroupExits(child.pid, INTERRUPT_GRACE_MS)) return;
+  signalProcessGroup(child, "SIGKILL");
+}
+
+// Returns false when the process group is already gone.
+function signalProcessGroup(child, signal) {
   try {
-    process.kill(-child.pid, "SIGKILL");
+    process.kill(-child.pid, signal);
+    return true;
   } catch (error) {
-    if (error?.code !== "ESRCH") {
-      diagnostic(`process-group kill failed: ${errorMessage(error)}`);
-      try {
-        child.kill("SIGKILL");
-      } catch (fallbackError) {
-        diagnostic(`child kill failed: ${errorMessage(fallbackError)}`);
-      }
+    if (error?.code === "ESRCH") return false;
+    diagnostic(`process-group ${signal} failed: ${errorMessage(error)}`);
+    try {
+      child.kill(signal);
+    } catch (fallbackError) {
+      diagnostic(`child ${signal} failed: ${errorMessage(fallbackError)}`);
     }
+    return true;
+  }
+}
+
+async function processGroupExits(pid, waitMs) {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    try {
+      process.kill(-pid, 0);
+    } catch (error) {
+      if (error?.code === "ESRCH") return true;
+    }
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => { setTimeout(resolve, 100); });
   }
 }
 
@@ -428,6 +455,7 @@ function observeCodexEvents(child, state, onEvent) {
       const sessionId = extractSessionId(event);
       if (sessionId !== null) {
         state.codexSessionId = sessionId;
+        progress.sessionId = sessionId;
       }
     }
     if (event.type === "item.completed" && event.item?.type === "agent_message") {
@@ -511,7 +539,9 @@ async function executeCodex(spec, cwd, promptContents) {
   const failAndKill = (errorClass) => {
     if (failure !== null || exited) return;
     failure = errorClass;
-    lifecycle.stop();
+    lifecycle.stop(process.platform === "win32"
+      ? PROCESS_GRACE_MS
+      : INTERRUPT_GRACE_MS + PROCESS_GRACE_MS);
     termination = killProcessTree(child);
   };
   const armIdleTimer = () => {
@@ -826,6 +856,7 @@ async function acquireRunningMarker(state, specPath) {
     heartbeat_at: new Date().toISOString(),
     phase: progress.phase,
     events: progress.events,
+    session_id: progress.sessionId,
   }, null, 2)}\n`;
   try {
     await mkdir(markerDirectory, { recursive: true });
@@ -905,6 +936,7 @@ async function main() {
     return emitReceipt(state);
   }
 
+  progress.sessionId = spec.resume_session_id;
   const release = await acquireRunningMarker(state, parsedArguments.specPath);
   if (release === null) return 1;
   releaseRunningMarker = release;
