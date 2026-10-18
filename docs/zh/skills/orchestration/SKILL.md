@@ -64,11 +64,12 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 
 ### Harness 机制
 
-按你所在的宿主及其工具的参数结构识别 harness，从不按某一个工具名或是否存在 `model` 参数来认；首次派发之前阅读对应的 lanes 文件：
+按你所在的宿主及其工具的参数结构识别 harness，从不按某一个工具名或是否存在 `model` 参数来认。在下列时点阅读对应的文件：
 
-- Claude Code（runner、receipt、receipt gate、report mode）：[lanes-claude-code.md](lanes-claude-code.md)
-- Cursor（钉死派发、经 Shell 的 codex runner、生命周期）：[lanes-cursor.md](lanes-cursor.md)
-- 其他宿主没有 lanes 文件。它不沿用另一个宿主的 runner、receipt gate 或型号钉选。角色只从该宿主实际提供的入口派发。填充取自路由档案的 Claude Code 表；该宿主上没有入口的候选跳过，并在披露中说明。入口启动不了的填充视为不可用：按「改道」改路由，并说明。路由按 [lanes-claude-code.md](lanes-claude-code.md)「路由行」的格式写成文本，没有机械校验。
+- 在 Claude Code 中，第一次派发 `claude lane` 之前：[lanes-claude-code.md](lanes-claude-code.md)
+- 第一次运行 runner 之前：[runners.md](runners.md)
+- 在 Cursor 中，第一次派发之前：[lanes-cursor.md](lanes-cursor.md)
+- 在其他宿主中，第一次派发之前：[lanes-other-hosts.md](lanes-other-hosts.md)。其他宿主指加载本技能、但既不是 Claude Code 也不是 Cursor 的宿主，包括导入 Claude Code 设置或插件、自身运行方式不同的宿主。
 
 执行侧契约有两份：[lane-preamble.md](lane-preamble.md) 给 `worker`，[lane-preamble-report.md](lane-preamble-report.md) 给 `explorer` 或 `advisor`。runner 前置 `mode` 所指的那份；Cursor 派发和其他宿主的派发指向其角色所需的那份。两份都不要重述。
 
@@ -78,7 +79,7 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 
 用户声明的家族或型号只筛选候选，不定档位。取满足三个条件的最低一档：不低于按难点或升级梯定下的档位；该格有兼容候选，即符合声明的候选；准入允许，即这次派发带有该档位对该角色接受的一种依据（`mainstay` 不需要依据）。用户对型号或家族的声明，可以作为 `user-declaration` 依据准入 `crux`，`ref` 写用户原话；它从不准入 `rescue`。三个条件同时满足不了时，向用户报告冲突；绝不自动降档。
 
-**路由。** 每次派发都写出路由：角色、档位、拨盘；高于 `mainstay` 时再写依据，格式按对应的 lanes 文件。经 `SendMessage` 或 `resume` 发给已有会话的消息，也要写出路由。各角色、各档位接受的依据种类：
+**路由。** 每次派发都写出路由：角色、档位、拨盘；高于 `mainstay` 时再写依据，格式按下文的路由行。经 `SendMessage` 或 `resume` 发给已有会话的消息，也要写出路由。各角色、各档位接受的依据种类：
 
 | 角色 | `crux` | `rescue` |
 |---|---|---|
@@ -87,17 +88,29 @@ description: 角色（`explorer` / `worker` / `advisor`）、档位、车道与�
 
 依据带一条非空的 `ref`：`key-difficulty` 写难点；`failure` 写失败那次派发的标识（receipt 哈希、session id 或 agentId）；`low-confidence` 写报告低置信的那条裁决；`user-declaration` 写用户原话。同模派发有自己的路由（见「委派边界」）。路由在 lanes 文件指明的地方受机械校验。校验只查依据存在且格式合规，不查真假；真假仍由主代理判断。
 
-**阶段 2 —— 格内选择。** 第一个候选是默认；没有声明时取它的 `*` 拨盘。任务落在档案为某个候选声明的擅长点上时选它（价格低也算擅长点）。几个候选同样合适，或需要替换候选时，按档案声明的车道顺序。
+**路由行。**
 
-**改道。** 不可用或超时的候选（整条车道、单个候选，或 codex runner 启动失败），其契约原样转到同一格的另一个候选，按档案声明的车道顺序，并披露；这不算能力失败。两条 CLI 车道都挂了 → `claude lane`，并说明跨厂评审上的任何损失。可用性由派发决定，而非探测。
+```
+Route: role=<explorer|worker|advisor> tier=<mainstay|crux|rescue|same-model> dial=<model>[<effort>] basis=<kind> ref=<text to end of line>
+```
 
-**升级 —— 升级梯。** R1：一次验收失败得到返工票，同拨盘，在续用窗口和返工上限之内用同一会话；契约缺口得到修正契约，条件相同；超出窗口或上限时见「会话续用」。R2：返工票也失败且原因是能力 → 记一次能力失败，升到下一档（`mainstay` → `crux` → `rescue` → 用户）：新会话、接管契约（原契约、先前报告、receipt）。在下一档里按任务特点选型号，新型号在档案排名中不低于失败的型号，除非没有别的候选；同一型号必须提高 effort；不同型号之间不比较 effort 名。R3：同一型号最多提升一次，按完整模型标识计数。R4：执行时的较大问题（工具反复失败、跑飞、触碰保留项）可跳过返工票，记一次能力失败（进入下一档）。环境问题和契约缺口不算失败。首轮就在 `crux` 的任务在 `crux` 失败一次即进 `rescue`；`rescue` 失败交给用户。
+- `dial` 是按档案记法写的一个具体拨盘，例如 `opus-5-5[medium]`，从不是某一格的强度列表。
+- 在 `mainstay`，省略 `basis` 与 `ref`。高于 `mainstay` 时，`basis` 是上表对该角色、该档位接受的一种依据，`ref` 一直写到行尾。
+- 同模派发写 `role=worker tier=same-model` 和 `basis=same-model`，`ref` 写产物类别。
+
+例如 `Route: role=explorer tier=mainstay dial=haiku-5-5[medium]`，或 `Route: role=worker tier=crux dial=opus-5-5[medium] basis=key-difficulty ref=三个接口相互制约`。
+
+**阶段 2 —— 格内选择。** 第一个候选是默认；没有声明时取它的 `*` 拨盘。任务落在档案为某个候选声明的擅长点上时选它（价格低也算擅长点）。几个候选同样合适，或需要替换候选时，按档案声明的车道顺序。在其他宿主中，[lanes-other-hosts.md](lanes-other-hosts.md) 取代本阶段。
+
+**改道。** 不可用或超时的候选（整条车道、单个候选，或 codex runner 启动失败），其契约原样转到同一格的另一个候选，按档案声明的车道顺序，并披露；这不算能力失败。两条 CLI 车道都挂了 → `claude lane`，并说明跨厂评审上的任何损失。可用性由派发决定，而非探测。在其他宿主中，改道按 [lanes-other-hosts.md](lanes-other-hosts.md) 进行。
+
+**升级 —— 升级梯。** R1：一次验收失败得到返工票，同拨盘，在续用窗口和返工上限之内用同一会话；契约缺口得到修正契约，条件相同；超出窗口或上限时见「会话续用」。R2：返工票也失败且原因是能力 → 记一次能力失败，升到下一档（`mainstay` → `crux` → `rescue` → 用户）：新会话、接管契约（原契约、先前报告、receipt）。在下一档里按任务特点选型号，新型号在档案排名中不低于失败的型号，除非没有别的候选；同一型号必须提高 effort；不同型号之间不比较 effort 名。R3：同一型号最多提升一次，按完整模型标识计数。R4：执行时的较大问题（工具反复失败、跑飞、触碰保留项）可跳过返工票，记一次能力失败（进入下一档）。环境问题和契约缺口不算失败。首轮就在 `crux` 的任务在 `crux` 失败一次即进 `rescue`；`rescue` 失败交给用户。在其他宿主中，R2 的型号选择与 R3 的计数按 [lanes-other-hosts.md](lanes-other-hosts.md)。
 
 ## 用户路由档案
 
 阶段 2 的输入只作为声明进入。
 
-**持久判断。** **填充表**，（角色, 档位）→ 候选车道与拨盘，以及专长备注，写在 [routing-profile.md](routing-profile.md) 里，这是随本技能发布的用户路由档案。首次分配模型前阅读，档案变化或滑出上下文时再读；读不到 → 上报缺口，不做任何假设。`dial` 记作 `model[a*, b, c]`：该格内这一型号可选的 effort，`*` 标默认，没有 `*` 时以第一个列出的为默认；没有 effort 维度的型号裸写。
+**持久判断。** **填充表**，（角色, 档位）→ 候选车道与拨盘，以及专长备注，写在 [routing-profile.md](routing-profile.md) 里，这是随本技能发布的用户路由档案。在 Claude Code 与 Cursor 中，首次分配模型前阅读，档案变化或滑出上下文时再读；读不到 → 上报缺口，不做任何假设。其他宿主不读档案，按 [lanes-other-hosts.md](lanes-other-hosts.md) 处理。`dial` 记作 `model[a*, b, c]`：该格内这一型号可选的 effort，`*` 标默认，没有 `*` 时以第一个列出的为默认；没有 effort 维度的型号裸写。
 
 **易变状态**（额度余额、时限压力）在开工时口头声明，只对该会话有效，从不写入磁盘。
 

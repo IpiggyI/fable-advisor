@@ -1,6 +1,6 @@
 # 0031 — `haiku-5-5` 替换 `haiku-4-5` 并新增 `explorer-md`；车道返工设上限；其他宿主的兜底条款
 
-- **Status**: accepted（2026-10-09 椰椰的声明与决定；同日随 6.3.0 发布，说明书 `docs/manuals/6.3.0.html`）
+- **Status**: accepted（2026-10-09 椰椰的声明与决定；同日随 6.3.0 发布，说明书 `docs/manuals/6.3.0.html`；2026-10-18 决策 4 的兜底条款由 [ADR 0033](./0033-host-classes-and-runners-split.md) 决策 5 取代）
 - **Date**: 2026-10-09
 - **影响范围**:
   - `plugin/skills/orchestration/routing-profile.md`：声明日期、锚点、排名表 Claude 的 `starter`、explorer 的 agent 文件映射、Claude Code 表的 explorer `mainstay` 格，Cursor 表的 explorer `mainstay` 与 `crux` 格。

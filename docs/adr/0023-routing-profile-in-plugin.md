@@ -1,6 +1,6 @@
 # 0023 — 路由档案随插件发布
 
-- **Status**: accepted（2026-09-28 椰椰要求内置并确认四项实施决定；实施决定经 `gpt-6-astra` medium advisor 裁决；2026-09-29 椰椰要求安装器不再处理旧版游离文件，决策 3、6 相应修订，同经 advisor 裁决）
+- **Status**: accepted（2026-09-28 椰椰要求内置并确认四项实施决定；实施决定经 `gpt-6-astra` medium advisor 裁决；2026-09-29 椰椰要求安装器不再处理旧版游离文件，决策 3、6 相应修订，同经 advisor 裁决；2026-10-18 决策 2 的"首次分配前读取"由 [ADR 0033](./0033-host-classes-and-runners-split.md) 决策 6 限定为 Claude Code 与 Cursor）
 - **Date**: 2026-09-28
 - **影响范围**: `docs/agents/fable-advisor-routing.md` 移到 `plugin/skills/orchestration/routing-profile.md`，中文译本移到 `docs/zh/skills/orchestration/routing-profile.md`；`plugin/skills/orchestration/SKILL.md` "User routing profile" 段与中文孪生；`scripts/install-user-level.py`、`tests/test_install_user_level.py`、`tests/test_user_level_archive.py`；`README.md`；`plugin/.claude-plugin/plugin.json` 与 `.claude-plugin/marketplace.json` 的描述；`docs/manuals/6.0.0.html`；`AGENTS.md`、`CONTEXT.md`。并入未发布的 6.0.0，不另开版本号。
 - **关联**: 取代 [ADR 0017](./0017-routing-profile-edit-source.md) 决策 1、2、4、5；取代 [ADR 0015](./0015-global-orchestration-entry.md) 决策 1 中"填充表在调用方指定的档案、插件不持有"的部分；取代 [ADR 0006](./0006-pareto-lane-routing-inhouse-promotion.md) 决策 2 中"持久判断写用户级规则文件"的部分；撤销 [ADR 0018](./0018-post-5-1-tuning.md) 决策 5 中安装器的退役清单。任务件 `.scratch/tiers-and-routing-6-0/issues/06-routing-profile-in-plugin.md`。codex-advisor 早已如此（该仓 ADR 0004）。

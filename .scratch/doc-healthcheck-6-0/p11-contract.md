@@ -1,6 +1,6 @@
 # P11 实施契约（6.1.0）
 
-Status: ready-for-agent
+Status: wontfix
 Blocked by: 工单 05 推送 6.0.0（需椰椰授权）
 
 本文件是 6.1.0 的交付契约草稿，6.0.0 推送后原样派发。依据：`review.md` 的 P11、R13、R15、RI2、PS3；[ADR 0024](../../docs/adr/0024-orchestration-files-by-lane-and-word-budgets.md)（`proposed`，派发前改为 `accepted`）。
@@ -52,3 +52,7 @@ Blocked by: 工单 05 推送 6.0.0（需椰椰授权）
   - 执行者：Claude Code 的两项由主代理在新会话派发并读子代理与主会话的转写；Cursor 的一项由椰椰在 Cursor 执行并回报转写要点。
   - 证据落点：本文件 Comments，每项写会话 id、读取了哪些文件、通过与否。
   - 关闭条件：四项全部通过，P11 才算完成，本文件与 ADR 0024 的状态才能改为终态。任一项未执行或失败，加载行为保持未验收；运行文档与测试通过不能替代它。
+
+## Comments
+
+- 2026-10-18：不再派发。基线（6.0.0）与契约二（词数预算，已被 ADR 0030 取消）过时；P11 由 `.scratch/host-classes/` 与 ADR 0033 承接。

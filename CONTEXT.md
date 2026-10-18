@@ -86,6 +86,10 @@ _Avoid_: 称它 "In-house lane" 或 "Fallback"；用型号名（Opus/Sonnet）�
 经钉模型的 Task 派发到达 Cursor 自家模型（如 composer）的车道，只在 Cursor 宿主存在。
 _Avoid_: 把它算进 claude lane；让它出现在 Claude Code 侧的填充表里。
 
+**其他宿主**:
+加载本技能、但既不是 Claude Code 也不是 Cursor 的宿主，包括导入 Claude Code 设置或插件、自身运行方式不同的宿主（如只有 grok 型号的 Grok Build）。规则在 `lanes-other-hosts.md`：只经宿主自己的入口派发，不读路由档案；档位按同一型号的强度分，R3 在单型号宿主上按拨盘计数（ADR 0033）。
+_Avoid_: 兜底条款（已由 `lanes-other-hosts.md` 取代）；让其他宿主读 Claude Code 的填充表。
+
 **handoff lane（交接车道）**:
 用户中介的车道：架构师把五部 spec 与操作指南写入 `.fable-advisor/handoff/<slug>.md`，由用户手动带到自己选定的 harness 执行，回来后架构师读 diff、亲自重跑 verification 验收；无机械门禁（不在 receipt gate 视野内）、fail open。
 _Avoid_: 未经用户声明将其纳入路由候选；因"免费"把小任务也交接出去；把回传报告当验收证据（证据是 diff）。

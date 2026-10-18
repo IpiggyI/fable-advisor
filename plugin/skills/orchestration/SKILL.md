@@ -64,11 +64,12 @@ A lane answers how a vendor is reached; roles and tiers answer what is dispatche
 
 ### Harness mechanics
 
-Identify the harness by the host you run in and its tools' parameter structure, never by one tool name or a `model` parameter's presence; read the matching lanes file before the first dispatch:
+Identify the harness by the host you run in and its tools' parameter structure, never by one tool name or a `model` parameter's presence. Read the matching file at these events:
 
-- Claude Code (runners, receipts, receipt gate, report mode): [lanes-claude-code.md](lanes-claude-code.md)
-- Cursor (pinned dispatches, codex runner through Shell, lifecycle): [lanes-cursor.md](lanes-cursor.md)
-- Any other host has no lanes file. It carries over no other host's runner, receipt gate or model pin. Roles are dispatched only through entrances the host itself provides. Fills come from the routing profile's Claude Code table; a candidate with no entrance on the host is skipped, and the disclosure says so. A fill that its entrance cannot start is unavailable: re-route it ("Re-routing") and say so. The route is stated as text in the route-line form of [lanes-claude-code.md](lanes-claude-code.md) ("The route line"), and nothing checks it.
+- In Claude Code, before the first claude-lane dispatch: [lanes-claude-code.md](lanes-claude-code.md)
+- Before the first runner run: [runners.md](runners.md)
+- In Cursor, before the first dispatch: [lanes-cursor.md](lanes-cursor.md)
+- In any other host, before the first dispatch: [lanes-other-hosts.md](lanes-other-hosts.md). Another host is one that loads this skill and is neither Claude Code nor Cursor, including one that imports Claude Code settings or plugins but runs differently.
 
 Two executor-side contracts: [lane-preamble.md](lane-preamble.md) for a worker, [lane-preamble-report.md](lane-preamble-report.md) for an explorer or advisor. Runners prepend the one `mode` names; a Cursor or other-host dispatch points at the one its role needs. Restate neither.
 
@@ -78,7 +79,7 @@ Two executor-side contracts: [lane-preamble.md](lane-preamble.md) for a worker, 
 
 A declared family or model only filters candidates; it sets no tier. Take the lowest tier that meets three conditions: it is not below the tier set by difficulty or the ladder; its cell has a compatible candidate, one that fits the declaration; it is admissible, meaning the dispatch has a basis of a kind that tier accepts for the role (`mainstay` needs none). A user's model or family declaration admits `crux` as basis `user-declaration`, with the user's words as ref; it never admits `rescue`. When no tier meets all three, report the conflict to the user; never downgrade automatically.
 
-**The route.** Every dispatch states its route: role, tier and dial, plus a basis above `mainstay`, in the form the lanes file names. A message to an existing session through `SendMessage` or `resume` states it too. Basis kinds by role and tier:
+**The route.** Every dispatch states its route: role, tier and dial, plus a basis above `mainstay`, in the route-line form below. A message to an existing session through `SendMessage` or `resume` states it too. Basis kinds by role and tier:
 
 | Role | `crux` | `rescue` |
 |---|---|---|
@@ -87,17 +88,29 @@ A declared family or model only filters candidates; it sets no tier. Take the lo
 
 A basis carries a non-empty ref: the difficulty for `key-difficulty`; the failed dispatch's identifier (receipt hash, session id or agentId) for `failure`; the low-confidence verdict for `low-confidence`; the user's own words for `user-declaration`. Same-model dispatch has its own route (see "The delegation boundary"). The route is checked mechanically where the lanes file says. The check verifies that a basis is present and well formed, not that it is true; its truth stays the main agent's judgment.
 
-**Stage 2 — choosing inside the cell.** The first candidate is the default, at its `*` dial absent declarations. Pick another when the task falls on a specialty the profile declares for it (price counts). Equal fits and replacements follow the profile's lane order.
+**The route line.**
 
-**Re-routing.** An unavailable or timed-out candidate (whole lane, single candidate, or codex runner start failure) hands its contract unchanged to another in the cell, in the profile's lane order, disclosed; not a capability failure. Both CLI lanes down → the claude lane, stating any lost cross-vendor review. Availability is decided by dispatch, not probes.
+```
+Route: role=<explorer|worker|advisor> tier=<mainstay|crux|rescue|same-model> dial=<model>[<effort>] basis=<kind> ref=<text to end of line>
+```
 
-**Escalation — the ladder.** R1: a failed acceptance gets a rework ticket, same dial, in the same session while its reuse window and rework limit hold; a contract gap gets a corrected contract on the same terms; past the window or the limit, see "Session reuse". R2: the rework ticket fails too, cause capability → a capability failure: raise to the next tier (`mainstay` → `crux` → `rescue` → user), fresh session, takeover contract (original contract, prior report, receipt). Pick its model by the task, not below the failed model in the profile's ranking unless no other candidate exists; the same model must raise effort; effort names never compare across models. R3: a model is raised at most once, counted by full model id. R4: a major execution problem (repeated tool failures, runaway, a reserved item touched) may skip the rework ticket, counting as a capability failure (next tier). Environment problems and contract gaps are not failures. A task started in `crux` reaches `rescue` after one failure there; a `rescue` failure goes to the user.
+- `dial` is one concrete dial in the profile's notation, such as `opus-5-5[medium]`, never a cell's list of efforts.
+- At `mainstay`, omit `basis` and `ref`. Above it, `basis` is a kind the table above accepts for the role and tier, and `ref` runs to the end of the line.
+- Same-model dispatch writes `role=worker tier=same-model` and `basis=same-model`, with `ref` naming the artifact class.
+
+For example, `Route: role=explorer tier=mainstay dial=haiku-5-5[medium]`, or `Route: role=worker tier=crux dial=opus-5-5[medium] basis=key-difficulty ref=three interfaces constrain each other`.
+
+**Stage 2 — choosing inside the cell.** The first candidate is the default, at its `*` dial absent declarations. Pick another when the task falls on a specialty the profile declares for it (price counts). Equal fits and replacements follow the profile's lane order. In any other host, [lanes-other-hosts.md](lanes-other-hosts.md) replaces this stage.
+
+**Re-routing.** An unavailable or timed-out candidate (whole lane, single candidate, or codex runner start failure) hands its contract unchanged to another in the cell, in the profile's lane order, disclosed; not a capability failure. Both CLI lanes down → the claude lane, stating any lost cross-vendor review. Availability is decided by dispatch, not probes. In any other host, re-routing follows [lanes-other-hosts.md](lanes-other-hosts.md).
+
+**Escalation — the ladder.** R1: a failed acceptance gets a rework ticket, same dial, in the same session while its reuse window and rework limit hold; a contract gap gets a corrected contract on the same terms; past the window or the limit, see "Session reuse". R2: the rework ticket fails too, cause capability → a capability failure: raise to the next tier (`mainstay` → `crux` → `rescue` → user), fresh session, takeover contract (original contract, prior report, receipt). Pick its model by the task, not below the failed model in the profile's ranking unless no other candidate exists; the same model must raise effort; effort names never compare across models. R3: a model is raised at most once, counted by full model id. R4: a major execution problem (repeated tool failures, runaway, a reserved item touched) may skip the rework ticket, counting as a capability failure (next tier). Environment problems and contract gaps are not failures. A task started in `crux` reaches `rescue` after one failure there; a `rescue` failure goes to the user. In any other host, R2's model choice and R3's count follow [lanes-other-hosts.md](lanes-other-hosts.md).
 
 ## User routing profile
 
 Stage 2 inputs enter only as declarations.
 
-**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in [routing-profile.md](routing-profile.md), the user's routing profile shipped with this skill. Read it before the first model assignment, again when it changes or slides out of context; unreadable → report the gap, assume nothing. A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, `*` the default, else the first listed; a model without an effort dimension is written bare.
+**Persistent judgments.** The **fill table**, (role, tier) → candidate lanes and dials, and specialty notes live in [routing-profile.md](routing-profile.md), the user's routing profile shipped with this skill. In Claude Code and Cursor, read it before the first model assignment, again when it changes or slides out of context; unreadable → report the gap, assume nothing. Any other host does not read it and follows [lanes-other-hosts.md](lanes-other-hosts.md). A `dial` is written `model[a*, b, c]`: that model's efforts available in the cell, `*` the default, else the first listed; a model without an effort dimension is written bare.
 
 **Volatile state** (quota balance, deadline pressure) is declared verbally at kickoff, holds for that session only, never written to disk.
 
