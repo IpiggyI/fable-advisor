@@ -884,7 +884,7 @@ async function main() {
   const slug = path.basename(parsedArguments.specPath, ".json");
   let promptPath;
   try {
-    const prompt = `${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
+    const prompt = `[车道] ${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
     promptPath = await writePromptFile(prompt);
     progress.phase = "cli";
     const grokResult = await executeGrok(spec, state.cwd, promptPath);

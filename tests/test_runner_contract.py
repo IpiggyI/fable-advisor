@@ -436,10 +436,10 @@ def case_report_and_implement_modes():
                 assert "Files defines the read scope" not in prompt
                 assert "WORKER REPORT" not in prompt
                 if mode == "report":
-                    assert prompt.startswith("job\n\nSTUB REPORT PREAMBLE\n\n")
+                    assert prompt.startswith("[车道] job\n\nSTUB REPORT PREAMBLE\n\n")
                     assert "STUB LANE PREAMBLE" not in prompt
                 else:
-                    assert prompt.startswith("job\n\nSTUB LANE PREAMBLE\n\n")
+                    assert prompt.startswith("[车道] job\n\nSTUB LANE PREAMBLE\n\n")
                     assert "STUB REPORT PREAMBLE" not in prompt
                 for args in attempts:
                     if mode == "report" and binary == "codex":
@@ -786,7 +786,7 @@ def case_preamble_missing_is_spawn_free():
             assert result.returncode == 0, result.stderr
             assert receipt["error_class"] == "complete"
             assert (Path(tmp) / "prompt").read_text().startswith(
-                "job\n\nSTUB LANE PREAMBLE\n\n"
+                "[车道] job\n\nSTUB LANE PREAMBLE\n\n"
             )
 
 
@@ -885,7 +885,7 @@ def case_resume_invocations_and_preamble():
                 assert "--resume" in execution and "--session-id" not in execution
                 assert "session id mismatch" in result.stderr
             assert prompt_log.read_text().startswith(
-                "job\n\nSTUB LANE PREAMBLE\n\n"
+                "[车道] job\n\nSTUB LANE PREAMBLE\n\n"
             )
             assert "[fable-advisor]" not in prompt_log.read_text()
             print(
@@ -1600,8 +1600,8 @@ def case_title():
             assert result.returncode == 0, result.stderr
             assert receipt["error_class"] == "complete", receipt
             prompt = prompt_log.read_text()
-            assert prompt.startswith("Scout the dirty tree\n\nSTUB LANE PREAMBLE\n\n")
-            assert prompt.splitlines()[0] == "Scout the dirty tree"
+            assert prompt.startswith("[车道] Scout the dirty tree\n\nSTUB LANE PREAMBLE\n\n")
+            assert prompt.splitlines()[0] == "[车道] Scout the dirty tree"
             assert prompt.splitlines()[1] == ""
             assert "[fable-advisor]" not in prompt
             assert "# Scout" not in prompt.splitlines()[0]
@@ -1613,7 +1613,7 @@ def case_title():
             )
             assert result.returncode == 0, result.stderr
             prompt = prompt_log.read_text()
-            assert prompt.startswith("# not a heading\n\nSTUB LANE PREAMBLE\n\n")
+            assert prompt.startswith("[车道] # not a heading\n\nSTUB LANE PREAMBLE\n\n")
             assert "[fable-advisor]" not in prompt
             prompt_log.unlink()
             call_log.unlink()
@@ -1621,7 +1621,7 @@ def case_title():
             result, receipt = run_runner(runner, cwd, base_spec(), bin_dir, env)
             assert result.returncode == 0, result.stderr
             prompt = prompt_log.read_text()
-            assert prompt.startswith("job\n\nSTUB LANE PREAMBLE\n\n")
+            assert prompt.startswith("[车道] job\n\nSTUB LANE PREAMBLE\n\n")
             assert "# Objective" in prompt
             assert prompt.index("STUB LANE PREAMBLE") < prompt.index("# Objective")
             assert "[fable-advisor]" not in prompt
@@ -1636,7 +1636,7 @@ def case_title():
                 assert result.returncode != 0, title
                 assert receipt["error_class"] == "spec_invalid", (title, receipt)
                 assert not call_log.exists(), "invalid title spawned CLI: %r" % (title,)
-    print("ASSERT title: first line verbatim; omitted=slug; empty/non-string=spec_invalid spawn-free; no [fable-advisor]")
+    print("ASSERT title: first line \"[车道] \" + title verbatim; omitted=slug; empty/non-string=spec_invalid spawn-free; no [fable-advisor]")
 
 
 def case_real_preamble_files():

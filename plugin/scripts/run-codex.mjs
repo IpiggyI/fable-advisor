@@ -930,7 +930,7 @@ async function main() {
   let promptPath;
   try {
     const slug = path.basename(parsedArguments.specPath, ".json");
-    const prompt = `${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
+    const prompt = `[车道] ${spec.title ?? slug}\n\n${preamble}\n\n${renderPrompt(spec)}`;
     promptPath = await writePromptFile(prompt);
     const promptContents = await readFile(promptPath);
     progress.phase = "cli";
