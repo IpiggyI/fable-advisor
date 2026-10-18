@@ -1,6 +1,6 @@
 # 02 — 发布 6.5.0
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 椰椰 2026-10-18 授权"发6.5.0"：说明书、两处版本字段、提交、推送、两侧更新、伴生安装器。流程按 `docs/agents/plugin-release.md`。
@@ -32,3 +32,4 @@ Blocked by: 01
 
 - 2026-10-18 说明书：claude 车道 `worker-h` + `sonnet`（`Route: role=worker tier=mainstay dial=sonnet-5-5[high]`）。改派的原因：工作树里有既有的未跟踪文件，grok runner 需要干净的树，所以从 `grok-4.7[high]` 改派到格内第二候选，同族，没有跨厂商审查。主代理 Tier 1：`html.parser` 解析无错，锚点没有缺失；变化一节与 ADR 0033、工单 01 一致。验收通过。
 - 2026-10-18 版本字段改为 6.5.0；`test_zh_mirror.py` 19/19，`test_shipped_wording.py` 49/49。
+- 2026-10-18 提交 `476c683` 并推送到 `origin/main`。WSL 与 Windows 两侧插件都更新为 6.5.0（`updated from 6.4.0 to 6.5.0`）；伴生安装器四个文件均为 unchanged。抽查 `~/.claude`、`~/.claude-a`、`/mnt/c/Users/Shy/.claude` 三处的 6.5.0 缓存：都有 `runners.md` 与 `lanes-other-hosts.md`，`SKILL.md` 里都含 "In any other host, before the first dispatch"。各会话需要重启才会加载新版本。

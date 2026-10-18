@@ -22,6 +22,9 @@ Status: ready-for-agent
 ## Batch checks
 
 - 全量测试：`for t in tests/test_*.py; do python3 "$t" || echo "FAIL $t"; done` 与 `node tests/test_runner_lifecycle_windows.cjs`（若在本机可运行）。覆盖工单 01；执行者：主代理；时点：工单 01 验收之后、工单 02 之前。结果：passed（2026-10-18，10 个 Python 测试全部退出 0：install_user_level 8/8、lane_family_gate 18/18、receipt_gate 11/11、route_gate 44/44、routing_profile_parity 29/29、runner_contract 24/24、runner_lifecycle PASS、shipped_wording 49/49、user_level_archive 5/5、zh_mirror 19/19；`test_runner_lifecycle_windows.cjs` 在 WSL 上 SKIP，需要 Windows Node，未执行；日志 `/tmp/hc-batch-*.log`）。
-- 加载行为对照（依赖模型行为，不能由测试替代）：发布后在新会话中各派发一次——Claude Code 只跑 runner、Claude Code 只派 claude 车道、Cursor 跑 codex runner、其他宿主（Grok Build）派一次 advisor——读转写，确认读取的文件与本 spec 的目标一致。执行者：Claude Code 两项由主代理；Cursor 与 Grok Build 两项由椰椰执行并回报转写要点。时点：工单 02 两侧更新之后。结果：pending。
+- 加载行为对照（依赖模型行为，不能由测试替代）：发布后在新会话中各派发一次——Claude Code 只跑 runner、Claude Code 只派 claude 车道、Cursor 跑 codex runner、其他宿主（Grok Build）派一次 advisor——读转写，确认读取的文件与本 spec 的目标一致。执行者：Claude Code 两项由主代理；Cursor 与 Grok Build 两项由椰椰执行并回报转写要点。时点：工单 02 两侧更新之后。结果：
+  - Grok Build：passed（2026-10-18 椰椰回报）。主代理按 `lanes-other-hosts.md` 写路由 `Route: role=advisor tier=mainstay dial=grok-4.7`，用的是裸型号。它判定 `advisor-*` 钉 `model: fable` 是不可用的入口，没有派它，改用宿主自己的通用子代理：不指定 subagent_type，不覆盖型号，提示指向 `lane-preamble-report.md`；子代理 `01a14e33-e824-7c31-8aab-66f5377069e3`。advisor 引用的原文正确，两处行号各偏一行（应为 `lanes-other-hosts.md:8`、`:9`），这属于模型的引用精度，不是插件缺陷。没有观测：插件钩子是否触发；直接派 `advisor-*` 会失败还是被换型号（这次按规则没有尝试）。
+  - Cursor：waived（2026-10-18 椰椰：Cursor 已弃用，不测试）。
+  - Claude Code 两项（只跑 runner、只派 claude 车道）：pending，在加载 6.5.0 的新会话里由主代理执行。
 
 ## Comments
